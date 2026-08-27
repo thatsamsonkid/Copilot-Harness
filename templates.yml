@@ -1,0 +1,31 @@
+# Starter repositories for bootstrapping new projects.
+# Product remotes stay in repositories.yml — this file is templates only.
+#
+# Required per entry: name, url, tags
+# Optional: description, language, kind, default_branch, enabled
+#
+# List templates:     harness templates
+# Bootstrap one:      harness bootstrap --template <name> --name <new-folder>
+# Copilot can run the same commands when asked to start a new project.
+
+templates:
+  - name: spartan-stack
+    url: git@github.com:thatsamsonkid/spartan-stack-starter.git
+    tags: [frontend, fullstack, angular, analog, typescript]
+    description: Opinionated Spartan / Analog fullstack starter
+    language: typescript
+    kind: fullstack
+
+  - name: react-native
+    url: git@github.com:thatsamsonkid/react-native-starter.git
+    tags: [mobile, react-native, expo]
+    description: React Native + Expo + Nativewind + Signals
+    language: typescript
+    kind: mobile
+
+  - name: spring-boot
+    url: git@github.com:thatsamsonkid/spring-boot-starter.git
+    tags: [backend, java, spring]
+    description: Spring Boot service starter
+    language: java
+    kind: backend
