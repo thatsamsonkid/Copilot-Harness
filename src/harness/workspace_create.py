@@ -5,7 +5,15 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from harness import HarnessError
-from harness.catalog import Catalog, Repo, Workspace, WorkspaceMatch, load_catalog
+from harness.catalog import (
+    Catalog,
+    Repo,
+    Workspace,
+    WorkspaceMatch,
+    load_catalog,
+    parse_personal_workspace,
+)
+from harness.paths import PERSONAL_WORKSPACES_DIR
 from harness.prompt import PromptSession
 from harness.stack_edit import upsert_workspace_in_stack
 from harness.workspace import open_command, write_workspace_file
@@ -129,6 +137,7 @@ def create_workspace(
     folders: list[str] | None = None,
     tags: list[str] | None = None,
     include_harness: bool | None = None,
+    personal: bool | None = None,
     fallback: bool = False,
     match_projects: list[str] | None = None,
     match_components: list[str] | None = None,
@@ -140,11 +149,17 @@ def create_workspace(
     prompt: PromptSession | None = None,
 ) -> dict[str, Any]:
     prompt = prompt or PromptSession()
-    existing_ids = {workspace.id for workspace in catalog.workspaces}
-    repos = list(catalog.repos)
 
+    personal = _resolve_personal(personal, prompt)
     workspace_id = _resolve_id(workspace_id, prompt)
-    if workspace_id in existing_ids and not force:
+    existing = _existing_workspace(catalog, harness_root, workspace_id)
+    if existing is not None and existing.personal != personal:
+        kind = "personal" if existing.personal else "shared"
+        raise HarnessError(
+            f"Workspace {workspace_id} already exists as a {kind} workspace. "
+            "Choose a different id."
+        )
+    if existing is not None and not force:
         if prompt.can_prompt() and folders is None and tags is None:
             if prompt.confirm(
                 f"Workspace {workspace_id} already exists. Replace it?",
@@ -165,8 +180,20 @@ def create_workspace(
     folders, tags = _resolve_projects(catalog, folders, tags, prompt)
     include_harness = _resolve_include_harness(include_harness, prompt)
 
+    if personal and fallback:
+        raise HarnessError(
+            "Personal workspaces cannot be fallback=true. "
+            "Jira routing only uses shared catalog/stack.yaml workspaces."
+        )
+    if personal and not generate and not dry_run:
+        raise HarnessError(
+            "Personal workspaces only exist as .code-workspace files. "
+            "Omit --no-generate, or pass --dry-run."
+        )
     if fallback:
-        current = [item.id for item in catalog.workspaces if item.fallback]
+        current = [
+            item.id for item in catalog.workspaces if item.fallback and not item.personal
+        ]
         if current and current != [workspace_id]:
             raise HarnessError(
                 f"Only one workspace can be fallback=true; {current[0]} already is. "
@@ -181,12 +208,13 @@ def create_workspace(
         tags=tags,
         include_harness=include_harness,
         fallback=fallback,
+        personal=personal,
         match=WorkspaceMatch(
-            projects=match_projects or [],
-            components=match_components or [],
-            labels=match_labels or [],
+            projects=[] if personal else (match_projects or []),
+            components=[] if personal else (match_components or []),
+            labels=[] if personal else (match_labels or []),
             issue_types=[],
-            keywords=match_keywords or [],
+            keywords=[] if personal else (match_keywords or []),
         ),
     )
 
@@ -197,7 +225,7 @@ def create_workspace(
             "Choose projects or tags from repositories.yml."
         )
     stack_path = catalog.source
-    replaced = workspace_id in existing_ids
+    replaced = existing is not None
 
     if dry_run:
         document_folders = ["harness"] if include_harness else []
@@ -213,13 +241,18 @@ def create_workspace(
             folders=document_folders,
         )
 
-    upsert_workspace_in_stack(stack_path, workspace, replace=force or replaced)
-    refreshed = load_catalog(
-        harness_root,
-        stack_path=stack_path,
-        repos_path=catalog.repos_source,
-    )
-    persisted = refreshed.workspace(workspace_id)
+    if not personal:
+        upsert_workspace_in_stack(stack_path, workspace, replace=force or replaced)
+        refreshed = load_catalog(
+            harness_root,
+            stack_path=stack_path,
+            repos_path=catalog.repos_source,
+        )
+        persisted = refreshed.workspace(workspace_id)
+    else:
+        refreshed = catalog
+        persisted = workspace
+
     written: dict[str, Any] | None = None
     if generate:
         written = write_workspace_file(refreshed, harness_root, persisted)
@@ -237,6 +270,46 @@ def create_workspace(
         + refreshed.workspace_repo_names(persisted),
         file=(written or {}).get("file"),
     )
+
+
+def _existing_workspace(
+    catalog: Catalog, harness_root: Path, workspace_id: str
+) -> Workspace | None:
+    existing = next(
+        (item for item in catalog.workspaces if item.id == workspace_id), None
+    )
+    if existing is not None:
+        return existing
+    personal_path = harness_root / PERSONAL_WORKSPACES_DIR / f"{workspace_id}.code-workspace"
+    if not personal_path.exists():
+        return None
+    return parse_personal_workspace(
+        personal_path, {repo.name for repo in catalog.repos}
+    ) or Workspace(id=workspace_id, name=workspace_id, personal=True)
+
+
+def _resolve_personal(personal: bool | None, prompt: PromptSession) -> bool:
+    if personal is not None:
+        return personal
+    if not prompt.can_prompt():
+        return False
+    prompt.write(
+        "\nShared workspaces go in catalog/stack.yaml and workspaces/ "
+        "for everyone.\n"
+        "Personal workspaces stay in workspaces/personal/ "
+        "(gitignored, local only).\n"
+    )
+    while True:
+        answer = prompt.ask(
+            "Create a personal workspace or a shared harness workspace?",
+            default="shared",
+        )
+        lowered = answer.strip().lower()
+        if lowered in {"personal", "p", "local", "mine"}:
+            return True
+        if lowered in {"shared", "s", "team", "harness"}:
+            return False
+        prompt.write("Choose personal or shared.\n")
 
 
 def _resolve_id(workspace_id: str | None, prompt: PromptSession) -> str:
@@ -380,6 +453,7 @@ def _payload(
             "tags": workspace.tags,
             "include_harness": workspace.include_harness,
             "fallback": workspace.fallback,
+            "personal": workspace.personal,
             "file": file or str(path),
             "catalog": str(catalog.source),
             "exists": path.exists(),

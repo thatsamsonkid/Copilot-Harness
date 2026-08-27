@@ -1,7 +1,10 @@
+import json
 from pathlib import Path
 
 from harness.catalog import load_catalog
+from harness.prompt import PromptSession
 from harness.workspace import generate_workspaces, list_workspaces, workspace_document
+from harness.workspace_create import create_workspace
 from tests.helpers import write_harness_config
 
 
@@ -38,4 +41,34 @@ def test_generate_and_list(catalog, harness_root: Path):
     listed = list_workspaces(catalog, harness_root)
     frontend = next(item for item in listed if item["id"] == "frontend")
     assert frontend["exists"] is True
+    assert frontend["personal"] is False
     assert frontend["repos"][0]["cloned"] is False
+
+
+def test_generate_skips_personal_and_list_includes_them(catalog, harness_root: Path):
+    create_workspace(
+        catalog,
+        harness_root,
+        workspace_id="scratch",
+        folders=["frontend"],
+        personal=True,
+        prompt=PromptSession(interactive=False),
+    )
+    personal_path = harness_root / "workspaces" / "personal" / "scratch.code-workspace"
+    original = personal_path.read_text(encoding="utf-8")
+    document = json.loads(original)
+    document["harness"]["description"] = "do not overwrite"
+    personal_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+
+    refreshed = load_catalog(harness_root)
+    written = generate_workspaces(refreshed, harness_root)
+    assert {item["id"] for item in written} == {"frontend", "backend"}
+    assert all(item["personal"] is False for item in written)
+    assert not (harness_root / "workspaces" / "scratch.code-workspace").exists()
+    assert personal_path.read_text(encoding="utf-8") == json.dumps(document, indent=2) + "\n"
+
+    listed = list_workspaces(refreshed, harness_root)
+    scratch = next(item for item in listed if item["id"] == "scratch")
+    assert scratch["personal"] is True
+    assert scratch["exists"] is True
+    assert scratch["file"] == str(personal_path)

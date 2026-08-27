@@ -131,6 +131,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated tags; include every matching repositories.yml entry",
     )
     workspace_create.add_argument(
+        "--personal",
+        dest="personal",
+        action="store_true",
+        default=None,
+        help=(
+            "Create a local-only workspace under workspaces/personal/ "
+            "(gitignored). Does not edit catalog/stack.yaml"
+        ),
+    )
+    workspace_create.add_argument(
+        "--shared",
+        dest="personal",
+        action="store_false",
+        help=(
+            "Add the workspace to catalog/stack.yaml and workspaces/ "
+            "for everyone (default)"
+        ),
+    )
+    workspace_create.add_argument(
         "--include-harness",
         dest="include_harness",
         action="store_true",
@@ -424,6 +443,7 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, harness_root: Pa
             folders=_split_ids(args.projects),
             tags=_split_ids(args.tag),
             include_harness=args.include_harness,
+            personal=args.personal,
             fallback=args.fallback,
             match_projects=_split_ids(args.match_projects),
             match_components=_split_ids(args.match_components),
