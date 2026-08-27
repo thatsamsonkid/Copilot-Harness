@@ -11,6 +11,7 @@
 #   → workspaces/frontend.start.yml
 # Java launch.json env/args stay in the sibling. The plan lists names/keys only;
 # start those apps with `harness start run --repo <name>`.
+# Apply one repo's env in a terminal with `harness start env --repo <name> --shell`.
 #
 # Use group or a nested path to organize clones without putting git
 # trees inside this harness:

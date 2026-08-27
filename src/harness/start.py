@@ -13,6 +13,7 @@ import yaml
 
 from harness import HarnessError
 from harness.catalog import Catalog, Repo, as_list
+from harness.envapply import applied_env_preview, apply_project_env
 from harness.invoke import invoke_spec
 from harness.launch import load_launch_runtime, summarize_launch
 
@@ -471,6 +472,9 @@ def _plan_guidance(payload: dict[str, Any]) -> list[str]:
             "When run_via is harness or launch.secret_risk is true, start that "
             "app with invoke.command plus `start run --repo <name>` (or the "
             "service `copilot_command`) or VS Code Run Without Debugging. "
+            "start run applies env to the child process only. Use "
+            "`start env --repo <name>` for keys and collisions, or "
+            "`start env --repo <name> --shell` to apply values in a terminal. "
             "Never read launch.json, envFile, or .env, and never reconstruct "
             "env or args in the terminal."
         )
@@ -1103,14 +1107,22 @@ def _copilot_command(
     return command
 
 
-def prepare_start_run(
+def workspace_folder_map(catalog: Catalog, harness_root: Path) -> dict[str, Path]:
+    folders = {
+        repo.name: catalog.repo_path(harness_root, repo) for repo in catalog.repos
+    }
+    folders["harness"] = Path(harness_root).resolve()
+    return folders
+
+
+def prepare_project_env(
     catalog: Catalog,
     harness_root: Path,
     repo_name: str,
     *,
     configuration: str | None = None,
 ) -> dict[str, Any]:
-    """Build a redacted start-run payload and the in-process env/args."""
+    """Load launch.json / envFile keys in-process. No start command required."""
     service = inspect_start(catalog, harness_root, repo_name)
     if service.get("blocked") == "repo is not cloned":
         raise HarnessError(f"Repository {repo_name} is not cloned")
@@ -1128,6 +1140,8 @@ def prepare_start_run(
         Path(service["path"]),
         launch if isinstance(launch, dict) else None,
         configuration=configuration,
+        environ=os.environ.copy(),
+        workspace_folders=workspace_folder_map(catalog, harness_root),
     )
     if runtime.get("uses_vscode_inputs"):
         raise HarnessError(
@@ -1136,41 +1150,68 @@ def prepare_start_run(
             f"{(launch or {}).get('configuration')!r}; "
             "do not reconstruct those values in the terminal."
         )
-    command = service.get("command")
-    if not command:
-        config = (launch or {}).get("configuration")
-        raise HarnessError(
-            "No shell start command for "
-            f"{repo_name}. Use VS Code Run Without Debugging on {config!r}."
-        )
-    cwd = runtime.get("cwd") or Path(service["cwd"])
     env = dict(runtime.get("env") or {})
-    exec_command = _command_with_launch_args(
-        str(command),
-        str(service.get("kind") or ""),
-        runtime.get("args"),
-        runtime.get("vm_args"),
-        env,
-    )
-    env_keys = sorted(env)
+    cwd = runtime.get("cwd") or Path(service["cwd"])
     return {
         "name": service["name"],
         "cwd": str(cwd),
-        "command": str(command),
-        "exec_command": exec_command,
+        "command": service.get("command"),
+        "kind": str(service.get("kind") or ""),
         "env": env,
-        "env_keys": env_keys,
+        "env_keys": sorted(env),
         "env_file": (launch or {}).get("env_file") if launch else None,
         "launch_configuration": (launch or {}).get("configuration") if launch else None,
+        "args": runtime.get("args"),
+        "vm_args": runtime.get("vm_args"),
         "applied_args": bool(runtime.get("args")),
         "applied_vm_args": bool(runtime.get("vm_args")),
         "run_via": "harness",
     }
 
 
-def start_run_preview(prepared: dict[str, Any]) -> dict[str, Any]:
-    """JSON-safe view of a prepared run. No env/arg values."""
+def prepare_start_run(
+    catalog: Catalog,
+    harness_root: Path,
+    repo_name: str,
+    *,
+    configuration: str | None = None,
+) -> dict[str, Any]:
+    """Build a redacted start-run payload and the in-process env/args."""
+    prepared = prepare_project_env(
+        catalog, harness_root, repo_name, configuration=configuration
+    )
+    command = prepared.get("command")
+    if not command:
+        config = prepared.get("launch_configuration")
+        raise HarnessError(
+            "No shell start command for "
+            f"{repo_name}. Use VS Code Run Without Debugging on {config!r}."
+        )
+    env = dict(prepared["env"])
+    exec_env = dict(env)
+    exec_command = _command_with_launch_args(
+        str(command),
+        str(prepared.get("kind") or ""),
+        prepared.get("args"),
+        prepared.get("vm_args"),
+        exec_env,
+    )
     return {
+        **prepared,
+        "command": str(command),
+        "exec_command": exec_command,
+        "env": env,
+        "env_keys": sorted(env),
+        "run_via": "harness",
+    }
+
+
+def start_run_preview(
+    prepared: dict[str, Any],
+    applied: Any | None = None,
+) -> dict[str, Any]:
+    """JSON-safe view of a prepared run. No env/arg values."""
+    payload = {
         "name": prepared["name"],
         "cwd": prepared["cwd"],
         "command": prepared["command"],
@@ -1182,6 +1223,9 @@ def start_run_preview(prepared: dict[str, Any]) -> dict[str, Any]:
         "run_via": "harness",
         "dry_run": True,
     }
+    if applied is not None:
+        payload.update(applied_env_preview(applied))
+    return payload
 
 
 def execute_start_run(
@@ -1191,19 +1235,36 @@ def execute_start_run(
     *,
     configuration: str | None = None,
     dry_run: bool = False,
+    prefix: str | None = None,
+    keep_existing: bool = False,
     run: RunFn | None = None,
 ) -> dict[str, Any]:
     prepared = prepare_start_run(
         catalog, harness_root, repo_name, configuration=configuration
     )
-    preview = start_run_preview(prepared)
+    applied = apply_project_env(
+        prepared["env"],
+        os.environ,
+        repo_name=prepared["name"],
+        configuration=prepared.get("launch_configuration"),
+        prefix=prefix,
+        keep_existing=keep_existing,
+    )
+    # Prefix is applied to launch keys only. Recompute JVM extras on the
+    # merged child env so JAVA_TOOL_OPTIONS keeps its unprefixed name.
+    exec_command = _command_with_launch_args(
+        str(prepared["command"]),
+        str(prepared.get("kind") or ""),
+        prepared.get("args"),
+        prepared.get("vm_args"),
+        applied.env,
+    )
+    preview = start_run_preview(prepared, applied)
     if dry_run:
         return preview
-    env = os.environ.copy()
-    env.update(prepared["env"])
-    _print_run_banner(preview)
+    _print_run_banner(preview, action="Starting")
     runner = run or _run_foreground
-    exit_code = runner(prepared["exec_command"], Path(prepared["cwd"]), env)
+    exit_code = runner(exec_command, Path(prepared["cwd"]), applied.env)
     return {
         **preview,
         "dry_run": False,
@@ -1211,14 +1272,72 @@ def execute_start_run(
     }
 
 
-def _print_run_banner(preview: dict[str, Any]) -> None:
+def start_env_preview(
+    prepared: dict[str, Any],
+    applied: Any,
+) -> dict[str, Any]:
+    """JSON-safe view of a project env apply. No values."""
+    return {
+        "name": prepared["name"],
+        "cwd": prepared["cwd"],
+        "command": prepared.get("command"),
+        "env_file": prepared.get("env_file"),
+        "launch_configuration": prepared.get("launch_configuration"),
+        "run_via": "harness",
+        "shell": False,
+        **applied_env_preview(applied),
+    }
+
+
+def execute_start_env(
+    catalog: Catalog,
+    harness_root: Path,
+    repo_name: str,
+    *,
+    configuration: str | None = None,
+    prefix: str | None = None,
+    keep_existing: bool = False,
+    shell: bool = False,
+    exec_fn: Callable[[dict[str, str], Path], None] | None = None,
+) -> dict[str, Any]:
+    """Apply one repo's launch env in-process, or exec a shell that has it."""
+    prepared = prepare_project_env(
+        catalog, harness_root, repo_name, configuration=configuration
+    )
+    applied = apply_project_env(
+        prepared["env"],
+        os.environ,
+        repo_name=prepared["name"],
+        configuration=prepared.get("launch_configuration"),
+        prefix=prefix,
+        keep_existing=keep_existing,
+    )
+    preview = start_env_preview(prepared, applied)
+    if not shell:
+        return preview
+    _print_run_banner(preview, action="Applying")
+    runner = exec_fn or _exec_login_shell
+    runner(applied.env, Path(prepared["cwd"]))
+    return {**preview, "shell": True}
+
+
+def _print_run_banner(preview: dict[str, Any], *, action: str = "Starting") -> None:
     keys = preview.get("env_keys") or []
     config = preview.get("launch_configuration")
-    parts = [f"Starting {preview['name']}"]
+    parts = [f"{action} {preview['name']}"]
     if config:
         parts.append(f"launch {config!r}")
     if keys:
         parts.append("env_keys=" + ",".join(keys))
+    overwritten = preview.get("overwritten_keys") or []
+    if overwritten:
+        parts.append("overwritten=" + ",".join(overwritten))
+    skipped = preview.get("skipped_keys") or []
+    if skipped:
+        parts.append("kept=" + ",".join(skipped))
+    prefix = preview.get("prefix")
+    if prefix:
+        parts.append(f"prefix={prefix}")
     print(" ".join(parts), file=sys.stderr)
 
 
@@ -1231,6 +1350,17 @@ def _run_foreground(command: str, cwd: Path, env: dict[str, str]) -> int:
         check=False,
     )
     return int(completed.returncode)
+
+
+def _exec_login_shell(env: dict[str, str], cwd: Path) -> None:
+    """Replace this process with a shell that already has project env."""
+    os.chdir(cwd)
+    if os.name == "nt":
+        shell = os.environ.get("COMSPEC") or "cmd.exe"
+        os.execvpe(shell, [shell], env)
+        return
+    shell = os.environ.get("SHELL") or "/bin/sh"
+    os.execvpe(shell, [shell], env)
 
 
 def _command_with_launch_args(

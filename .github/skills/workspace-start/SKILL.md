@@ -23,6 +23,8 @@ Java apps often keep args and environment variables in `.vscode/launch.json`. Th
 | Human-readable plan | `uv run harness start --workspace <id> --format markdown` |
 | Start one repo with launch.json env/args (no leak) | `uv run harness start run --repo <name>` |
 | Preview that run (keys only) | `uv run harness start run --repo <name> --dry-run --format json` |
+| Inspect one repo's launch env (keys + collisions) | `uv run harness start env --repo <name> --format json` |
+| Apply that env in a dedicated terminal | `uv run harness start env --repo <name> --shell` |
 
 `harness start` (no `run`) never launches processes. Do not invent a second supervisor. `--save` requires `--workspace` and writes the full workspace sequence; do not combine it with `--repo`.
 
@@ -55,7 +57,7 @@ Use `run_via` from the plan. Do not invent a shell command that exports secrets.
 
 | `run_via` | What to do |
 | --- | --- |
-| `harness` | Run `copilot_command` from the harness cwd (it already includes `--project`). Do not `cd` into the sibling first — the CLI starts the process in the repo cwd. Bare `uv run harness` cannot spawn from an app terminal. The CLI loads launch.json / envFile in-process and does not print values |
+| `harness` | Run `copilot_command` from the harness cwd (it already includes `--project`). Do not `cd` into the sibling first — the CLI starts the process in the repo cwd and applies launch env to that child only. Bare `uv run harness` cannot spawn from an app terminal. The CLI loads launch.json / envFile in-process and does not print values. If you need the env in the terminal itself (without starting the app), use `start env --repo <name> --shell` |
 | `vscode` | Tell the user (or invoke) **Run Without Debugging** on `launch.configuration`. Do **not** start Debugging unless they asked. Do not read `launch.json` |
 | `terminal` | Run `command` in that app’s `cwd` as before |
 
@@ -83,7 +85,8 @@ The harness does not open terminals. You do, via the chat terminal / `runCommand
 - Do not commit generated local-dev proxy or env changes unless the user wants that default in git.
 - Never print `.env` or Jira tokens.
 - Never read sibling `.vscode/launch.json`, `envFile`, or product `.env` files. `harness start` already redacts them to names and keys.
-- Never `export` launch env, reconstruct args/vmArgs, or paste secrets into a terminal command.
+- Never `export` launch env, reconstruct args/vmArgs, or paste secrets into a terminal command. Use `harness start env --repo <name>` (keys and collisions only) or `harness start env --repo <name> --shell` (applies values in-process to a new shell). Do not `eval` or print values.
+- Application env keys stay unprefixed so Spring/Node see the same names as VS Code. Collisions with the current terminal are reported as `overwritten_keys`. Pass `--keep-existing` to leave already-set keys alone. Use `--prefix BACKEND` only when you want namespaced copies (`BACKEND_DB_PASSWORD`); that will not satisfy an app looking up `DB_PASSWORD`. Harness stamps `HARNESS_ENV_REPO` (and `HARNESS_ENV_CONFIGURATION` when known) so you can see which project env is active.
 - Prefer **Run Without Debugging** over Debug when the VS Code launch path is required.
 
 ## Failures
@@ -93,7 +96,8 @@ The harness does not open terminals. You do, via the chat terminal / `runCommand
 | `blocked: repo is not cloned` | Show `harness clone --only <name>` (or `prepare` clone command). Do not `git clone` into the harness folder |
 | `blocked: no start command found` | Read that repo's README / Makefile / `package.json`. Ask. Then put the command in `workspaces/<id>.start.yml` (`--save` or edit) |
 | `run_via: vscode` and no command | Ask the user to Run Without Debugging on `launch.configuration`. Do not open launch.json |
-| `uses_vscode_inputs` | Same as vscode. `harness start run` cannot resolve `${input:…}` |
+| `uses_vscode_inputs` | Same as vscode. `harness start run` / `start env` cannot resolve `${input:…}` |
+| Launch env missing from the parent terminal after `start run` | Expected. `start run` applies env to the child process only. Use `start env --repo <name> --shell` in that app's terminal, or start the app with `start run` |
 | Port unknown until start | Keep that app’s terminal open and read the bound port from its log, then continue |
 | Two apps in one terminal | Stop. Open a new terminal for the second app. Do not stack long-running commands |
 | Angular still hits remote API | Confirm `proxies[].path` was updated to the live local target **before** `ng serve` |

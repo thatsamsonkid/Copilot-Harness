@@ -17,7 +17,7 @@ To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent
 
 First-run setup: `.github/skills/get-started/SKILL.md` (`uv run harness init`).
 Vague or large-repo prompts: `.github/skills/workspace-context/SKILL.md` (`uv run harness context`).
-Local stack start: `.github/skills/workspace-start/SKILL.md` (`uv run harness start`). Pin a workspace sequence with `--save` (`workspaces/<id>.start.yml`). If a service has launch.json env/args, start it with `uv run harness start run --repo <name>` or VS Code Run Without Debugging; never read launch.json.
+Local stack start: `.github/skills/workspace-start/SKILL.md` (`uv run harness start`). Pin a workspace sequence with `--save` (`workspaces/<id>.start.yml`). If a service has launch.json env/args, start it with `uv run harness start run --repo <name>` or VS Code Run Without Debugging; never read launch.json. To apply that env in a terminal without starting the app, use `uv run harness start env --repo <name> --shell` (or omit `--shell` for keys and collisions only).
 For any Jira key, follow `.github/skills/jira-cli/SKILL.md`:
 
 ```bash
