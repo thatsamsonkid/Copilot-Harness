@@ -12,7 +12,7 @@ This repository is tooling only. Application code lives in **git clones next to 
 
 When the user gives a Jira key or browse URL, load the **jira-cli** skill (`.github/skills/jira-cli/SKILL.md`) and follow it.
 
-1. Run `uv run harness prepare <KEY> --format json` from this repo (or with `HARNESS_ROOT` set).
+1. Run `uv run harness prepare <KEY> --format json` from this repo (first workspace folder). If cwd is a sibling clone, `uv run harness` cannot spawn — use `uv run --project "$HARNESS_ROOT" harness prepare <KEY> --format json` or `./scripts/harness.sh`.
 2. Use that CLI JSON as the only ticket source. It is already field-filtered. Do not ask Jira for more.
 3. Tell the user to open `routing.open_command` so the feature workspace loads the right roots. Do not assume sibling repos are already in the current window.
 4. If `routing.missing_repos` is non-empty, recommend `routing.clone_command`. Never `git clone` into this harness folder.
@@ -41,7 +41,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Jira command choice, flags, and output shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start.
+Prefer `uv` for Python. Run the CLI as `uv run harness <command>` **from this harness repo**, or `uv run --project "$HARNESS_ROOT" harness <command>` / `./scripts/harness.sh` (Windows: `.\scripts\harness.ps1`) from any cwd. Sibling clones are not a uv project; `uv run harness` fails there with Failed to spawn. Jira command choice, flags, and output shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start.
 
 ```bash
 uv run harness templates

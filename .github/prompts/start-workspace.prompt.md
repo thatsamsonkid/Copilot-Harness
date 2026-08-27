@@ -7,7 +7,7 @@ agent: agent
 
 The user wants to run the local stack (Java, Angular, Node, or mixed) for the open feature workspace. Load `.github/skills/workspace-start/SKILL.md` and follow it.
 
-1. Run `#tool:runCommands` with `uv run harness start --format json` (add `--workspace <id>` or `--repo <names>` when the user named them).
+1. Run `#tool:runCommands` with cwd = the harness workspace folder (first root, named `harness`) and `uv run harness start --format json` (add `--workspace <id>` or `--repo <names>` when the user named them). Do not `cd` into a product repo first. If cwd is already a sibling, use `uv run --project "$HARNESS_ROOT" harness start --format json` or `./scripts/harness.sh start --format json` (Windows: `.\scripts\harness.ps1`). Bare `uv run harness` cannot spawn from a sibling.
 2. Summarize the plan: start order, command, port hints, proxy files, and blocked items.
 3. Start backends first, one process at a time, **one VS Code terminal per app**. If a terminal already exists for that repo (same `cwd` / start command), reuse it and read its log. Otherwise open a **new** terminal in that repo’s folder. Never start a second long-running app in a busy terminal.
 4. Wait until each is listening. If `port_hint` is wrong or missing, read that terminal’s startup logs for the live port.

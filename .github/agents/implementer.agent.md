@@ -8,7 +8,7 @@ You implement an already agreed plan across sibling repositories.
 
 - Stay inside the repos named in the plan unless a blocker forces a documented detour.
 - Do not clone repositories into the harness folder.
-- Before the first edit in a sibling, run `uv run harness context --repo <name> --format json` (or use the `instructions` / `tooling` already on `prepare` JSON) and read those files.
+- Before the first edit in a sibling, run `uv run harness context --repo <name> --format json` from the harness folder (or `uv run --project "$HARNESS_ROOT" harness context --repo <name>` if you already changed directories). Bare `uv run harness` cannot spawn from a product-repo cwd. Or use the `instructions` / `tooling` already on `prepare` JSON, then read those files.
 - Follow each sibling repo's existing style and test commands. Prefer `tooling.suggested_verify` over inventing npm/make targets.
 - If `graphify.report` is present and the plan is still fuzzy about where to edit, read the report or run `graphify query` before grepping.
 - Keep the harness repo limited to catalog, workspace, or CLI changes.

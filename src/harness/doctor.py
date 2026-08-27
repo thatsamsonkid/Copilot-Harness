@@ -8,6 +8,7 @@ from typing import Any
 from harness import HarnessError
 from harness.catalog import Catalog
 from harness.context import inspect_repo
+from harness.invoke import invoke_spec
 from harness.jira_client import JiraClient, jira_settings_from_env
 from harness.onboard import onboarding_steps
 from harness.uv_check import detect_uv, uv_missing_action
@@ -209,6 +210,7 @@ def run_doctor(
         "workspaces": generated,
         "jira": jira,
         "uv": uv,
+        "invoke": invoke_spec(harness_root),
         "checks": checks,
         "onboarding": steps,
     }

@@ -9,6 +9,8 @@ Product code lives in clones next to this harness (flat siblings or grouped fold
 
 ## Commands
 
+Run these from the harness repo. After `cd` into a sibling, use `uv run --project "$HARNESS_ROOT" harness …` or `./scripts/harness.sh` — bare `uv run harness` cannot spawn from a product clone.
+
 | User intent | Command |
 | --- | --- |
 | All enabled repos | `uv run harness context --format json` |

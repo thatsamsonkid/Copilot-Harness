@@ -7,6 +7,7 @@ from typing import Any
 
 from harness import HarnessError
 from harness.catalog import Catalog, Repo, StartConfig
+from harness.invoke import invoke_spec
 
 PACKAGE_START_SCRIPTS = ("start", "serve", "dev")
 MAKE_START_TARGETS = ("start", "run", "serve", "dev", "up", "bootrun")
@@ -71,8 +72,13 @@ def collect_start_plan(
         "blocked": [
             {"name": item["name"], "reason": item.get("blocked")} for item in blocked
         ],
+        "harness_root": str(Path(harness_root).resolve()),
+        "invoke": invoke_spec(harness_root),
         "guidance": [
             "This command prints a plan. It does not start processes.",
+            "Run this CLI from the harness repo (invoke.cwd). After cd into a "
+            "sibling, `uv run harness` cannot spawn. Re-run with invoke.command "
+            "or scripts/harness.sh; do not reuse an app terminal for harness.",
             "Start backends (and infra) first, one at a time. Give each app its "
             "own VS Code terminal. Reuse a terminal already running that app; "
             "never start a second long-running process in a busy terminal.",

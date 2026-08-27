@@ -11,7 +11,7 @@ Copilot collects the remaining params in chat, then runs the harness CLI. Do **n
 
 ## Walkthrough
 
-1. From the harness repo, run `#tool:runCommands`:
+1. From the harness repo (cwd = harness folder; do not `cd` into a sibling), run `#tool:runCommands`:
    - `uv run harness repos --format json`
    - `uv run harness workspace list --format json`
    If `uv` is missing, run `./scripts/setup.sh`, then retry with `./scripts/harness.sh`.

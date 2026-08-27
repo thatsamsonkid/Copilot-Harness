@@ -91,6 +91,10 @@ def test_start_discovers_angular_and_spring(harness_root: Path, catalog):
     _write_spring(harness_root)
     payload = collect_start_plan(catalog, harness_root, workspace_id="frontend")
     assert payload["order"] == ["backend", "frontend"]
+    assert payload["harness_root"] == str(harness_root.resolve())
+    assert payload["invoke"]["cwd"] == str(harness_root.resolve())
+    assert "--project" in payload["invoke"]["command"]
+    assert any("cannot spawn" in item.lower() for item in payload["guidance"])
     by_name = {item["name"]: item for item in payload["services"]}
 
     backend = by_name["backend"]
@@ -166,6 +170,7 @@ def test_start_cli_and_markdown(harness_root: Path, capsys, monkeypatch):
 
     markdown = render(payload, "markdown")
     assert "# Start plan (`frontend`)" in markdown
+    assert "--project" in markdown
     assert "pnpm start" in markdown
     assert "proxy.conf.json" in markdown
     text = render(payload, "text")
