@@ -270,7 +270,7 @@ def test_start_redacts_launch_json_secrets(harness_root: Path, catalog):
     assert launch["env_file"] == ".env"
     assert "MORE_SECRET" in launch["env_file_keys"]
     assert any("harness start run" in note for note in service["notes"])
-    assert any("launch.json env/args" in item.lower() for item in payload["guidance"])
+    assert any("never read launch.json" in item.lower() for item in payload["guidance"])
     markdown = render(payload, "markdown")
     assert "Launch Backend" in markdown
     assert "s3cret-do-not-print" not in markdown
