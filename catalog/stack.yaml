@@ -1,0 +1,87 @@
+# Team stack catalog.
+# Clone destinations are siblings of this harness: <harness-parent>/<path>
+#
+# Replace YOUR_ORG and the repo names with your remotes, then run:
+#   ./scripts/clone-repos.sh
+#   harness workspace generate
+
+parent_dir: ..
+
+jira:
+  extra_fields: []
+  field_aliases: {}
+
+repos:
+  - id: frontend
+    url: git@github.com:YOUR_ORG/frontend.git
+    path: frontend
+    default_branch: main
+    description: Customer-facing web UI
+    tags: [ui, frontend, web]
+
+  - id: backend
+    url: git@github.com:YOUR_ORG/backend.git
+    path: backend
+    default_branch: main
+    description: API and domain services
+    tags: [api, backend]
+
+  - id: mobile
+    url: git@github.com:YOUR_ORG/mobile.git
+    path: mobile
+    default_branch: main
+    description: Mobile client
+    tags: [mobile]
+
+  - id: infra
+    url: git@github.com:YOUR_ORG/infra.git
+    path: infra
+    default_branch: main
+    description: Infrastructure and deployment
+    tags: [infra, devops]
+
+workspaces:
+  - id: frontend
+    name: Frontend
+    description: UI work with API types available for contract changes
+    folders: [frontend, backend]
+    match:
+      projects: [WEB, UI]
+      components: [Frontend, Web]
+      labels: [frontend, ui]
+      issue_types: []
+      keywords: [css, angular, react, page, button, component, ui, ux, stylesheet]
+
+  - id: backend
+    name: Backend
+    description: API, services, and data changes
+    folders: [backend]
+    match:
+      projects: [API, BE]
+      components: [Backend, API]
+      labels: [backend, api]
+      issue_types: []
+      keywords: [endpoint, api, service, database, migration, controller]
+
+  - id: mobile
+    name: Mobile
+    description: Mobile client work with API access
+    folders: [mobile, backend]
+    match:
+      projects: [MOB]
+      components: [Mobile]
+      labels: [mobile, ios, android]
+      issue_types: []
+      keywords: [ios, android, expo, react native, mobile]
+
+  - id: platform
+    name: Platform
+    description: Cross-cutting work across the full stack
+    folders: [frontend, backend, mobile, infra]
+    fallback: true
+    match:
+      projects: [PLAT]
+      components: [Platform]
+      labels: [fullstack, platform, infra]
+      issue_types: []
+      keywords: [e2e, integration, cross-cutting, deploy, terraform]
