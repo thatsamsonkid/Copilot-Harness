@@ -40,6 +40,22 @@ def test_find_harness_root_from_nested_cwd(harness_root: Path, monkeypatch: pyte
     assert find_harness_root() == harness_root.resolve()
 
 
+def test_parses_graphify_out_and_rejects_parent_escape(
+    tmp_path: Path, sample_catalog_data: dict
+):
+    sample_catalog_data["repos"][0]["graphify"] = {"out": "docs/graphify-out"}
+    root = tmp_path / "harness"
+    write_harness_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    assert catalog.repo("frontend").graphify.out == "docs/graphify-out"
+    assert catalog.repo("frontend").graphify.enabled is True
+
+    sample_catalog_data["repos"][0]["graphify"] = {"out": "../escape"}
+    write_harness_config(root, sample_catalog_data)
+    with pytest.raises(HarnessError, match="relative path"):
+        load_catalog(root)
+
+
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
     root = tmp_path / "harness"

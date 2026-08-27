@@ -1,0 +1,254 @@
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+from collections.abc import Callable
+from getpass import getpass
+from pathlib import Path
+from typing import Any
+
+from harness import HarnessError
+from harness.catalog import Catalog
+from harness.envfile import env_file_keys, upsert_env_file
+from harness.jira_client import JiraClient, jira_settings_from_env
+
+TOKEN_DOC = "docs/jira-api-token.md"
+TOKEN_URL = "https://id.atlassian.com/manage-profile/security/api-tokens"
+
+JIRA_KEYS = ("JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN")
+
+
+def run_init(
+    catalog: Catalog,
+    harness_root: Path,
+    *,
+    interactive: bool = False,
+    ping_jira: bool = False,
+    prompt_fn: Callable[[str], str] | None = None,
+    secret_fn: Callable[[str], str] | None = None,
+) -> dict[str, Any]:
+    env_path = harness_root / ".env"
+    created_env = False
+    if not env_path.exists() and (harness_root / ".env.example").exists():
+        shutil.copyfile(harness_root / ".env.example", env_path)
+        created_env = True
+
+    written_keys: list[str] = []
+    if interactive:
+        updates = _fill_env_interactive(
+            env_path,
+            prompt_fn=prompt_fn or input,
+            secret_fn=secret_fn or (lambda message: getpass(message)),
+        )
+        written_keys = list(updates)
+        for key, value in updates.items():
+            os.environ[key] = value
+
+    steps = onboarding_steps(catalog, harness_root)
+    jira = None
+    if ping_jira and _jira_env_present():
+        try:
+            base_url, email, token = jira_settings_from_env()
+            jira = JiraClient(base_url, email, token).myself()
+            _set_step(steps, "jira_auth", True, "Jira accepted the credentials")
+        except Exception as exc:  # noqa: BLE001 - first-run should stay readable
+            _set_step(steps, "jira_auth", False, f"Jira auth failed: {exc}")
+    elif ping_jira:
+        _set_step(steps, "jira_auth", False, "Cannot ping Jira until .env is complete")
+
+    ready = all(step["ok"] or step.get("optional") for step in steps)
+    return {
+        "ready": ready,
+        "created_env": created_env,
+        "env_file": str(env_path),
+        "wrote_keys": written_keys,
+        "token_docs": TOKEN_DOC,
+        "token_url": TOKEN_URL,
+        "interactive": interactive,
+        "jira": jira,
+        "steps": steps,
+        "next_commands": _next_commands(steps),
+    }
+
+
+def onboarding_steps(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]]:
+    env_path = harness_root / ".env"
+    file_keys = env_file_keys(env_path)
+    steps: list[dict[str, Any]] = [
+        _step(
+            "env_file",
+            env_path.exists(),
+            f"{env_path.name} exists"
+            if env_path.exists()
+            else "Copy .env.example to .env",
+            action="Copy .env.example to .env, then edit it locally. Never paste the token into chat.",
+        )
+    ]
+    for key, hint in (
+        ("JIRA_BASE_URL", "https://your-domain.atlassian.net"),
+        ("JIRA_EMAIL", "the Atlassian account email that owns the API token"),
+        ("JIRA_API_TOKEN", f"an Atlassian API token from {TOKEN_URL}"),
+    ):
+        present = _env_key_present(key, file_keys)
+        action = (
+            None
+            if present
+            else f"Set {key} in .env to {hint}. Do not paste secrets into Copilot chat."
+        )
+        if key == "JIRA_API_TOKEN" and not present:
+            action = (
+                f"Create a token ({TOKEN_DOC}) and set JIRA_API_TOKEN in .env. "
+                "Do not paste the token into chat."
+            )
+        steps.append(
+            _step(
+                key.lower(),
+                present,
+                f"{key} is set" if present else f"{key} is missing",
+                action=action,
+            )
+        )
+
+    placeholders = [repo.name for repo in catalog.repos if repo.is_placeholder]
+    steps.append(
+        _step(
+            "repositories",
+            not placeholders,
+            "repository URLs look real"
+            if not placeholders
+            else "placeholder remotes remain: " + ", ".join(placeholders),
+            action=None
+            if not placeholders
+            else "Replace YOUR_ORG in repositories.yml, then run harness clone",
+        )
+    )
+
+    cloned = [
+        repo.name
+        for repo in catalog.enabled_repos()
+        if catalog.repo_path(harness_root, repo).exists()
+    ]
+    missing = [
+        repo.name
+        for repo in catalog.enabled_repos()
+        if not repo.is_placeholder and not catalog.repo_path(harness_root, repo).exists()
+    ]
+    steps.append(
+        _step(
+            "clones",
+            not missing,
+            f"cloned: {', '.join(cloned) or 'none'}",
+            action=None if not missing else "Run ./scripts/clone-repos.sh (or harness clone)",
+            optional=True,
+        )
+    )
+    steps.append(
+        _step(
+            "token_docs",
+            True,
+            f"Token walkthrough: {TOKEN_DOC}",
+            optional=True,
+        )
+    )
+    return steps
+
+
+def _fill_env_interactive(
+    env_path: Path,
+    *,
+    prompt_fn: Callable[[str], str],
+    secret_fn: Callable[[str], str],
+) -> dict[str, str]:
+    if prompt_fn is input and not sys.stdin.isatty():
+        raise HarnessError(
+            "Refusing interactive init without a TTY. Edit .env locally "
+            f"or see {TOKEN_DOC}."
+        )
+    file_keys = env_file_keys(env_path)
+    updates: dict[str, str] = {}
+    prompts = {
+        "JIRA_BASE_URL": "Atlassian site URL (https://your-domain.atlassian.net): ",
+        "JIRA_EMAIL": "Atlassian email: ",
+    }
+    for key, message in prompts.items():
+        if _env_key_present(key, file_keys):
+            continue
+        value = prompt_fn(message).strip()
+        if value:
+            updates[key] = value
+    if not _env_key_present("JIRA_API_TOKEN", file_keys):
+        token = secret_fn("Atlassian API token (input hidden): ").strip()
+        if token:
+            updates["JIRA_API_TOKEN"] = token
+    upsert_env_file(env_path, updates)
+    return updates
+
+
+def _env_key_present(key: str, file_keys: dict[str, bool]) -> bool:
+    if key == "JIRA_EMAIL":
+        return bool(
+            os.environ.get("JIRA_EMAIL")
+            or os.environ.get("JIRA_USERNAME")
+            or file_keys.get("JIRA_EMAIL")
+            or file_keys.get("JIRA_USERNAME")
+        )
+    if key == "JIRA_API_TOKEN":
+        return bool(
+            os.environ.get("JIRA_API_TOKEN")
+            or os.environ.get("JIRA_TOKEN")
+            or file_keys.get("JIRA_API_TOKEN")
+            or file_keys.get("JIRA_TOKEN")
+        )
+    return bool(os.environ.get(key) or file_keys.get(key))
+
+
+def _jira_env_present() -> bool:
+    return all(
+        _env_key_present(key, {})
+        for key in JIRA_KEYS
+    )
+
+
+def _step(
+    id: str,
+    ok: bool,
+    detail: str,
+    *,
+    action: str | None = None,
+    optional: bool = False,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "id": id,
+        "ok": ok,
+        "detail": detail,
+        "optional": optional,
+    }
+    if action:
+        payload["action"] = action
+    return payload
+
+
+def _set_step(steps: list[dict[str, Any]], id: str, ok: bool, detail: str) -> None:
+    for step in steps:
+        if step["id"] == id:
+            step["ok"] = ok
+            step["detail"] = detail
+            return
+    steps.append(_step(id, ok, detail))
+
+
+def _next_commands(steps: list[dict[str, Any]]) -> list[str]:
+    ids = {step["id"] for step in steps if not step["ok"] and not step.get("optional")}
+    commands: list[str] = []
+    if ids.intersection({"env_file", "jira_base_url", "jira_email", "jira_api_token"}):
+        commands.append("Edit .env locally. Token docs: docs/jira-api-token.md")
+        commands.append("uv run harness init --interactive")
+        commands.append("uv run harness doctor --ping-jira")
+    if "repositories" in ids:
+        commands.append("Edit repositories.yml and replace YOUR_ORG")
+    missing_clones = next((step for step in steps if step["id"] == "clones" and not step["ok"]), None)
+    if missing_clones:
+        commands.append("./scripts/clone-repos.sh")
+    commands.append("uv run harness workspace generate")
+    return commands

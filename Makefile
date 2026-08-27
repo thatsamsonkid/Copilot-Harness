@@ -1,4 +1,4 @@
-.PHONY: setup test clone workspaces doctor
+.PHONY: setup test clone workspaces doctor init
 
 setup:
 	./scripts/setup.sh
@@ -14,3 +14,6 @@ workspaces:
 
 doctor:
 	uv run harness doctor
+
+init:
+	uv run harness init

@@ -7,7 +7,9 @@ from typing import Any
 
 from harness import HarnessError
 from harness.catalog import Catalog
+from harness.context import inspect_repo
 from harness.jira_client import JiraClient, jira_settings_from_env
+from harness.onboard import onboarding_steps
 from harness.workspace import generate_workspaces
 
 
@@ -80,6 +82,30 @@ def run_doctor(
                 ok_when_false=True,
             )
         )
+        if cloned:
+            snapshot = inspect_repo(catalog, harness_root, repo)
+            graphify = snapshot["graphify"]
+            checks.append(
+                _check(
+                    f"graphify:{repo.id}",
+                    bool(graphify.get("present")) or not graphify.get("enabled"),
+                    graphify.get("detail") or "graphify status unknown",
+                    ok_when_false=True,
+                )
+            )
+            instruction_count = len(snapshot["instructions"])
+            checks.append(
+                _check(
+                    f"instructions:{repo.id}",
+                    instruction_count > 0,
+                    (
+                        f"{instruction_count} instruction file(s)"
+                        if instruction_count
+                        else "no Copilot/AGENTS instruction files found"
+                    ),
+                    ok_when_false=True,
+                )
+            )
 
     generated = generate_workspaces(catalog, harness_root)
     checks.append(
@@ -118,6 +144,7 @@ def run_doctor(
         checks.append(_check("jira_env", True, "Jira env vars are present"))
 
     ok = all(item["ok"] or item.get("advisory") for item in checks)
+    steps = onboarding_steps(catalog, harness_root)
     return {
         "ok": ok,
         "harness_root": str(harness_root),
@@ -126,6 +153,7 @@ def run_doctor(
         "workspaces": generated,
         "jira": jira,
         "checks": checks,
+        "onboarding": steps,
     }
 
 

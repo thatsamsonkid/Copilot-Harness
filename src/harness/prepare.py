@@ -5,6 +5,7 @@ from typing import Any
 
 from harness.catalog import Catalog
 from harness.clone import clone_repos
+from harness.context import inspect_repo
 from harness.jira_client import JiraClient
 from harness.routing import recommend_workspace
 from harness.workspace import generate_workspaces, open_command
@@ -39,6 +40,7 @@ def prepare_issue(
         repo = catalog.repo(repo_id)
         path = catalog.repo_path(harness_root, repo)
         present = path.exists()
+        snapshot = inspect_repo(catalog, harness_root, repo)
         item = {
             "name": repo.name,
             "id": repo.name,
@@ -47,6 +49,9 @@ def prepare_issue(
             "path": str(path),
             "cloned": present,
             "placeholder": repo.is_placeholder,
+            "graphify": snapshot["graphify"],
+            "instructions": snapshot["instructions"],
+            "tooling": snapshot["tooling"],
         }
         repos.append(item)
         if not present:
@@ -67,6 +72,8 @@ def prepare_issue(
         "Read the issue summary, description, comments, and linked work.",
         f"Open the recommended workspace: {open_command(workspace_file)}",
         "Inspect only the repos listed in routing.repos unless the ticket clearly needs more.",
+        "If a repo has graphify.report, read that before grepping the tree.",
+        "Before editing, load that repo's instruction files and use tooling.suggested_verify after changes.",
         "Write an implementation plan covering impacted repos, files, risks, and test strategy.",
         "Do not start coding until the plan is agreed, unless the user asks to implement immediately.",
     ]

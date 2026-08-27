@@ -36,6 +36,8 @@ Accept `PROJ-123` or a browse URL. The CLI extracts the key.
 | Auth check (no token in output) | `uv run harness jira whoami` |
 | Catalog / clones / Jira env | `uv run harness doctor` |
 | Live Jira ping | `uv run harness doctor --ping-jira` |
+| First-run / missing token | `uv run harness init` (see the get-started skill) |
+| Graphs + repo instructions | `uv run harness context` (see the workspace-context skill) |
 
 Prefer `prepare` over assembling get + match + clone yourself.
 
@@ -50,6 +52,7 @@ Use these objects only:
 - `routing.open_command` — tell the user to run this so sibling repos become workspace roots
 - `routing.missing_repos` / `routing.clone_command`
 - `routing.repos` — inspect only these folders unless the ticket clearly needs more
+- `routing.repos[].graphify` / `instructions` / `tooling` — use these before grepping or inventing verify commands
 - `next_steps`
 
 If `routing.score` is `0` or reasons are only fallback, ask which workspace to open.
@@ -77,5 +80,7 @@ This skill is the CLI contract, not an implementer.
 ## Related Copilot customizations
 
 - Always-on rules: `.github/copilot-instructions.md`
+- First-run setup: get-started skill or `/get-started`
+- Vague / large-repo orientation: workspace-context skill or `/orient`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
 - Implement an agreed plan: Implementer agent

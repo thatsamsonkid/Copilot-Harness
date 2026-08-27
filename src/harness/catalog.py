@@ -31,6 +31,12 @@ def _read_yaml(path: Path) -> Any:
 
 
 @dataclass(frozen=True)
+class GraphifyConfig:
+    out: str = "graphify-out"
+    enabled: bool = True
+
+
+@dataclass(frozen=True)
 class Repo:
     name: str
     url: str
@@ -39,6 +45,7 @@ class Repo:
     description: str = ""
     tags: list[str] = field(default_factory=list)
     enabled: bool = True
+    graphify: GraphifyConfig = field(default_factory=GraphifyConfig)
 
     @property
     def id(self) -> str:
@@ -232,7 +239,36 @@ def _parse_repo(item: Any) -> Repo:
         description=str(item.get("description") or ""),
         tags=tags,
         enabled=bool(item.get("enabled", True)),
+        graphify=_parse_graphify(name, item.get("graphify")),
     )
+
+
+def _parse_graphify(repo_name: str, raw: Any) -> GraphifyConfig:
+    if raw is None:
+        return GraphifyConfig()
+    if raw is False:
+        return GraphifyConfig(enabled=False)
+    if raw is True:
+        return GraphifyConfig()
+    if isinstance(raw, str):
+        out = raw
+    elif isinstance(raw, dict):
+        out = str(raw.get("out") or "graphify-out")
+        enabled = bool(raw.get("enabled", True))
+        _require_relative_dir(f"Repository {repo_name} graphify.out", out)
+        return GraphifyConfig(out=out, enabled=enabled)
+    else:
+        raise HarnessError(
+            f"Repository {repo_name} graphify must be a mapping, path, or boolean"
+        )
+    _require_relative_dir(f"Repository {repo_name} graphify.out", out)
+    return GraphifyConfig(out=out)
+
+
+def _require_relative_dir(label: str, value: str) -> None:
+    path = Path(value)
+    if path.is_absolute() or ".." in path.parts:
+        raise HarnessError(f"{label} must be a relative path inside the repo: {value}")
 
 
 def load_stack(
@@ -330,6 +366,10 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                 "tags": repo.tags,
                 "enabled": repo.enabled,
                 "placeholder": repo.is_placeholder,
+                "graphify": {
+                    "out": repo.graphify.out,
+                    "enabled": repo.graphify.enabled,
+                },
             }
             for repo in catalog.repos
         ],

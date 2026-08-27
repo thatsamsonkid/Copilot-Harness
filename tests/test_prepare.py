@@ -82,3 +82,7 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, harness_root: Pa
         "workspaces/frontend.code-workspace"
     )
     assert (harness_root / "workspaces" / "frontend.code-workspace").exists()
+    frontend = next(repo for repo in payload["routing"]["repos"] if repo["id"] == "frontend")
+    assert frontend["graphify"]["present"] is False
+    assert frontend["instructions"] == []
+    assert "Read the issue summary" in payload["next_steps"][0]
