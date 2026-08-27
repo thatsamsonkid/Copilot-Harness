@@ -43,6 +43,9 @@ def test_skill_is_plan_then_sequential_start():
         "uv run harness start",
             "never launches",
         "one at a time",
+        "one vs code terminal per app",
+        "reuse",
+        "never start a second",
         "proxy",
         "do not commit",
         "repositories.yml",
@@ -58,3 +61,6 @@ def test_prompt_points_at_the_skill():
     assert "workspace-start/skill.md" in lowered
     assert "harness start" in lowered
     assert "one process at a time" in lowered or "one at a time" in lowered
+    assert "one vs code terminal per app" in lowered
+    assert "reuse" in lowered
+    assert "never start a second" in lowered

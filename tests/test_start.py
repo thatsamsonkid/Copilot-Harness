@@ -162,6 +162,7 @@ def test_start_cli_and_markdown(harness_root: Path, capsys, monkeypatch):
     payload = json.loads(capsys.readouterr().out)
     assert [item["name"] for item in payload["services"]] == ["backend", "frontend"]
     assert "does not start processes" in payload["guidance"][0].lower()
+    assert any("own vs code terminal" in item.lower() for item in payload["guidance"])
 
     markdown = render(payload, "markdown")
     assert "# Start plan (`frontend`)" in markdown

@@ -73,8 +73,9 @@ def collect_start_plan(
         ],
         "guidance": [
             "This command prints a plan. It does not start processes.",
-            "Start backends (and infra) first, one at a time. Wait until the "
-            "process is listening before starting frontends.",
+            "Start backends (and infra) first, one at a time. Give each app its "
+            "own VS Code terminal. Reuse a terminal already running that app; "
+            "never start a second long-running process in a busy terminal.",
             "If port_hint is missing or the app binds a different port, read the "
             "startup logs and use the live port.",
             "Rewrite Angular proxy targets to the live backend URL in the sibling "
