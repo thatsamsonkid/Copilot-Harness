@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from harness import HarnessError, __version__
+from harness.bootstrap import bootstrap_project
 from harness.catalog import catalog_to_dict, load_catalog
 from harness.clone import clone_repos
 from harness.doctor import run_doctor
@@ -14,6 +15,7 @@ from harness.output import render
 from harness.paths import find_harness_root, load_dotenv_files
 from harness.prepare import prepare_issue
 from harness.routing import recommend_workspace
+from harness.templates import get_template, template_to_dict, templates_payload
 from harness.workspace import generate_workspaces, list_workspaces, open_workspace
 
 
@@ -33,60 +35,89 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 130
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="harness",
-        description=(
-            "Clone sibling git repos, query Jira Cloud with basic auth, "
-            "and select a feature VS Code workspace."
-        ),
-    )
-    parser.add_argument("--version", action="version", version=f"harness {__version__}")
-    parser.add_argument(
+def _shared_options() -> argparse.ArgumentParser:
+    shared = argparse.ArgumentParser(add_help=False)
+    shared.add_argument(
         "--format",
         choices=("json", "markdown", "text"),
         default="json",
         help="Stdout format. Copilot should keep json.",
     )
-    parser.add_argument("--catalog", type=Path, help="Override catalog/stack.yaml")
-    parser.add_argument("--repos", type=Path, help="Override repositories.yml")
-    parser.add_argument("--root", type=Path, help="Override harness root")
+    shared.add_argument("--catalog", type=Path, help="Override catalog/stack.yaml")
+    shared.add_argument("--repos", type=Path, help="Override repositories.yml")
+    shared.add_argument("--templates", type=Path, help="Override templates.yml")
+    shared.add_argument("--root", type=Path, help="Override harness root")
+    return shared
+
+
+def build_parser() -> argparse.ArgumentParser:
+    shared = _shared_options()
+    parser = argparse.ArgumentParser(
+        prog="harness",
+        description=(
+            "Clone sibling git repos, bootstrap projects from listed templates, "
+            "query Jira Cloud with basic auth, and select a feature VS Code workspace."
+        ),
+        parents=[shared],
+    )
+    parser.add_argument("--version", action="version", version=f"harness {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    clone = sub.add_parser("clone", help="Clone repositories.yml remotes as siblings of the harness")
+    clone = sub.add_parser(
+        "clone",
+        parents=[shared],
+        help="Clone repositories.yml remotes as siblings of the harness",
+    )
     clone.add_argument("--only", help="Comma-separated repository names")
     clone.add_argument("--tag", help="Comma-separated tags from repositories.yml")
     clone.add_argument("--update", action="store_true", help="Fetch and fast-forward existing clones")
     clone.add_argument("--dry-run", action="store_true")
     clone.add_argument("--https", action="store_true", help="Rewrite git@github.com URLs to HTTPS")
 
-    jira = sub.add_parser("jira", help="Jira Cloud commands (basic auth)")
+    jira = sub.add_parser("jira", parents=[shared], help="Jira Cloud commands (basic auth)")
     jira_sub = jira.add_subparsers(dest="jira_command", required=True)
-    jira_get = jira_sub.add_parser("get", help="Fetch one issue")
+    jira_get = jira_sub.add_parser("get", parents=[shared], help="Fetch one issue")
     jira_get.add_argument("issue")
-    jira_comments = jira_sub.add_parser("comments", help="Fetch issue comments")
+    jira_comments = jira_sub.add_parser(
+        "comments", parents=[shared], help="Fetch issue comments"
+    )
     jira_comments.add_argument("issue")
-    jira_search = jira_sub.add_parser("search", help="Run JQL")
+    jira_search = jira_sub.add_parser("search", parents=[shared], help="Run JQL")
     jira_search.add_argument("jql")
     jira_search.add_argument("--max-results", type=int, default=25)
-    jira_context = jira_sub.add_parser("context", help="Issue plus comments")
+    jira_context = jira_sub.add_parser(
+        "context", parents=[shared], help="Issue plus comments"
+    )
     jira_context.add_argument("issue")
-    jira_sub.add_parser("whoami", help="Validate Jira credentials")
-    jira_sub.add_parser("schema", help="Show configured Jira output fields")
+    jira_sub.add_parser("whoami", parents=[shared], help="Validate Jira credentials")
+    jira_sub.add_parser("schema", parents=[shared], help="Show configured Jira output fields")
 
-    workspace = sub.add_parser("workspace", help="Feature workspace helpers")
+    workspace = sub.add_parser(
+        "workspace", parents=[shared], help="Feature workspace helpers"
+    )
     workspace_sub = workspace.add_subparsers(dest="workspace_command", required=True)
-    workspace_sub.add_parser("list", help="List feature workspaces")
-    workspace_sub.add_parser("generate", help="Write .code-workspace files from the catalog")
-    workspace_match = workspace_sub.add_parser("match", help="Recommend a workspace for an issue")
+    workspace_sub.add_parser(
+        "list", parents=[shared], help="List feature workspaces"
+    )
+    workspace_sub.add_parser(
+        "generate", parents=[shared], help="Write .code-workspace files from the catalog"
+    )
+    workspace_match = workspace_sub.add_parser(
+        "match", parents=[shared], help="Recommend a workspace for an issue"
+    )
     workspace_match.add_argument("issue")
-    workspace_open = workspace_sub.add_parser("open", help="Open a workspace in VS Code")
+    workspace_open = workspace_sub.add_parser(
+        "open", parents=[shared], help="Open a workspace in VS Code"
+    )
     workspace_open.add_argument("id")
-    workspace_path = workspace_sub.add_parser("path", help="Print a workspace file path")
+    workspace_path = workspace_sub.add_parser(
+        "path", parents=[shared], help="Print a workspace file path"
+    )
     workspace_path.add_argument("id")
 
     prepare = sub.add_parser(
         "prepare",
+        parents=[shared],
         help="Fetch a ticket, choose a workspace, and report missing repos",
     )
     prepare.add_argument("issue")
@@ -101,11 +132,72 @@ def build_parser() -> argparse.ArgumentParser:
         help="Do not regenerate workspace files",
     )
 
-    doctor = sub.add_parser("doctor", help="Check catalog, clones, and Jira configuration")
+    doctor = sub.add_parser(
+        "doctor",
+        parents=[shared],
+        help="Check catalog, clones, and Jira configuration",
+    )
     doctor.add_argument("--ping-jira", action="store_true")
 
-    sub.add_parser("catalog", help="Show the resolved catalog")
-    sub.add_parser("repos", help="Show the repositories.yml manifest")
+    templates = sub.add_parser(
+        "templates",
+        parents=[shared],
+        help="List starter template repositories from templates.yml",
+    )
+    templates.add_argument(
+        "name",
+        nargs="?",
+        help="Show one listed template (omit to list all)",
+    )
+    templates.add_argument("--tag", help="Comma-separated tags to filter templates")
+
+    bootstrap = sub.add_parser(
+        "bootstrap",
+        parents=[shared],
+        help="Clone a listed template as a new sibling project",
+    )
+    bootstrap.add_argument(
+        "template",
+        nargs="?",
+        help="Template name from templates.yml",
+    )
+    bootstrap.add_argument(
+        "--template",
+        dest="template_flag",
+        help="Template name (same as the positional argument)",
+    )
+    bootstrap.add_argument(
+        "--name",
+        help="New sibling folder name (defaults to the template name)",
+    )
+    bootstrap.add_argument(
+        "--register",
+        action="store_true",
+        help="Append the new project to repositories.yml",
+    )
+    bootstrap.add_argument(
+        "--remote",
+        help="Set origin on the new project (and use it when --register is set)",
+    )
+    bootstrap.add_argument(
+        "--tags",
+        help="Tags to store when registering in repositories.yml",
+    )
+    bootstrap.add_argument(
+        "--fresh-git",
+        action="store_true",
+        help="Replace template history with a single bootstrap commit",
+    )
+    bootstrap.add_argument(
+        "--keep-remote",
+        action="store_true",
+        help="Leave origin pointing at the template repository",
+    )
+    bootstrap.add_argument("--https", action="store_true", help="Rewrite git@github.com URLs to HTTPS")
+    bootstrap.add_argument("--dry-run", action="store_true")
+
+    sub.add_parser("catalog", parents=[shared], help="Show the resolved catalog")
+    sub.add_parser("repos", parents=[shared], help="Show the repositories.yml manifest")
     return parser
 
 
@@ -116,6 +208,7 @@ def dispatch(args: argparse.Namespace) -> Any:
         harness_root,
         stack_path=Path(args.catalog).resolve() if args.catalog else None,
         repos_path=Path(args.repos).resolve() if args.repos else None,
+        templates_path=Path(args.templates).resolve() if args.templates else None,
     )
 
     if args.command == "clone":
@@ -168,6 +261,10 @@ def dispatch(args: argparse.Namespace) -> Any:
             "sibling_root": payload["sibling_root"],
             "repositories": payload["repos"],
         }
+    if args.command == "templates":
+        return _dispatch_templates(args, catalog)
+    if args.command == "bootstrap":
+        return _dispatch_bootstrap(args, catalog, harness_root)
     raise HarnessError(f"Unknown command: {args.command}")
 
 
@@ -219,6 +316,41 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, harness_root: Pa
         path = catalog.workspace_file(harness_root, args.id)
         return {"id": args.id, "file": str(path), "exists": path.exists()}
     raise HarnessError(f"Unknown workspace command: {args.workspace_command}")
+
+
+def _dispatch_templates(args: argparse.Namespace, catalog: Any) -> Any:
+    source = catalog.templates_source
+    if args.name:
+        template = get_template(catalog.templates, args.name)
+        return {
+            "manifest": str(source) if source else None,
+            "template": template_to_dict(template),
+        }
+    tags = _split_ids(getattr(args, "tag", None))
+    return templates_payload(catalog.templates, source or Path("templates.yml"), tags=tags)
+
+
+def _dispatch_bootstrap(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
+    template_name = args.template_flag or args.template
+    if args.template_flag and args.template and args.template_flag != args.template:
+        raise HarnessError("Positional template and --template do not match")
+    if not template_name:
+        raise HarnessError(
+            "Pass a listed template: harness bootstrap --template <name> --name <folder>"
+        )
+    return bootstrap_project(
+        catalog,
+        harness_root,
+        template_name=template_name,
+        dest_name=args.name,
+        register=args.register,
+        remote=args.remote,
+        tags=_split_ids(args.tags),
+        fresh_git=args.fresh_git,
+        keep_remote=args.keep_remote,
+        dry_run=args.dry_run,
+        https=args.https,
+    )
 
 
 def _client() -> JiraClient:

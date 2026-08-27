@@ -7,6 +7,7 @@ from harness import HarnessError
 
 REPOS_RELATIVE = Path("repositories.yml")
 STACK_RELATIVE = Path("catalog") / "stack.yaml"
+TEMPLATES_RELATIVE = Path("templates.yml")
 
 
 def is_harness_root(path: Path) -> bool:
