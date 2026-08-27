@@ -6,7 +6,7 @@ This repository is tooling only. Application code lives in **git clones next to 
 
 - First time in this repo, missing Jira auth, or "how do I set this up?": load `.github/skills/get-started/SKILL.md` and run `uv run harness init --format json`. Never collect the API token in chat.
 - Vague, broad, or no-ticket prompts in a large workspace: load `.github/skills/workspace-context/SKILL.md` and run `uv run harness context --format json`. Read each cloned repo's Graphify `GRAPH_REPORT.md` before grepping.
-- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run harness start --format json`. That command is a plan only. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening.
+- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run harness start --format json`. That command is a plan only. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening. If `run_via` is `harness`, run `harness start run --repo <name>` instead of reconstructing launch.json env/args. Never read sibling `.vscode/launch.json` or product `.env` files.
 
 ## Default ticket workflow
 
@@ -27,6 +27,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Only talk to Jira through `uv run harness jira …`, `uv run harness prepare …`, or `uv run harness init` / `doctor`.
 - Do **not** curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
 - Do **not** read `.env`, print `env`, or expand `$JIRA_API_TOKEN` / `$JIRA_TOKEN`.
+- Do **not** read sibling `.vscode/launch.json` env/args or product `.env` / `envFile` values. Use `harness start` (redacted keys) and `harness start run`.
 - Do **not** configure or call an MCP Jira tool.
 - If credentials are missing, tell the user to edit `.env` locally. Never ask them to paste a token into chat.
 

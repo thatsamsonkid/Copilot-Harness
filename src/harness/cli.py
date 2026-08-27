@@ -18,7 +18,7 @@ from harness.paths import find_harness_root, load_dotenv_files
 from harness.prepare import prepare_issue
 from harness.prompt import PromptSession
 from harness.routing import recommend_workspace
-from harness.start import collect_start_plan
+from harness.start import collect_start_plan, execute_start_run
 from harness.templates import get_template, template_to_dict, templates_payload
 from harness.workspace import generate_workspaces, list_workspaces, open_workspace
 from harness.workspace_create import create_workspace
@@ -246,10 +246,25 @@ def build_parser() -> argparse.ArgumentParser:
     start = sub.add_parser(
         "start",
         parents=[shared],
-        help="Print a workspace start plan (commands, ports, proxies). Does not launch processes",
+        help="Print a workspace start plan, or run one repo without leaking launch env",
+    )
+    start.add_argument(
+        "action",
+        nargs="?",
+        choices=("run",),
+        help="Omit for a plan. `run` starts one repo with launch.json env loaded in-process",
     )
     start.add_argument("--workspace", help="Limit the plan to a catalog workspace id")
     start.add_argument("--repo", help="Comma-separated repository names")
+    start.add_argument(
+        "--configuration",
+        help="launch.json configuration name for `start run`",
+    )
+    start.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="For `start run`, print the redacted command and env keys without launching",
+    )
 
     templates = sub.add_parser(
         "templates",
@@ -381,6 +396,20 @@ def dispatch(args: argparse.Namespace) -> Any:
             only=_split_ids(args.repo),
         )
     if args.command == "start":
+        if args.action == "run":
+            repos = _split_ids(args.repo)
+            if len(repos) != 1:
+                raise HarnessError("harness start run requires exactly one --repo")
+            payload = execute_start_run(
+                catalog,
+                harness_root,
+                repos[0],
+                configuration=args.configuration,
+                dry_run=args.dry_run,
+            )
+            if args.dry_run:
+                return payload
+            raise SystemExit(int(payload.get("exit_code") or 0))
         return collect_start_plan(
             catalog,
             harness_root,

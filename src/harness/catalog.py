@@ -59,9 +59,21 @@ class StartConfig:
     role: str = ""
     wait: str = ""
     cwd: str = ""
+    launch: str = ""
+    env_file: str = ""
+    method: str = ""
 
     def configured(self) -> bool:
-        return bool(self.command or self.port or self.role or self.wait or self.cwd)
+        return bool(
+            self.command
+            or self.port
+            or self.role
+            or self.wait
+            or self.cwd
+            or self.launch
+            or self.env_file
+            or self.method
+        )
 
     def to_dict(self) -> dict[str, Any] | None:
         if not self.configured():
@@ -72,6 +84,9 @@ class StartConfig:
             "role": self.role or None,
             "wait": self.wait or None,
             "cwd": self.cwd or None,
+            "launch": self.launch or None,
+            "env_file": self.env_file or None,
+            "method": self.method or None,
         }
 
 
@@ -423,12 +438,23 @@ def _parse_start(repo_name: str, raw: Any) -> StartConfig:
     cwd = str(raw.get("cwd") or "").strip()
     if cwd:
         _require_relative_dir(f"Repository {repo_name} start.cwd", cwd)
+    env_file = str(raw.get("env_file") or raw.get("envFile") or "").strip()
+    if env_file:
+        _require_relative_dir(f"Repository {repo_name} start.env_file", env_file)
+    method = str(raw.get("method") or "").strip().lower()
+    if method and method not in {"terminal", "vscode", "harness"}:
+        raise HarnessError(
+            f"Repository {repo_name} start.method must be terminal, vscode, or harness"
+        )
     return StartConfig(
         command=str(raw.get("command") or "").strip(),
         port=port,
         role=str(raw.get("role") or "").strip().lower(),
         wait=str(raw.get("wait") or raw.get("health") or "").strip(),
         cwd=cwd,
+        launch=str(raw.get("launch") or raw.get("configuration") or "").strip(),
+        env_file=env_file,
+        method=method,
     )
 
 
