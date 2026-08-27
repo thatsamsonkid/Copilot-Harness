@@ -7,8 +7,8 @@ agent: plan
 
 The user will provide a Jira issue key or browse URL as `${input:issue:Jira issue key or URL}`.
 
-1. From the harness repo, run `#tool:runCommands` with `harness prepare ${input:issue} --format json`.
-2. If the command is not on PATH, retry with `PYTHONPATH=src python3 -m harness prepare ${input:issue} --format json`.
+1. From the harness repo, run `#tool:runCommands` with `uv run harness prepare ${input:issue} --format json`.
+2. If `uv` is missing, run `./scripts/setup.sh`, then retry with `./scripts/harness.sh prepare ${input:issue} --format json`.
 3. Summarize the ticket in 5–8 lines: key, type, status, priority, requester intent, and acceptance criteria (including `custom` fields when present).
 4. State the recommended workspace, why it matched, required repos, and whether any clones are missing.
 5. Ask the user to open `routing.open_command` if this window does not already include those roots.

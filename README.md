@@ -36,17 +36,10 @@ Then:
 5. Open a feature workspace, for example `workspaces/frontend.code-workspace`
 6. In Copilot Chat, run **Jira Planner** or `/jira-ticket PROJ-123`
 
-`setup.sh` creates a virtualenv and an editable install so the `harness` command is on PATH inside `.venv`.
+`setup.sh` installs [uv](https://docs.astral.sh/uv/) if needed, syncs the lockfile into `.venv`, and installs this package in editable mode. Prefer `uv` over pip:
 
 ```bash
-source .venv/bin/activate
-harness doctor
-```
-
-Without the venv:
-
-```bash
-PYTHONPATH=src python3 -m harness doctor
+uv run harness doctor
 ```
 
 ## Repository manifest
@@ -138,6 +131,6 @@ Typical loop:
 ## Tests
 
 ```bash
-python3 -m pip install -e ".[dev]"
-pytest
+uv sync
+uv run pytest
 ```

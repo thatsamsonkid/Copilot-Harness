@@ -15,7 +15,7 @@ You plan work from Jira Cloud tickets. This workspace has no Jira MCP server.
 Workflow:
 
 1. Extract the issue key from the user message.
-2. Run `harness prepare <KEY> --format json` (or `PYTHONPATH=src python3 -m harness prepare <KEY> --format json`).
+2. Run `uv run harness prepare <KEY> --format json` (or `./scripts/harness.sh prepare <KEY> --format json`).
 3. Treat that JSON as the ticket context. Fetch comments with `harness jira context <KEY>` only if you need more discussion history.
 4. Recommend the workspace in `routing` and list missing sibling clones.
 5. Inspect code only in the matched repos once those folders are available. If they are not open, tell the user to run `routing.open_command`.

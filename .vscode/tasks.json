@@ -18,13 +18,13 @@
     {
       "label": "Harness: generate workspaces",
       "type": "shell",
-      "command": "harness workspace generate || PYTHONPATH=src python3 -m harness workspace generate",
+      "command": "uv run harness workspace generate",
       "problemMatcher": []
     },
     {
       "label": "Harness: doctor",
       "type": "shell",
-      "command": "harness doctor || PYTHONPATH=src python3 -m harness doctor",
+      "command": "uv run harness doctor",
       "problemMatcher": []
     }
   ]

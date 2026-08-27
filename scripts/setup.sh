@@ -4,16 +4,19 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-python3 -m venv .venv
-# shellcheck disable=SC1091
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
+if ! command -v uv >/dev/null 2>&1; then
+  echo "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="${HOME}/.local/bin:${PATH}"
+fi
+
+uv sync
 
 if [[ ! -f .env && -f .env.example ]]; then
   cp .env.example .env
   echo "Created .env from .env.example — fill in Jira values."
 fi
 
-harness workspace generate
+uv run harness workspace generate
 echo "Setup complete. Next: edit repositories.yml, then ./scripts/clone-repos.sh"
+echo "Run the CLI with: uv run harness <command>"

@@ -13,13 +13,17 @@ dependencies = [
     "python-dotenv>=1.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest>=8.0",
 ]
 
 [project.scripts]
 harness = "harness.cli:main"
+
+[tool.uv]
+default-groups = ["dev"]
+package = true
 
 [tool.setuptools.packages.find]
 where = ["src"]

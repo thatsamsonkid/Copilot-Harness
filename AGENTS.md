@@ -7,7 +7,7 @@ Application repositories are cloned as **siblings** of this folder. The full-app
 For any Jira key:
 
 ```bash
-harness prepare ISSUE-123 --format json
+uv run harness prepare ISSUE-123 --format json
 ```
 
 Then open `routing.open_command` and plan against those roots. Do not nest git clones inside this repository.

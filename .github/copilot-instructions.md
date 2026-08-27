@@ -24,20 +24,22 @@ When the user gives a Jira key or browse URL:
 
 ## Commands
 
+Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`).
+
 ```bash
-harness prepare PROJ-123
-harness jira get PROJ-123
-harness jira context PROJ-123
-harness jira search 'project = PROJ AND status != Done'
-harness repos
-harness clone --only frontend,backend
-harness clone --tag ui
-harness workspace list
-harness workspace generate
-harness doctor
+uv run harness prepare PROJ-123
+uv run harness jira get PROJ-123
+uv run harness jira context PROJ-123
+uv run harness jira search 'project = PROJ AND status != Done'
+uv run harness repos
+uv run harness clone --only frontend,backend
+uv run harness clone --tag ui
+uv run harness workspace list
+uv run harness workspace generate
+uv run harness doctor
 ```
 
-If `harness` is not on PATH: `PYTHONPATH=src python3 -m harness ...` or `./scripts/clone-repos.sh`.
+If `uv` is missing, run `./scripts/setup.sh`. Do not use pip to install this repo.
 
 ## Constraints
 

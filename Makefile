@@ -4,13 +4,13 @@ setup:
 	./scripts/setup.sh
 
 test:
-	PYTHONPATH=src python3 -m pytest
+	uv run pytest
 
 clone:
 	./scripts/clone-repos.sh
 
 workspaces:
-	PYTHONPATH=src python3 -m harness workspace generate
+	uv run harness workspace generate
 
 doctor:
-	PYTHONPATH=src python3 -m harness doctor
+	uv run harness doctor
