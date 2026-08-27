@@ -6,7 +6,9 @@ import pytest
 
 from harness import HarnessError
 from harness.launch import (
+    load_launch_runtime,
     read_jsonc,
+    resolve_launch_value,
     select_configuration,
     strip_jsonc,
     summarize_launch,
@@ -74,6 +76,53 @@ def test_summarize_launch_redacts_values(tmp_path: Path):
     assert "hidden-env" not in dumped
     assert "hidden-arg" not in dumped
     assert "hidden-file" not in dumped
+
+
+def test_resolve_launch_value_workspace_and_env(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("HOME_TOKEN", "from-parent")
+    sibling = tmp_path.parent / "frontend"
+    value = resolve_launch_value(
+        "${workspaceFolder}/cfg:${workspaceFolder:frontend}:${env:HOME_TOKEN}",
+        tmp_path,
+        environ={"HOME_TOKEN": "from-parent"},
+        workspace_folders={"frontend": sibling},
+    )
+    assert value == f"{tmp_path}/cfg:{sibling}:from-parent"
+
+
+def test_load_launch_runtime_resolves_env_substitutions(tmp_path: Path):
+    vscode = tmp_path / ".vscode"
+    vscode.mkdir()
+    (vscode / "launch.json").write_text(
+        """{
+  "configurations": [
+    {
+      "name": "Launch Backend",
+      "type": "java",
+      "request": "launch",
+      "env": {
+        "CONFIG_DIR": "${workspaceFolder}/config",
+        "COPIED": "${env:PARENT_ONLY}"
+      },
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+    (tmp_path / ".env").write_text("FILE_KEY=from-file\n", encoding="utf-8")
+    runtime = load_launch_runtime(
+        tmp_path,
+        None,
+        environ={"PARENT_ONLY": "parent-value"},
+    )
+    assert runtime["env"]["CONFIG_DIR"] == f"{tmp_path}/config"
+    assert runtime["env"]["COPIED"] == "parent-value"
+    assert runtime["env"]["FILE_KEY"] == "from-file"
+    dumped = str(runtime)
+    assert "parent-value" in dumped
+    assert "from-file" in dumped
 
 
 def test_select_configuration_requires_known_name():

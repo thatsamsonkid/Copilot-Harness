@@ -18,7 +18,7 @@ from harness.paths import find_harness_root, load_dotenv_files
 from harness.prepare import prepare_issue
 from harness.prompt import PromptSession
 from harness.routing import recommend_workspace
-from harness.start import collect_start_plan, execute_start_run
+from harness.start import collect_start_plan, execute_start_env, execute_start_run
 from harness.templates import get_template, template_to_dict, templates_payload
 from harness.workspace import generate_workspaces, list_workspaces, open_workspace
 from harness.workspace_create import create_workspace
@@ -254,8 +254,12 @@ def build_parser() -> argparse.ArgumentParser:
     start.add_argument(
         "action",
         nargs="?",
-        choices=("run",),
-        help="Omit for a plan. `run` starts one repo with launch.json env loaded in-process",
+        choices=("run", "env"),
+        help=(
+            "Omit for a plan. `run` starts one repo with launch.json env "
+            "loaded in-process. `env` applies that repo's env (keys only "
+            "on stdout; `--shell` execs a terminal that has the values)"
+        ),
     )
     start.add_argument("--workspace", help="Limit the plan to a catalog workspace id")
     start.add_argument("--repo", help="Comma-separated repository names")
@@ -279,7 +283,34 @@ def build_parser() -> argparse.ArgumentParser:
     start.add_argument(
         "--dry-run",
         action="store_true",
-        help="For `start run`, print the redacted command and env keys without launching",
+        help=(
+            "For `start run`, print the redacted command and env keys "
+            "without launching. For `start env --shell`, preview keys only"
+        ),
+    )
+    start.add_argument(
+        "--shell",
+        action="store_true",
+        help=(
+            "For `start env`, exec an interactive shell with that repo's "
+            "launch env applied. Values are not printed"
+        ),
+    )
+    start.add_argument(
+        "--prefix",
+        help=(
+            "Optional prefix for applied launch keys (example: BACKEND). "
+            "Default is none so apps see the same names as VS Code. "
+            "A trailing underscore is added if missing"
+        ),
+    )
+    start.add_argument(
+        "--keep-existing",
+        action="store_true",
+        help=(
+            "Do not overwrite env keys already set in this terminal. "
+            "Collisions are reported as skipped_keys"
+        ),
     )
 
     templates = sub.add_parser(
@@ -413,7 +444,12 @@ def dispatch(args: argparse.Namespace) -> Any:
         )
     if args.command == "start":
         if args.action == "run":
-            repos = _split_ids(args.repo)
+            if args.shell:
+                raise HarnessError(
+                    "harness start run starts the app. "
+                    "Use `start env --repo <name> --shell` to apply env in a terminal."
+                )
+            repos = _split_ids(args.repo) or []
             if len(repos) != 1:
                 raise HarnessError("harness start run requires exactly one --repo")
             payload = execute_start_run(
@@ -422,10 +458,30 @@ def dispatch(args: argparse.Namespace) -> Any:
                 repos[0],
                 configuration=args.configuration,
                 dry_run=args.dry_run,
+                prefix=args.prefix,
+                keep_existing=args.keep_existing,
             )
             if args.dry_run:
                 return payload
             raise SystemExit(int(payload.get("exit_code") or 0))
+        if args.action == "env":
+            repos = _split_ids(args.repo) or []
+            if len(repos) != 1:
+                raise HarnessError("harness start env requires exactly one --repo")
+            if args.save:
+                raise HarnessError("harness start env does not write a start plan")
+            payload = execute_start_env(
+                catalog,
+                harness_root,
+                repos[0],
+                configuration=args.configuration,
+                prefix=args.prefix,
+                keep_existing=args.keep_existing,
+                shell=bool(args.shell) and not args.dry_run,
+            )
+            if args.shell and not args.dry_run:
+                raise SystemExit(0)
+            return payload
         return collect_start_plan(
             catalog,
             harness_root,

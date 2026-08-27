@@ -58,8 +58,12 @@ def test_skill_is_plan_then_sequential_start():
         "do not `cd`",
         "launch.json",
         "harness start run",
+        "harness start env",
         "run without debugging",
         "never read",
+        "--keep-existing",
+        "--prefix",
+        "overwritten_keys",
     ):
         assert token in lowered
 
@@ -77,5 +81,6 @@ def test_prompt_points_at_the_skill():
     assert "--save" in lowered
     assert "start.yml" in lowered
     assert "harness start run" in lowered
+    assert "harness start env" in lowered
     assert "run without debugging" in lowered
     assert "launch.json" in lowered

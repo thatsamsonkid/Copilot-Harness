@@ -205,6 +205,8 @@ uv run harness prepare PROJ-123
 uv run harness context
 uv run harness start --workspace frontend
 uv run harness start run --repo backend --dry-run
+uv run harness start env --repo backend
+uv run harness start env --repo backend --shell
 ```
 
 The CLI never prints the raw Jira REST payload. `catalog/stack.yaml` `jira.fields` is an allowlist of keys Copilot sees. Add custom fields with `extra_fields` + `field_aliases`, then list the alias in `fields`.
@@ -213,7 +215,7 @@ The API token stays in `.env`. The CLI loads it in-process for Basic auth. Copil
 
 `prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, and print the `code` command that opens the matching workspace.
 
-`harness start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files, redacted `launch.json` names and env keys). It does not launch processes. After the first good plan, pin it next to the workspace with `harness start --workspace <id> --save`. That writes `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. When a repo keeps args or secrets in `.vscode/launch.json`, the plan sets `run_via: harness` and Copilot runs `harness start run --repo <name>` so those values stay in-process (or the user uses VS Code **Run Without Debugging**). Do not put `start:` on `repositories.yml` entries — edit the workspace plan when discovery is wrong.
+`harness start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files, redacted `launch.json` names and env keys). It does not launch processes. After the first good plan, pin it next to the workspace with `harness start --workspace <id> --save`. That writes `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. When a repo keeps args or secrets in `.vscode/launch.json`, the plan sets `run_via: harness` and Copilot runs `harness start run --repo <name>` so those values stay in-process (or the user uses VS Code **Run Without Debugging**). `start run` applies env to the child process only. `harness start env --repo <name>` lists keys and collisions; `--shell` execs a terminal that already has the values. Application keys are unprefixed by default (same names as VS Code). `--keep-existing` leaves current terminal values alone; `--prefix BACKEND` is opt-in namespacing and will not satisfy an app looking up `DB_PASSWORD`. Do not put `start:` on `repositories.yml` entries — edit the workspace plan when discovery is wrong.
 
 Stdout is JSON by default (`--format markdown` or `text` if you want a human view). Errors are JSON on stderr.
 
@@ -253,7 +255,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/orient` is for vague prompts against large repos. It runs `harness context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
 
-`/start-workspace` is for booting the local apps in the open feature workspace. It runs `harness start`, prefers a saved `workspaces/<id>.start.yml` when present, then starts one process at a time in **one VS Code terminal per app** (reuse that app’s terminal if it is already running) so Angular proxies can point at live backend ports. Apps with launch.json env/args are started through `harness start run` or Run Without Debugging so Copilot never sees those values.
+`/start-workspace` is for booting the local apps in the open feature workspace. It runs `harness start`, prefers a saved `workspaces/<id>.start.yml` when present, then starts one process at a time in **one VS Code terminal per app** (reuse that app’s terminal if it is already running) so Angular proxies can point at live backend ports. Apps with launch.json env/args are started through `harness start run` or Run Without Debugging so Copilot never sees those values. Use `harness start env --repo <name>` to inspect keys/collisions, or `--shell` to apply them in a terminal without starting the app.
 
 Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `docs/adr/`). The harness only discovers them. Convention: [docs/knowledge.md](docs/knowledge.md). More ideas: [docs/ideas.md](docs/ideas.md).
 

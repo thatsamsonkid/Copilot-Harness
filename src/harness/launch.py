@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,7 @@ _VSCODE_INPUT = re.compile(r"^\$\{(?:input|command):")
 _WORKSPACE_FOLDER = re.compile(
     r"\$\{workspaceFolder(?:[:.]([^}]+))?\}"
 )
+_LAUNCH_VAR = re.compile(r"\$\{([^}]+)\}")
 
 
 def read_jsonc(path: Path) -> Any:
@@ -207,6 +209,8 @@ def load_launch_runtime(
     summary: dict[str, Any] | None,
     *,
     configuration: str | None = None,
+    environ: dict[str, str] | None = None,
+    workspace_folders: dict[str, Path] | None = None,
 ) -> dict[str, Any]:
     """Load env and args in-process. Callers must not print values."""
     data = read_jsonc(repo_path / LAUNCH_RELATIVE)
@@ -218,6 +222,7 @@ def load_launch_runtime(
             name=configuration or (summary or {}).get("configuration"),
             required=bool(configuration),
         )
+    parent_env = dict(os.environ if environ is None else environ)
     env: dict[str, str] = {}
     env_file = (summary or {}).get("env_file") or _env_file_relative(repo_path, selected)
     if env_file:
@@ -228,15 +233,92 @@ def load_launch_runtime(
             if key is None:
                 continue
             env[str(key)] = "" if value is None else str(value)
+    resolved: dict[str, str] = {}
+    for key, value in env.items():
+        resolved[key] = resolve_launch_value(
+            value,
+            repo_path,
+            environ=parent_env,
+            workspace_folders=workspace_folders,
+        )
     return {
         "configuration": selected.get("name") if selected else None,
-        "env": env,
-        "args": selected.get("args") if selected else None,
-        "vm_args": (selected.get("vmArgs") if selected else None)
-        or (selected.get("vmArg") if selected else None),
+        "env": resolved,
+        "args": resolve_launch_args(
+            selected.get("args") if selected else None,
+            repo_path,
+            environ=parent_env,
+            workspace_folders=workspace_folders,
+        ),
+        "vm_args": resolve_launch_args(
+            (selected.get("vmArgs") if selected else None)
+            or (selected.get("vmArg") if selected else None),
+            repo_path,
+            environ=parent_env,
+            workspace_folders=workspace_folders,
+        ),
         "uses_vscode_inputs": _uses_vscode_inputs(selected),
         "cwd": _launch_cwd(repo_path, selected),
     }
+
+
+def resolve_launch_value(
+    value: str,
+    repo_path: Path,
+    *,
+    environ: dict[str, str] | None = None,
+    workspace_folders: dict[str, Path] | None = None,
+) -> str:
+    """Expand a subset of VS Code launch substitutions. Values stay in-process."""
+    env = dict(os.environ if environ is None else environ)
+    folders = workspace_folders or {}
+
+    def replacer(match: re.Match[str]) -> str:
+        raw = match.group(1).strip()
+        if raw == "workspaceFolder":
+            return str(repo_path)
+        if raw.startswith("workspaceFolder:") or raw.startswith("workspaceFolder."):
+            name = raw.split(":", 1)[-1] if ":" in raw else raw.split(".", 1)[-1]
+            path = folders.get(name)
+            return str(path) if path is not None else match.group(0)
+        if raw.startswith("env:"):
+            return env.get(raw.split(":", 1)[1], "")
+        if raw == "userHome":
+            return str(Path.home())
+        if raw == "pathSeparator":
+            return os.sep
+        return match.group(0)
+
+    return _LAUNCH_VAR.sub(replacer, value)
+
+
+def resolve_launch_args(
+    value: Any,
+    repo_path: Path,
+    *,
+    environ: dict[str, str] | None = None,
+    workspace_folders: dict[str, Path] | None = None,
+) -> Any:
+    if isinstance(value, list):
+        return [
+            resolve_launch_value(
+                part,
+                repo_path,
+                environ=environ,
+                workspace_folders=workspace_folders,
+            )
+            if isinstance(part, str)
+            else part
+            for part in value
+        ]
+    if isinstance(value, str):
+        return resolve_launch_value(
+            value,
+            repo_path,
+            environ=environ,
+            workspace_folders=workspace_folders,
+        )
+    return value
 
 
 def resolve_workspace_path(repo_path: Path, value: str) -> Path:

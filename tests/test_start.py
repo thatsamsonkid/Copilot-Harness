@@ -10,7 +10,13 @@ from harness.catalog import load_catalog
 from harness.cli import main
 from harness.output import render
 from harness.prompt import PromptSession
-from harness.start import collect_start_plan, execute_start_run, load_saved_start_plan
+from harness.envapply import HARNESS_ENV_REPO
+from harness.start import (
+    collect_start_plan,
+    execute_start_env,
+    execute_start_run,
+    load_saved_start_plan,
+)
 from harness.workspace_create import create_workspace
 from tests.helpers import write_harness_config
 
@@ -450,6 +456,7 @@ def test_start_run_applies_env_without_leaking(harness_root: Path, catalog):
     def fake_run(command: str, cwd: Path, env: dict[str, str]) -> int:
         recorded["command"] = command
         recorded["cwd"] = cwd
+        recorded["env"] = env
         recorded["password"] = env.get("DB_PASSWORD")
         recorded["file_secret"] = env.get("MORE_SECRET")
         return 0
@@ -459,6 +466,7 @@ def test_start_run_applies_env_without_leaking(harness_root: Path, catalog):
     )
     assert recorded["password"] == "s3cret-do-not-print"
     assert recorded["file_secret"] == "another-hidden-value"
+    assert recorded["env"][HARNESS_ENV_REPO] == "backend"
     assert "spring-boot.run.arguments" in recorded["command"]
     dumped = json.dumps(payload)
     assert "s3cret-do-not-print" not in dumped
@@ -466,6 +474,7 @@ def test_start_run_applies_env_without_leaking(harness_root: Path, catalog):
     assert "dont-print-me" not in dumped
     assert payload["command"] == "./mvnw spring-boot:run"
     assert payload["env_keys"] == ["API_TOKEN", "DB_PASSWORD", "MORE_SECRET"]
+    assert payload["marker_keys"] == ["HARNESS_ENV_CONFIGURATION", "HARNESS_ENV_REPO"]
     assert payload["applied_args"] is True
     assert payload["exit_code"] == 0
 
@@ -496,6 +505,129 @@ def test_start_run_dry_run_cli(harness_root: Path, capsys, monkeypatch):
     assert "s3cret-do-not-print" not in out
     assert payload.get("env") is None
     assert payload.get("exec_command") is None
+    assert "overwritten_keys" in payload
+    assert "marker_keys" in payload
+
+
+def test_start_run_keep_existing_and_prefix(harness_root: Path, catalog, monkeypatch):
+    repo = _write_spring(harness_root)
+    _write_java_launch(repo)
+    (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
+    monkeypatch.setenv("DB_PASSWORD", "already-in-terminal")
+    recorded: dict = {}
+
+    def fake_run(command: str, cwd: Path, env: dict[str, str]) -> int:
+        recorded["env"] = env
+        return 0
+
+    kept = execute_start_run(
+        catalog,
+        harness_root,
+        "backend",
+        keep_existing=True,
+        run=fake_run,
+    )
+    assert recorded["env"]["DB_PASSWORD"] == "already-in-terminal"
+    assert "DB_PASSWORD" in kept["skipped_keys"]
+    assert "DB_PASSWORD" not in kept["env_keys"]
+    dumped = json.dumps(kept)
+    assert "already-in-terminal" not in dumped
+    assert "s3cret-do-not-print" not in dumped
+
+    prefixed = execute_start_run(
+        catalog,
+        harness_root,
+        "backend",
+        prefix="BACKEND",
+        dry_run=True,
+    )
+    assert "BACKEND_DB_PASSWORD" in prefixed["env_keys"]
+    assert "DB_PASSWORD" not in prefixed["env_keys"]
+    assert prefixed["prefix"] == "BACKEND_"
+    assert "s3cret-do-not-print" not in json.dumps(prefixed)
+
+
+def test_start_env_lists_collisions_without_values(
+    harness_root: Path, catalog, monkeypatch
+):
+    repo = _write_spring(harness_root)
+    _write_java_launch(repo)
+    (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
+    monkeypatch.setenv("API_TOKEN", "parent-token")
+    payload = execute_start_env(catalog, harness_root, "backend")
+    assert payload["name"] == "backend"
+    assert payload["shell"] is False
+    assert "API_TOKEN" in payload["env_keys"]
+    assert "API_TOKEN" in payload["overwritten_keys"]
+    assert payload["marker_keys"] == ["HARNESS_ENV_CONFIGURATION", "HARNESS_ENV_REPO"]
+    dumped = json.dumps(payload)
+    assert "s3cret-do-not-print" not in dumped
+    assert "parent-token" not in dumped
+    assert "another-hidden-value" not in dumped
+    assert payload.get("env") is None
+
+
+def test_start_env_shell_execs_with_env(harness_root: Path, catalog):
+    repo = _write_spring(harness_root)
+    _write_java_launch(repo)
+    (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
+    recorded: dict = {}
+
+    def fake_exec(env: dict[str, str], cwd: Path) -> None:
+        recorded["env"] = env
+        recorded["cwd"] = cwd
+
+    payload = execute_start_env(
+        catalog, harness_root, "backend", shell=True, exec_fn=fake_exec
+    )
+    assert payload["shell"] is True
+    assert recorded["env"]["DB_PASSWORD"] == "s3cret-do-not-print"
+    assert recorded["env"][HARNESS_ENV_REPO] == "backend"
+    assert recorded["cwd"] == repo
+    assert "s3cret-do-not-print" not in json.dumps(payload)
+
+
+def test_start_env_cli_and_launch_only_repo(harness_root: Path, capsys, monkeypatch):
+    repo = harness_root.parent / "backend"
+    repo.mkdir(parents=True)
+    _write_java_launch(repo)
+    monkeypatch.chdir(harness_root)
+    assert (
+        main(
+            [
+                "--root",
+                str(harness_root),
+                "start",
+                "env",
+                "--repo",
+                "backend",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["name"] == "backend"
+    assert "DB_PASSWORD" in payload["env_keys"]
+    assert payload["shell"] is False
+    assert payload.get("env") is None
+    assert "s3cret-do-not-print" not in json.dumps(payload)
+
+    assert (
+        main(
+            [
+                "--root",
+                str(harness_root),
+                "start",
+                "run",
+                "--repo",
+                "backend",
+                "--shell",
+            ]
+        )
+        == 1
+    )
+    error = json.loads(capsys.readouterr().err)
+    assert "start env" in error["error"]
 
 
 def test_start_vscode_inputs_force_vscode_run(harness_root: Path, catalog):
