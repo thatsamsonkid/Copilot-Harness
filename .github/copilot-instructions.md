@@ -29,7 +29,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace generate/match, prepare.
+- CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness.
 - Secrets: `.env` (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`). Never commit tokens or print them.
 
@@ -61,5 +61,5 @@ When the user asks to create, scaffold, or bootstrap a new project:
 
 - Keep clones as siblings (`../<path>`). Do not add git submodules or nest repos here.
 - Prefer the matched workspace repos. Only load extra roots when the ticket clearly needs them.
-- After catalog edits, run `harness workspace generate`.
+- After catalog edits, run `harness workspace generate`. To add a workspace, prefer `/new-workspace` or the **Workspace Creator** agent so chat can collect id and `repositories.yml` projects, then run `harness workspace create <id> --projects … --no-prompt`. In a terminal the same command prompts. Never hand-edit `catalog/stack.yaml` or run the interactive CLI from chat.
 - When coding in a sibling repo, follow that repo's conventions. This harness does not override product architecture.

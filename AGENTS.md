@@ -11,6 +11,8 @@ uv run harness templates --format json
 uv run harness bootstrap --template <name> --name <folder> --format json
 ```
 
+To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through id plus `repositories.yml` projects, then run `uv run harness workspace create <id> --projects … --no-prompt`. In a terminal, `harness workspace create` prompts on its own.
+
 For any Jira key, follow `.github/skills/jira-cli/SKILL.md`:
 
 ```bash

@@ -78,4 +78,5 @@ This skill is the CLI contract, not an implementer.
 
 - Always-on rules: `.github/copilot-instructions.md`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
+- Create a feature workspace: Workspace Creator agent or `/new-workspace`
 - Implement an agreed plan: Implementer agent

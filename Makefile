@@ -1,4 +1,4 @@
-.PHONY: setup test clone templates bootstrap workspaces doctor
+.PHONY: setup test clone templates bootstrap workspaces create-workspace doctor
 
 setup:
 	./scripts/setup.sh
@@ -18,6 +18,9 @@ bootstrap:
 
 workspaces:
 	uv run harness workspace generate
+
+create-workspace:
+	uv run harness workspace create
 
 doctor:
 	uv run harness doctor

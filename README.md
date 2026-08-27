@@ -35,8 +35,10 @@ Then:
 3. Copy `.env.example` to `.env` and set Jira Cloud values.
 4. Clone siblings: `./scripts/clone-repos.sh`
 5. Generate workspaces: `harness workspace generate`
-6. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-7. In Copilot Chat, run **Jira Planner**, `/jira-ticket PROJ-123`, `/jira-cli`, or `/bootstrap-project`
+6. Or create a new feature workspace and pick projects from `repositories.yml`:
+   `harness workspace create` (or `/new-workspace` in chat)
+7. Open a feature workspace, for example `workspaces/frontend.code-workspace`
+8. In Copilot Chat, run **Jira Planner**, `/jira-ticket PROJ-123`, `/jira-cli`, or `/bootstrap-project`
 
 `setup.sh` installs [uv](https://docs.astral.sh/uv/) if needed, syncs `uv.lock` into `.venv`, and installs this package in editable mode. Prefer `uv` over pip:
 
@@ -76,6 +78,20 @@ harness clone --tag api
 ```
 
 One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `harness workspace generate`.
+
+To add a workspace without editing YAML by hand:
+
+- **Chat:** run **Workspace Creator** or `/new-workspace`. Copilot lists `repositories.yml` projects, asks for an id and which to include, then runs the CLI with flags.
+- **Terminal:** `harness workspace create` prompts for the same things.
+
+Non-interactive / after Copilot has the answers:
+
+```bash
+harness workspace create checkout --projects frontend,backend --no-prompt
+harness workspace create mobile-api --tag mobile,api --name "Mobile + API"
+```
+
+That writes `catalog/stack.yaml` and `workspaces/<id>.code-workspace`. Use `--force` to replace an existing id, `--dry-run` to preview, or `--no-prompt` when flags must be complete.
 
 Workspace files live in `workspaces/` and always include this harness as the first root so Copilot still sees the CLI and instructions.
 
@@ -174,8 +190,10 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`). Place
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
+| `.github/prompts/new-workspace.prompt.md` | `/new-workspace` |
 | `.github/prompts/bootstrap-project.prompt.md` | `/bootstrap-project` |
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |
+| `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 
 The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
@@ -186,6 +204,8 @@ Typical loop:
 2. Copilot runs `harness prepare PROJ-123`
 3. You open the recommended `.code-workspace` so every needed repo is a root
 4. Copilot writes a plan, then hands off to Implementer when you are ready
+
+To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.
 
 ## Tests
 
