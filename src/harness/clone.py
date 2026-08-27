@@ -40,12 +40,13 @@ def clone_repos(
     if sibling_root == harness_root.resolve():
         raise HarnessError(
             "parent_dir resolves to the harness repo. "
-            "Set parent_dir: .. so clones stay siblings."
+            "Set parent_dir: .. so clones stay outside this repository."
         )
 
     results: list[dict[str, Any]] = []
     for repo in catalog.enabled_repos(only, tags):
         dest = catalog.repo_path(harness_root, repo)
+        _refuse_harness_destination(dest, harness_root)
         results.append(
             clone_one(
                 repo,
@@ -138,6 +139,16 @@ def clone_one(
     )
     record["cloned"] = True
     return record
+
+
+def _refuse_harness_destination(dest: Path, harness_root: Path) -> None:
+    dest_resolved = dest.resolve()
+    harness = harness_root.resolve()
+    if dest_resolved == harness or harness in dest_resolved.parents:
+        raise HarnessError(
+            f"Refusing to clone into the harness repo: {dest}. "
+            "Keep product clones under parent_dir, not inside this repository."
+        )
 
 
 def _run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:

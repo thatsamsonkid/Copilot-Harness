@@ -26,6 +26,7 @@ def write_harness_config(root: Path, data: dict) -> Path:
                 "name": item.get("name") or item.get("id"),
                 "url": item.get("url") or item.get("clone_url"),
                 "path": item.get("path"),
+                "group": item.get("group"),
                 "default_branch": item.get("default_branch") or item.get("branch"),
                 "description": item.get("description") or "",
                 "tags": item.get("tags") or ["untagged"],
@@ -38,6 +39,8 @@ def write_harness_config(root: Path, data: dict) -> Path:
             repositories[-1]["knowledge"] = item["knowledge"]
         if repositories[-1]["path"] is None:
             repositories[-1].pop("path")
+        if repositories[-1]["group"] is None:
+            repositories[-1].pop("group")
         if repositories[-1]["default_branch"] is None:
             repositories[-1].pop("default_branch")
     write_yaml(

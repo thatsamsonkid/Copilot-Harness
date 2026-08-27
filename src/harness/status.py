@@ -55,37 +55,48 @@ def _cwd_hint(catalog: Catalog, harness_root: Path, cwd: Path) -> dict[str, Any]
             "kind": "harness",
             "detail": "cwd is the harness. Open a feature .code-workspace so sibling repos are roots.",
         }
+    match = _repo_containing_cwd(catalog, harness_root, resolved)
+    if match is not None:
+        return {
+            "kind": "sibling",
+            "repo": match.name,
+            "relpath": match.path,
+            "group": match.group or None,
+            "detail": (
+                f"cwd is the {match.name} clone ({match.path}). Open the matching "
+                "workspaces/<id>.code-workspace so the harness and other "
+                "clones are loaded too."
+            ),
+        }
     sibling_root = catalog.sibling_root(harness_root).resolve()
     try:
         relative = resolved.relative_to(sibling_root)
     except ValueError:
         relative = None
     if relative is not None and relative.parts:
-        folder = relative.parts[0]
-        for repo in catalog.enabled_repos():
-            if repo.name == folder or repo.path == folder:
-                return {
-                    "kind": "sibling",
-                    "repo": repo.name,
-                    "detail": (
-                        f"cwd is the {repo.name} clone. Open the matching "
-                        "workspaces/<id>.code-workspace so the harness and other "
-                        "siblings are loaded too."
-                    ),
-                }
-    for repo in catalog.enabled_repos():
-        path = catalog.repo_path(harness_root, repo).resolve()
-        if resolved == path or path in resolved.parents:
-            return {
-                "kind": "sibling",
-                "repo": repo.name,
-                "detail": (
-                    f"cwd is the {repo.name} clone. Open the matching "
-                    "workspaces/<id>.code-workspace so the harness and other "
-                    "siblings are loaded too."
-                ),
-            }
+        return {
+            "kind": "parent_dir",
+            "relpath": relative.as_posix(),
+            "detail": (
+                "cwd is under parent_dir but not inside a listed clone "
+                "(a group folder such as frontend/ is not a git repo). "
+                "cd into the project folder or open a feature .code-workspace."
+            ),
+        }
     return {
         "kind": "other",
-        "detail": "cwd is outside the harness and its siblings.",
+        "detail": "cwd is outside the harness and its clones.",
     }
+
+
+def _repo_containing_cwd(catalog: Catalog, harness_root: Path, cwd: Path):
+    """Longest listed clone path that contains cwd (supports frontend/shop-web)."""
+    matches = []
+    for repo in catalog.enabled_repos():
+        path = catalog.repo_path(harness_root, repo).resolve()
+        if cwd == path or path in cwd.parents:
+            matches.append((len(Path(repo.path).parts), repo))
+    if not matches:
+        return None
+    matches.sort(key=lambda item: item[0], reverse=True)
+    return matches[0][1]

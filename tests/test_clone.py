@@ -85,6 +85,27 @@ def test_refuses_filesystem_root_parent(
         clone_repos(catalog, harness_root, only=["frontend"], dry_run=True)
 
 
+def test_clone_into_grouped_folder(
+    harness_root: Path, sample_catalog_data: dict, tmp_path: Path
+):
+    remotes = tmp_path / "remotes"
+    sample_catalog_data["repos"][0]["name"] = "shop-web"
+    sample_catalog_data["repos"][0]["group"] = "frontend"
+    sample_catalog_data["repos"][0].pop("path", None)
+    sample_catalog_data["repos"][0]["url"] = str(_bare_repo(remotes / "shop-web.git"))
+    sample_catalog_data["workspaces"][0]["folders"] = ["shop-web", "backend"]
+    write_harness_config(harness_root, sample_catalog_data)
+    catalog = load_catalog(harness_root)
+
+    result = clone_repos(catalog, harness_root, only=["shop-web"])
+    dest = harness_root.parent / "frontend" / "shop-web"
+    assert result[0]["action"] == "clone"
+    assert (dest / ".git").exists()
+    assert (dest / "README.md").read_text() == "hello\n"
+    assert not (harness_root / "frontend").exists()
+    assert not (harness_root.parent / "shop-web").exists()
+
+
 def test_refuses_non_git_destination(catalog, harness_root: Path):
     dest = harness_root.parent / "frontend"
     dest.mkdir(parents=True)

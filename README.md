@@ -6,21 +6,37 @@ Product code does **not** live here. This repo holds:
 
 1. A `repositories.yml` manifest of every product repo, plus feature-focused Code workspaces
 2. A `templates.yml` list of starter remotes used to bootstrap **new** projects
-3. A clone script that places product remotes as **siblings** of this harness
+3. A clone script that places product remotes **next to** this harness (flat siblings or grouped folders)
 4. A `harness` CLI Copilot can run to list/bootstrap templates and pull Jira Cloud tickets over basic auth (no Jira MCP)
 
 ```text
 parent/
   Copilot-Harness/     ← this repo
-  frontend/            ← sibling clone
+  frontend/            ← default: a flat sibling named after the repo
   backend/
   mobile/
   infra/
 ```
 
-Keeping clones beside the harness avoids nested git trees and keeps this repository free of application history.
+Or group clones under folders such as `frontend`, `backend`, `infra`, and `shared`:
 
-Put this repo inside a project folder (for example `~/src/Copilot-Harness`), not at the filesystem root. `parent_dir: ..` must resolve to that project folder so siblings land next to the harness.
+```text
+parent/
+  Copilot-Harness/
+  frontend/
+    shop-web/
+    admin/
+  backend/
+    api/
+  infra/
+    terraform/
+  shared/
+    design-tokens/
+```
+
+Clones stay **outside** this repository so we never nest git trees here. `group: frontend` (or `path: frontend/shop-web`) only organizes folders under `parent_dir`.
+
+Put this repo inside a project folder (for example `~/src/Copilot-Harness`), not at the filesystem root. `parent_dir: ..` must resolve to that project folder so clones land next to the harness.
 
 ## New laptop
 
@@ -39,7 +55,7 @@ Then:
 1. Edit `repositories.yml` — add each product repo (`name`, GitHub `url`, `tags`).
 2. Edit `templates.yml` — add starter remotes you want Copilot or `harness bootstrap` to offer.
 3. Copy `.env.example` to `.env` and set Jira Cloud values.
-4. Clone siblings: `./scripts/clone-repos.sh`
+4. Clone product repos: `./scripts/clone-repos.sh`
 5. Generate workspaces: `harness workspace generate`
 6. Or create a new feature workspace and pick projects from `repositories.yml`:
    `harness workspace create` (or `/new-workspace` in chat)
@@ -59,25 +75,30 @@ uv run harness doctor
 ```yaml
 parent_dir: ..
 repositories:
-  - name: frontend
-    url: git@github.com:YOUR_ORG/frontend.git
+  - name: shop-web
+    url: git@github.com:YOUR_ORG/shop-web.git
     tags: [ui, frontend, web]
-  - name: backend
-    url: git@github.com:YOUR_ORG/backend.git
+    group: frontend
+  - name: api
+    url: git@github.com:YOUR_ORG/api.git
     tags: [api, backend]
+    path: backend/api
 ```
 
 | Field | Required | Purpose |
 | --- | --- | --- |
-| `name` | yes | Stable id and default sibling folder name |
+| `name` | yes | Stable id used by workspaces, `clone --only`, and `prepare`. Not a folder path. |
 | `url` | yes | GitHub clone URL (`clone_url` / `git` also accepted) |
 | `tags` | yes | Labels used to clone or compose workspaces (`harness clone --tag ui`) |
-| `path` | no | Override the sibling folder name |
+| `group` | no | Organize the clone under `parent_dir/<group>/<name>` (`frontend`, `backend`, `infra`, `shared`) |
+| `path` | no | Exact destination under `parent_dir`. May be nested (`frontend/shop-web`). Defaults to `name`, or `group/name` when `group` is set |
 | `default_branch` | no | Defaults to `main` |
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
 | `knowledge` | no | `{ dirs: [handbook] }` extra folders to treat as feature notes |
 
-`catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository names. Workspace `tags` pull in every manifest repo with those tags.
+`catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
+
+One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this harness.
 
 ```bash
 harness repos
@@ -135,11 +156,12 @@ harness bootstrap --template react-native --name shop-mobile
 harness bootstrap --template spartan-stack --name shop-web --https --dry-run
 ```
 
-`bootstrap` clones the listed starter as a sibling, then renames `origin` to `template` so you do not push back to the starter. Optional flags:
+`bootstrap` clones the listed starter under `parent_dir` (never inside this harness), then renames `origin` to `template` so you do not push back to the starter. Optional flags:
 
 | Flag | Effect |
 | --- | --- |
-| `--name` | Sibling folder for the new project (defaults to the template name) |
+| `--name` | Project id, or a destination under `parent_dir` such as `frontend/shop-web` (defaults to the template name) |
+| `--group` | Place the clone at `parent_dir/<group>/<name>` |
 | `--https` | Rewrite `git@github.com:` URLs to HTTPS |
 | `--fresh-git` | Replace template history with one bootstrap commit |
 | `--keep-remote` | Leave `origin` pointing at the template |
@@ -196,7 +218,7 @@ Stdout is JSON by default (`--format markdown` or `text` if you want a human vie
 ./scripts/clone-repos.sh --https --dry-run
 ```
 
-Clones always land in `parent_dir` from `repositories.yml` (default `..`). Placeholder URLs that still contain `YOUR_ORG` are refused so a half-edited manifest cannot create junk remotes.
+Clones always land in `parent_dir` from `repositories.yml` (default `..`), including grouped paths such as `frontend/shop-web`. Placeholder URLs that still contain `YOUR_ORG` are refused so a half-edited manifest cannot create junk remotes.
 
 ## Copilot in VS Code
 

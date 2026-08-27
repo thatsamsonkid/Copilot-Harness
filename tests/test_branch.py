@@ -45,6 +45,30 @@ def test_branch_create_on_clean_tree(catalog, harness_root: Path):
     assert current == "WEB-42"
 
 
+def test_branch_create_in_grouped_clone(sample_catalog_data: dict, harness_root: Path):
+    from harness.catalog import load_catalog
+    from tests.helpers import write_harness_config
+
+    sample_catalog_data["repos"][0]["name"] = "shop-web"
+    sample_catalog_data["repos"][0]["group"] = "frontend"
+    sample_catalog_data["repos"][0].pop("path", None)
+    sample_catalog_data["workspaces"][0]["folders"] = ["shop-web", "backend"]
+    write_harness_config(harness_root, sample_catalog_data)
+    catalog = load_catalog(harness_root)
+    clone = harness_root.parent / "frontend" / "shop-web"
+    _init_git(clone)
+    payload = align_branches(
+        catalog, harness_root, "WEB-42", only=["shop-web"], create=True
+    )
+    assert payload["repos"][0]["action"] == "create"
+    assert payload["repos"][0]["path"].endswith("frontend/shop-web")
+    current = subprocess.check_output(
+        ["git", "-C", str(clone), "rev-parse", "--abbrev-ref", "HEAD"],
+        text=True,
+    ).strip()
+    assert current == "WEB-42"
+
+
 def test_branch_refuses_dirty_create(catalog, harness_root: Path, capsys, monkeypatch):
     frontend = harness_root.parent / "frontend"
     _init_git(frontend)

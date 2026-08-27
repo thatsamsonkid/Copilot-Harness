@@ -66,9 +66,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="harness",
         description=(
-            "Clone sibling git repos, bootstrap projects from listed templates, "
-            "query Jira Cloud with basic auth, inspect sibling git status, and "
-            "create or select a feature VS Code workspace."
+            "Clone product git repos under parent_dir, bootstrap projects from "
+            "listed templates, query Jira Cloud with basic auth, inspect clone "
+            "git status, and create or select a feature VS Code workspace."
         ),
         parents=[shared],
     )
@@ -78,7 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
     clone = sub.add_parser(
         "clone",
         parents=[shared],
-        help="Clone repositories.yml remotes as siblings of the harness",
+        help="Clone repositories.yml remotes under parent_dir (outside this harness)",
     )
     clone.add_argument("--only", help="Comma-separated repository names")
     clone.add_argument("--tag", help="Comma-separated tags from repositories.yml")
@@ -286,7 +286,7 @@ def build_parser() -> argparse.ArgumentParser:
     bootstrap = sub.add_parser(
         "bootstrap",
         parents=[shared],
-        help="Clone a listed template as a new sibling project",
+        help="Clone a listed template as a new project under parent_dir",
     )
     bootstrap.add_argument(
         "template",
@@ -300,7 +300,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     bootstrap.add_argument(
         "--name",
-        help="New sibling folder name (defaults to the template name)",
+        help="Project id or destination under parent_dir (frontend/shop-web)",
+    )
+    bootstrap.add_argument(
+        "--group",
+        help="Organize the clone under parent_dir/<group>/<name> (frontend, backend, …)",
     )
     bootstrap.add_argument(
         "--register",
@@ -547,6 +551,7 @@ def _dispatch_bootstrap(args: argparse.Namespace, catalog: Any, harness_root: Pa
         harness_root,
         template_name=template_name,
         dest_name=args.name,
+        group=args.group,
         register=args.register,
         remote=args.remote,
         tags=_split_ids(args.tags),

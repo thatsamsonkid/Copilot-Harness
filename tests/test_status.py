@@ -39,3 +39,33 @@ def test_status_cli_and_cwd_sibling_hint(catalog, harness_root: Path, capsys, mo
     assert payload["cwd_hint"]["kind"] == "sibling"
     assert payload["cwd_hint"]["repo"] == "frontend"
     assert payload["repos"][0]["git"]["branch"] == "main"
+
+
+def test_status_cwd_hint_uses_nested_group_path(
+    sample_catalog_data: dict, harness_root: Path
+):
+    from harness.catalog import load_catalog
+    from tests.helpers import write_harness_config
+
+    sample_catalog_data["repos"][0]["name"] = "shop-web"
+    sample_catalog_data["repos"][0]["group"] = "frontend"
+    sample_catalog_data["repos"][0].pop("path", None)
+    sample_catalog_data["workspaces"][0]["folders"] = ["shop-web", "backend"]
+    write_harness_config(harness_root, sample_catalog_data)
+    catalog = load_catalog(harness_root)
+    clone = harness_root.parent / "frontend" / "shop-web"
+    _init_git(clone)
+    (clone / "src").mkdir()
+
+    inside = collect_status(catalog, harness_root, only=["shop-web"], cwd=clone / "src")
+    assert inside["cwd_hint"]["kind"] == "sibling"
+    assert inside["cwd_hint"]["repo"] == "shop-web"
+    assert inside["cwd_hint"]["relpath"] == "frontend/shop-web"
+    assert inside["repos"][0]["relpath"] == "frontend/shop-web"
+    assert inside["repos"][0]["group"] == "frontend"
+
+    group_dir = collect_status(
+        catalog, harness_root, only=["shop-web"], cwd=harness_root.parent / "frontend"
+    )
+    assert group_dir["cwd_hint"]["kind"] == "parent_dir"
+    assert "group folder" in group_dir["cwd_hint"]["detail"]

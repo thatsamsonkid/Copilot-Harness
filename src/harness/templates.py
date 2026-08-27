@@ -29,15 +29,22 @@ class Template:
         needle = self.url.lower()
         return "your_org" in needle or "example.com" in needle or "example/" in needle
 
-    def as_repo(self, dest_name: str) -> Repo:
+    def as_repo(
+        self,
+        dest_name: str,
+        *,
+        path: str | None = None,
+        group: str = "",
+    ) -> Repo:
         return Repo(
             name=dest_name,
             url=self.url,
-            path=dest_name,
+            path=path or dest_name,
             default_branch=self.default_branch,
             description=self.description,
             tags=list(self.tags),
             enabled=True,
+            group=group,
         )
 
 

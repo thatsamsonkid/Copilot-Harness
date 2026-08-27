@@ -66,6 +66,34 @@ def test_clone_filters_by_tag(catalog, harness_root: Path):
     assert [item["id"] for item in result] == ["frontend"]
 
 
+def test_group_defaults_path_under_parent_dir(tmp_path: Path):
+    path = write_yaml(
+        tmp_path / "repositories.yml",
+        {
+            "parent_dir": "..",
+            "repositories": [
+                {
+                    "name": "shop-web",
+                    "url": "https://github.com/acme/shop-web.git",
+                    "tags": ["ui"],
+                    "group": "frontend",
+                },
+                {
+                    "name": "tokens",
+                    "url": "https://github.com/acme/tokens.git",
+                    "tags": ["shared"],
+                    "path": "shared/tokens",
+                },
+            ],
+        },
+    )
+    repos, parent_dir = load_repositories(path)
+    assert parent_dir == ".."
+    assert repos[0].path == "frontend/shop-web"
+    assert repos[0].group == "frontend"
+    assert repos[1].path == "shared/tokens"
+
+
 def test_workspace_folders_from_tags(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["workspaces"].append(
         {

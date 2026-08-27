@@ -171,7 +171,8 @@ def _status_text(payload: dict[str, Any]) -> str:
         name = repo.get("id") or repo.get("name")
         git = repo.get("git") or {}
         if not repo.get("cloned"):
-            lines.append(f"- {name}: not cloned")
+            loc = f" ({repo['relpath']})" if repo.get("relpath") and repo.get("relpath") != name else ""
+            lines.append(f"- {name}{loc}: not cloned")
             continue
         flags = []
         if git.get("dirty"):
@@ -183,7 +184,8 @@ def _status_text(payload: dict[str, Any]) -> str:
         if (repo.get("graphify") or {}).get("stale"):
             flags.append("graph stale")
         extra = f" ({', '.join(flags)})" if flags else ""
-        lines.append(f"- {name}: {git.get('branch') or '?'}{extra}")
+        loc = f" [{repo['relpath']}]" if repo.get("relpath") and repo.get("relpath") != name else ""
+        lines.append(f"- {name}{loc}: {git.get('branch') or '?'}{extra}")
     return "\n".join(lines).strip() + "\n"
 
 

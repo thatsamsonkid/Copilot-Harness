@@ -88,6 +88,8 @@ def inspect_repo(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dict
         "name": repo.name,
         "id": repo.name,
         "path": str(path),
+        "relpath": repo.path,
+        "group": repo.group,
         "cloned": cloned,
         "placeholder": repo.is_placeholder,
         "tags": repo.tags,
