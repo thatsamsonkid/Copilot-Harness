@@ -45,7 +45,7 @@ uv run harness repos
 uv run harness clone --only frontend,backend
 uv run harness clone --tag ui
 uv run harness workspace list
-uv run harness workspace create checkout --projects frontend,backend
+uv run harness workspace create checkout --projects frontend,backend --no-prompt
 uv run harness workspace generate
 uv run harness doctor
 ```
@@ -56,5 +56,5 @@ If `uv` is missing, run `./scripts/setup.sh`. Do not use pip to install this rep
 
 - Keep clones as siblings (`../<path>`). Do not add git submodules or nest repos here.
 - Prefer the matched workspace repos. Only load extra roots when the ticket clearly needs them.
-- After catalog edits, run `harness workspace generate`. To add a workspace, run `harness workspace create` (prompts for `repositories.yml` projects in a terminal) or pass `--id` and `--projects` / `--tag`.
+- After catalog edits, run `harness workspace generate`. To add a workspace, prefer `/new-workspace` or the **Workspace Creator** agent so chat can collect id and `repositories.yml` projects, then run `harness workspace create <id> --projects … --no-prompt`. In a terminal the same command prompts. Never hand-edit `catalog/stack.yaml` or run the interactive CLI from chat.
 - When coding in a sibling repo, follow that repo's conventions. This harness does not override product architecture.

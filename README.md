@@ -76,10 +76,15 @@ harness clone --tag api
 
 One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `harness workspace generate`.
 
-To add a workspace without editing YAML by hand, run `harness workspace create`. In a terminal it lists every `repositories.yml` project and prompts for an id plus which names, numbers, ranges, or `tag:<tag>` values to include. Non-interactive / Copilot use:
+To add a workspace without editing YAML by hand:
+
+- **Chat:** run **Workspace Creator** or `/new-workspace`. Copilot lists `repositories.yml` projects, asks for an id and which to include, then runs the CLI with flags.
+- **Terminal:** `harness workspace create` prompts for the same things.
+
+Non-interactive / after Copilot has the answers:
 
 ```bash
-harness workspace create checkout --projects frontend,backend
+harness workspace create checkout --projects frontend,backend --no-prompt
 harness workspace create mobile-api --tag mobile,api --name "Mobile + API"
 ```
 
@@ -134,7 +139,9 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`). Place
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
+| `.github/prompts/new-workspace.prompt.md` | `/new-workspace` |
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |
+| `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 
 Typical loop:
@@ -143,6 +150,8 @@ Typical loop:
 2. Copilot runs `harness prepare PROJ-123`
 3. You open the recommended `.code-workspace` so every needed repo is a root
 4. Copilot writes a plan, then hands off to Implementer when you are ready
+
+To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.
 
 ## Tests
 
