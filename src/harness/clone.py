@@ -47,7 +47,7 @@ def clone_repos(
     for repo in catalog.enabled_repos(only, tags):
         dest = catalog.repo_path(harness_root, repo)
         results.append(
-            _clone_one(
+            clone_one(
                 repo,
                 dest,
                 sibling_root=sibling_root,
@@ -60,16 +60,17 @@ def clone_repos(
     return results
 
 
-def _clone_one(
+def clone_one(
     repo: Repo,
     dest: Path,
     *,
     sibling_root: Path,
-    update: bool,
-    dry_run: bool,
-    https: bool,
-    run: RunFn,
+    update: bool = False,
+    dry_run: bool = False,
+    https: bool = False,
+    run: RunFn | None = None,
 ) -> dict[str, Any]:
+    run = run or _run
     if dest.exists() and not (dest / ".git").exists():
         raise HarnessError(
             f"{dest} exists but is not a git repo. "

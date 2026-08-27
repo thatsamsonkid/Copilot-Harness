@@ -49,3 +49,8 @@ def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data:
     assert payload["repos_source"].endswith("repositories.yml")
     assert payload["repos"][0]["placeholder"] is True
     assert payload["repos"][1]["placeholder"] is False
+    assert payload["templates_source"].endswith("templates.yml")
+    assert [item["name"] for item in payload["templates"]] == [
+        "web-starter",
+        "api-starter",
+    ]

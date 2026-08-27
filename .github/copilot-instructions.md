@@ -27,16 +27,35 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 ## Repo layout
 
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`).
+- Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/harness` — clone, Jira basic auth, workspace generate/match, prepare.
+- CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace generate/match, prepare.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness.
 - Secrets: `.env` (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`). Never commit tokens or print them.
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Command choice, flags, and output shapes live in the jira-cli skill.
+Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Jira command choice, flags, and output shapes live in the jira-cli skill.
+
+```bash
+uv run harness templates
+uv run harness templates --tag mobile
+uv run harness bootstrap --template <name> --name <folder>
+```
 
 If `uv` is missing, run `./scripts/setup.sh`. Do not use pip to install this repo.
+
+## Bootstrap a new project
+
+When the user asks to create, scaffold, or bootstrap a new project:
+
+1. Run `uv run harness templates --format json` and treat that list as the source of truth.
+2. If they named a listed template (or one clearly matches), run
+   `uv run harness bootstrap --template <name> --name <folder>`.
+3. If they did not name one, show the listed templates and ask which to use. Do not invent a scaffold when a listed template fits.
+4. Put the new project in a sibling folder. Never `git clone` into this harness directory.
+5. Ask before `--register` (adds the project to `repositories.yml`) or `--fresh-git`.
+6. After bootstrap, follow the CLI `next_steps` and the new repo's own conventions.
 
 ## Constraints
 

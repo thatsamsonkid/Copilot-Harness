@@ -5,8 +5,9 @@ Tooling for using **GitHub Copilot in Visual Studio Code** against a multi-repo 
 Product code does **not** live here. This repo holds:
 
 1. A `repositories.yml` manifest of every product repo, plus feature-focused Code workspaces
-2. A clone script that places those remotes as **siblings** of this harness
-3. A `harness` CLI Copilot can run to pull Jira Cloud tickets over basic auth (no Jira MCP)
+2. A `templates.yml` list of starter remotes used to bootstrap **new** projects
+3. A clone script that places product remotes as **siblings** of this harness
+4. A `harness` CLI Copilot can run to list/bootstrap templates and pull Jira Cloud tickets over basic auth (no Jira MCP)
 
 ```text
 parent/
@@ -30,11 +31,12 @@ Put this repo inside a project folder (for example `~/src/Copilot-Harness`), not
 Then:
 
 1. Edit `repositories.yml` — add each product repo (`name`, GitHub `url`, `tags`).
-2. Copy `.env.example` to `.env` and set Jira Cloud values.
-3. Clone siblings: `./scripts/clone-repos.sh`
-4. Generate workspaces: `harness workspace generate`
-5. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-6. In Copilot Chat, run **Jira Planner**, `/jira-ticket PROJ-123`, or `/jira-cli`
+2. Edit `templates.yml` — add starter remotes you want Copilot or `harness bootstrap` to offer.
+3. Copy `.env.example` to `.env` and set Jira Cloud values.
+4. Clone siblings: `./scripts/clone-repos.sh`
+5. Generate workspaces: `harness workspace generate`
+6. Open a feature workspace, for example `workspaces/frontend.code-workspace`
+7. In Copilot Chat, run **Jira Planner**, `/jira-ticket PROJ-123`, `/jira-cli`, or `/bootstrap-project`
 
 `setup.sh` installs [uv](https://docs.astral.sh/uv/) if needed, syncs `uv.lock` into `.venv`, and installs this package in editable mode. Prefer `uv` over pip:
 
@@ -69,12 +71,60 @@ repositories:
 
 ```bash
 harness repos
+harness templates
 harness clone --tag api
 ```
 
 One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `harness workspace generate`.
 
 Workspace files live in `workspaces/` and always include this harness as the first root so Copilot still sees the CLI and instructions.
+
+## Project templates
+
+`templates.yml` is separate from the product stack. Use it when someone needs a new repo rather than a clone of an existing app.
+
+```yaml
+templates:
+  - name: spartan-stack
+    url: git@github.com:thatsamsonkid/spartan-stack-starter.git
+    tags: [frontend, fullstack, angular]
+    description: Opinionated Spartan / Analog fullstack starter
+    language: typescript
+    kind: fullstack
+```
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `name` | yes | Stable id passed to `--template` |
+| `url` | yes | GitHub clone URL of the starter |
+| `tags` | yes | Labels used to filter (`harness templates --tag mobile`) |
+| `description` | no | Shown in the template list |
+| `language` | no | Primary language hint for Copilot |
+| `kind` | no | `frontend`, `backend`, `mobile`, `fullstack`, … |
+| `default_branch` | no | Defaults to `main` |
+
+```bash
+harness templates
+harness templates --tag mobile
+harness templates react-native
+harness bootstrap --template react-native --name shop-mobile
+harness bootstrap --template spartan-stack --name shop-web --https --dry-run
+```
+
+`bootstrap` clones the listed starter as a sibling, then renames `origin` to `template` so you do not push back to the starter. Optional flags:
+
+| Flag | Effect |
+| --- | --- |
+| `--name` | Sibling folder for the new project (defaults to the template name) |
+| `--https` | Rewrite `git@github.com:` URLs to HTTPS |
+| `--fresh-git` | Replace template history with one bootstrap commit |
+| `--keep-remote` | Leave `origin` pointing at the template |
+| `--remote` | Set `origin` on the new project |
+| `--register` | Append the project to `repositories.yml` |
+| `--tags` | Tags to store when registering |
+| `--dry-run` | Print the plan without cloning |
+
+Copilot uses the same commands. If you ask it to bootstrap a new project, it should run `harness templates` and then `harness bootstrap --template <name> --name <folder>` instead of scaffolding from scratch. The `/bootstrap-project` prompt follows that loop.
 
 ## Jira CLI (basic auth)
 
@@ -124,6 +174,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`). Place
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
+| `.github/prompts/bootstrap-project.prompt.md` | `/bootstrap-project` |
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 

@@ -16,6 +16,12 @@
       "presentation": { "reveal": "always" }
     },
     {
+      "label": "Harness: list templates",
+      "type": "shell",
+      "command": "uv run harness templates --format text",
+      "problemMatcher": []
+    },
+    {
       "label": "Harness: generate workspaces",
       "type": "shell",
       "command": "uv run harness workspace generate",
