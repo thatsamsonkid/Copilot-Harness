@@ -10,6 +10,7 @@ from harness.catalog import Catalog
 from harness.context import inspect_repo
 from harness.jira_client import JiraClient, jira_settings_from_env
 from harness.onboard import onboarding_steps
+from harness.uv_check import detect_uv, uv_missing_action
 from harness.workspace import generate_workspaces
 
 
@@ -20,6 +21,14 @@ def run_doctor(
     ping_jira: bool = False,
 ) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
+    uv = detect_uv()
+    checks.append(
+        _check(
+            "uv",
+            bool(uv["present"]),
+            f"uv is on PATH ({uv['path']})" if uv["present"] else uv_missing_action(uv),
+        )
+    )
     checks.append(
         _check(
             "git",
@@ -144,7 +153,7 @@ def run_doctor(
         checks.append(_check("jira_env", True, "Jira env vars are present"))
 
     ok = all(item["ok"] or item.get("advisory") for item in checks)
-    steps = onboarding_steps(catalog, harness_root)
+    steps = onboarding_steps(catalog, harness_root, uv=uv)
     return {
         "ok": ok,
         "harness_root": str(harness_root),
@@ -152,6 +161,7 @@ def run_doctor(
         "repos": repos,
         "workspaces": generated,
         "jira": jira,
+        "uv": uv,
         "checks": checks,
         "onboarding": steps,
     }

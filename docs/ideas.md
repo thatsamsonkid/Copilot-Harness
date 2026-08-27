@@ -11,6 +11,7 @@ What we should **not** do: copy product architecture or style guides into this r
 - `/get-started` walks a human through `.env`, the token doc, `repositories.yml`, and clone/workspace generate.
 - `harness init` prints that checklist as JSON. `--interactive` collects email/URL/token in a local TTY only.
 - `docs/jira-api-token.md` is the token how-to.
+- `docs/install-uv.md` plus `setup.sh` / `setup.ps1` so `/get-started` can send macOS and Windows users to the right uv install.
 
 **Worth adding next**
 

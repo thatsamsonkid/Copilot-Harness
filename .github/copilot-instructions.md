@@ -41,7 +41,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 
 Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Jira command shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context.
 
-If `uv` is missing, run `./scripts/setup.sh`. Do not use pip to install this repo.
+If `uv` is missing, follow `docs/install-uv.md` for the user's OS. macOS/Linux: `./scripts/setup.sh`. Windows: `.\scripts\setup.ps1`. Do not use pip to install this repo. Do not tell Windows users to run the bash setup script.
 
 ## Constraints
 

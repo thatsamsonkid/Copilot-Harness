@@ -10,7 +10,7 @@ This workspace talks to Jira Cloud only through the `harness` CLI. There is no J
 
 ## Hard rules
 
-- Run `uv run harness <command>` from the harness repo (or `./scripts/harness.sh`). If `uv` is missing, run `./scripts/setup.sh` first.
+- Run `uv run harness <command>` from the harness repo (or `./scripts/harness.sh`). If `uv` is missing, follow `docs/install-uv.md` (macOS/Linux: `./scripts/setup.sh`; Windows: `.\scripts\setup.ps1`).
 - Default `--format` is `json`. Keep JSON. Read stdout. Errors are JSON on stderr with a non-zero exit.
 - Treat CLI JSON as complete. It is already filtered by `catalog/stack.yaml` `jira.fields`. Do not ask Jira for more fields.
 - Never curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
@@ -75,7 +75,7 @@ This skill is the CLI contract, not an implementer.
 | Missing `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | Tell the user to copy `.env.example` to `.env` and fill it in themselves |
 | 401 / 403 from the CLI | Tell them to rotate the Atlassian API token in `.env` |
 | Placeholder clone URLs | Tell them to edit `repositories.yml`; do not invent remotes |
-| `uv` missing | `./scripts/setup.sh`, then retry with `./scripts/harness.sh` |
+| `uv` missing | `docs/install-uv.md` — macOS/Linux `setup.sh`, Windows `setup.ps1` |
 
 ## Related Copilot customizations
 

@@ -34,5 +34,9 @@ def test_skill_keeps_tokens_out_of_chat():
         "docs/jira-api-token.md",
         "never ask the user to paste a token",
         "init --interactive",
+        "docs/install-uv.md",
+        "macos",
+        "windows",
+        "setup.ps1",
     ):
         assert token in lowered

@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 if ! command -v uv >/dev/null 2>&1; then
-  echo "Installing uv..."
+  echo "Installing uv (macOS/Linux). Windows users should run .\\scripts\\setup.ps1 — see docs/install-uv.md"
   curl -LsSf https://astral.sh/uv/install.sh | sh
   export PATH="${HOME}/.local/bin:${PATH}"
 fi

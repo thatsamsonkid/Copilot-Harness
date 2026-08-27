@@ -12,6 +12,7 @@ from harness import HarnessError
 from harness.catalog import Catalog
 from harness.envfile import env_file_keys, upsert_env_file
 from harness.jira_client import JiraClient, jira_settings_from_env
+from harness.uv_check import UV_DOC, detect_uv, uv_missing_action
 
 TOKEN_DOC = "docs/jira-api-token.md"
 TOKEN_URL = "https://id.atlassian.com/manage-profile/security/api-tokens"
@@ -45,7 +46,8 @@ def run_init(
         for key, value in updates.items():
             os.environ[key] = value
 
-    steps = onboarding_steps(catalog, harness_root)
+    uv = detect_uv()
+    steps = onboarding_steps(catalog, harness_root, uv=uv)
     jira = None
     if ping_jira and _jira_env_present():
         try:
@@ -65,17 +67,31 @@ def run_init(
         "wrote_keys": written_keys,
         "token_docs": TOKEN_DOC,
         "token_url": TOKEN_URL,
+        "uv_docs": UV_DOC,
+        "uv": uv,
         "interactive": interactive,
         "jira": jira,
         "steps": steps,
-        "next_commands": _next_commands(steps),
+        "next_commands": _next_commands(steps, uv=uv),
     }
 
 
-def onboarding_steps(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]]:
+def onboarding_steps(
+    catalog: Catalog,
+    harness_root: Path,
+    *,
+    uv: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    uv = uv or detect_uv()
     env_path = harness_root / ".env"
     file_keys = env_file_keys(env_path)
     steps: list[dict[str, Any]] = [
+        _step(
+            "uv",
+            bool(uv.get("present")),
+            f"uv is on PATH ({uv.get('path')})" if uv.get("present") else "uv is not on PATH",
+            action=None if uv.get("present") else uv_missing_action(uv),
+        ),
         _step(
             "env_file",
             env_path.exists(),
@@ -238,9 +254,15 @@ def _set_step(steps: list[dict[str, Any]], id: str, ok: bool, detail: str) -> No
     steps.append(_step(id, ok, detail))
 
 
-def _next_commands(steps: list[dict[str, Any]]) -> list[str]:
+def _next_commands(
+    steps: list[dict[str, Any]], *, uv: dict[str, Any] | None = None
+) -> list[str]:
     ids = {step["id"] for step in steps if not step["ok"] and not step.get("optional")}
     commands: list[str] = []
+    if "uv" in ids:
+        info = uv or detect_uv()
+        commands.append(uv_missing_action(info))
+        commands.append(f"Then open a new terminal and run {info['setup_script']}")
     if ids.intersection({"env_file", "jira_base_url", "jira_email", "jira_api_token"}):
         commands.append("Edit .env locally. Token docs: docs/jira-api-token.md")
         commands.append("uv run harness init --interactive")

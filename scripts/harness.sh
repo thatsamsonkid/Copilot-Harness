@@ -17,5 +17,5 @@ if command -v harness >/dev/null 2>&1; then
   exec harness "$@"
 fi
 
-echo "uv is required. Run ./scripts/setup.sh" >&2
+echo "uv is required. See docs/install-uv.md (macOS/Linux: ./scripts/setup.sh, Windows: .\\scripts\\setup.ps1)" >&2
 exit 127

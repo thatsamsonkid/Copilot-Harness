@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 
 from harness.cli import main
-from harness.onboard import run_init
+from harness.onboard import onboarding_steps, run_init
+from harness.uv_check import detect_uv
 
 
 def _clear_jira_env(monkeypatch) -> None:
@@ -33,7 +34,11 @@ def test_init_lists_missing_jira_keys_without_reading_secrets(
     assert payload["created_env"] is True
     assert payload["ready"] is False
     assert payload["token_docs"] == "docs/jira-api-token.md"
+    assert payload["uv_docs"] == "docs/install-uv.md"
+    assert "macos" in payload["uv"]["install"]
+    assert "windows" in payload["uv"]["install"]
     ids = {step["id"]: step for step in payload["steps"]}
+    assert "uv" in ids
     assert ids["jira_api_token"]["ok"] is False
     assert "docs/jira-api-token.md" in ids["jira_api_token"]["action"]
     dumped = json.dumps(payload)
@@ -85,3 +90,12 @@ def test_init_treats_env_file_values_as_present(
     assert ids["jira_email"]["ok"] is True
     assert ids["jira_api_token"]["ok"] is True
     assert "hidden" not in json.dumps(payload)
+
+
+def test_onboarding_uv_step_uses_os_specific_action(harness_root: Path, catalog):
+    missing = detect_uv(which=lambda _name: None, system="Windows")
+    steps = onboarding_steps(catalog, harness_root, uv=missing)
+    uv_step = next(step for step in steps if step["id"] == "uv")
+    assert uv_step["ok"] is False
+    assert "setup.ps1" in uv_step["action"]
+    assert "docs/install-uv.md" in uv_step["action"]

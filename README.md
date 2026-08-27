@@ -24,8 +24,14 @@ Put this repo inside a project folder (for example `~/src/Copilot-Harness`), not
 ## Quick start
 
 ```bash
+# macOS / Linux
 ./scripts/setup.sh
+
+# Windows (PowerShell)
+.\scripts\setup.ps1
 ```
+
+If `uv` is not installed yet, `/get-started` and `harness init` will say so and point at [docs/install-uv.md](docs/install-uv.md) for the macOS or Windows command.
 
 Then:
 
@@ -36,7 +42,7 @@ Then:
 5. Open a feature workspace, for example `workspaces/frontend.code-workspace`
 6. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, or `/orient`
 
-`setup.sh` installs [uv](https://docs.astral.sh/uv/) if needed, syncs `uv.lock` into `.venv`, and installs this package in editable mode. Prefer `uv` over pip:
+`setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, and install this package in editable mode. Prefer `uv` over pip:
 
 ```bash
 uv run harness doctor

@@ -1,6 +1,6 @@
 ---
 name: get-started
-description: Walk a new user through harness setup (Jira email, API token, repositories.yml, clones). Use when someone is first opening the harness, asks how to create an Atlassian token, or auth/doctor is failing. Never read .env, never ask for the token in chat, never use a Jira MCP server.
+description: Walk a new user through harness setup (install uv on macOS or Windows, Jira email, API token, repositories.yml, clones). Use when someone is first opening the harness, uv is missing, asks how to create an Atlassian token, or auth/doctor is failing. Never read .env, never ask for the token in chat, never use a Jira MCP server.
 ---
 
 # Get started
@@ -11,21 +11,25 @@ This skill is the first-run contract. Secrets stay in `.env`. Chat only sees `ha
 
 | User intent | Command |
 | --- | --- |
+| Check uv | `uv --version` |
 | First-run checklist | `uv run harness init --format json` |
 | Fill missing values in a local terminal | Tell them to run `uv run harness init --interactive` themselves |
 | Recheck catalog, clones, Jira env | `uv run harness doctor` |
 | Live Jira ping | `uv run harness doctor --ping-jira` or `uv run harness jira whoami` |
 
-If `uv` is missing, `./scripts/setup.sh` then `./scripts/harness.sh`.
-
 ## Walkthrough order
 
-1. `.env` exists (copy from `.env.example` if needed).
-2. `JIRA_BASE_URL` — `https://your-domain.atlassian.net`.
-3. `JIRA_EMAIL` — the Atlassian account email that will own the token.
-4. `JIRA_API_TOKEN` — they create it using `docs/jira-api-token.md` and paste it into `.env` only.
-5. `repositories.yml` — replace `YOUR_ORG` placeholder remotes.
-6. `./scripts/clone-repos.sh` then `uv run harness workspace generate`.
+1. Confirm `uv` is installed. Run `uv --version`. If that fails, stop and use `docs/install-uv.md`:
+   - macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh` then `./scripts/setup.sh`
+   - Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` then `.\scripts\setup.ps1`
+   - Linux: same curl command as macOS, then `./scripts/setup.sh`
+   Do **not** tell a Windows user to run `setup.sh`. Tell them to open a new terminal after install so PATH updates.
+2. `.env` exists (copy from `.env.example` if needed).
+3. `JIRA_BASE_URL` — `https://your-domain.atlassian.net`.
+4. `JIRA_EMAIL` — the Atlassian account email that will own the token.
+5. `JIRA_API_TOKEN` — they create it using `docs/jira-api-token.md` and paste it into `.env` only.
+6. `repositories.yml` — replace `YOUR_ORG` placeholder remotes.
+7. `./scripts/clone-repos.sh` then `uv run harness workspace generate`.
 
 ## Hard rules
 
@@ -39,6 +43,7 @@ If `uv` is missing, `./scripts/setup.sh` then `./scripts/harness.sh`.
 
 | Symptom | What to tell them |
 | --- | --- |
+| `uv` missing | `docs/install-uv.md` — macOS/Linux `setup.sh`, Windows `setup.ps1` |
 | Missing Jira keys | Edit `.env` using `docs/jira-api-token.md` |
 | 401 / 403 | Rotate the token on the Atlassian page and update `.env` |
 | Placeholder clone URLs | Edit `repositories.yml`; do not invent remotes |
