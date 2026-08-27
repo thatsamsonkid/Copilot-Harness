@@ -1,0 +1,38 @@
+{
+  "folders": [
+    {
+      "name": "harness",
+      "path": ".."
+    },
+    {
+      "name": "frontend",
+      "path": "../../frontend"
+    },
+    {
+      "name": "backend",
+      "path": "../../backend"
+    },
+    {
+      "name": "mobile",
+      "path": "../../mobile"
+    },
+    {
+      "name": "infra",
+      "path": "../../infra"
+    }
+  ],
+  "settings": {
+    "git.autoRepositoryDetection": true,
+    "git.detectSubmodules": false,
+    "git.repositoryScanMaxDepth": 1,
+    "git.openRepositoryInParentFolders": "never",
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+    "chat.useCustomizationsInParentRepositories": true
+  },
+  "extensions": {
+    "recommendations": [
+      "GitHub.copilot",
+      "GitHub.copilot-chat"
+    ]
+  }
+}

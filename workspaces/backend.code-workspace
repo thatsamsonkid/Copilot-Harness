@@ -1,0 +1,26 @@
+{
+  "folders": [
+    {
+      "name": "harness",
+      "path": ".."
+    },
+    {
+      "name": "backend",
+      "path": "../../backend"
+    }
+  ],
+  "settings": {
+    "git.autoRepositoryDetection": true,
+    "git.detectSubmodules": false,
+    "git.repositoryScanMaxDepth": 1,
+    "git.openRepositoryInParentFolders": "never",
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+    "chat.useCustomizationsInParentRepositories": true
+  },
+  "extensions": {
+    "recommendations": [
+      "GitHub.copilot",
+      "GitHub.copilot-chat"
+    ]
+  }
+}

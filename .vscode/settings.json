@@ -1,0 +1,18 @@
+{
+  "git.autoRepositoryDetection": true,
+  "git.detectSubmodules": false,
+  "git.repositoryScanMaxDepth": 1,
+  "git.openRepositoryInParentFolders": "never",
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.useCustomizationsInParentRepositories": true,
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "files.exclude": {
+    "**/.env": true,
+    "**/__pycache__": true,
+    "**/*.egg-info": true,
+    ".pytest_cache": true
+  },
+  "search.exclude": {
+    "**/.env": true
+  }
+}

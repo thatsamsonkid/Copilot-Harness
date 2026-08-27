@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Harness: setup",
+      "type": "shell",
+      "command": "./scripts/setup.sh",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "Harness: clone sibling repos",
+      "type": "shell",
+      "command": "./scripts/clone-repos.sh",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "Harness: generate workspaces",
+      "type": "shell",
+      "command": "uv run harness workspace generate",
+      "problemMatcher": []
+    },
+    {
+      "label": "Harness: doctor",
+      "type": "shell",
+      "command": "uv run harness doctor",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+# Feature workspaces and Jira routing.
+# Repository remotes live in ../repositories.yml — reference them by name
+# in `folders`, or pull a set in by `tags`.
+
+jira:
+  # Allowlist of fields the CLI returns to Copilot. Raw Jira payloads are never emitted.
+  include_comments: true
+  max_comments: 15
+  fields:
+    - key
+    - url
+    - summary
+    - description
+    - status
+    - issue_type
+    - priority
+    - project
+    - assignee
+    - labels
+    - components
+    - parent
+    - issuelinks
+    - comments
+  # Optional Jira custom field ids to fetch. Map them to output names below
+  # and add those names to `fields` to expose them.
+  extra_fields: []
+  field_aliases: {}
+
+workspaces:
+  - id: frontend
+    name: Frontend
+    description: UI work with API types available for contract changes
+    folders: [frontend, backend]
+    match:
+      projects: [WEB, UI]
+      components: [Frontend, Web]
+      labels: [frontend, ui]
+      issue_types: []
+      keywords: [css, angular, react, page, button, component, ui, ux, stylesheet]
+
+  - id: backend
+    name: Backend
+    description: API, services, and data changes
+    folders: [backend]
+    match:
+      projects: [API, BE]
+      components: [Backend, API]
+      labels: [backend, api]
+      issue_types: []
+      keywords: [endpoint, api, service, database, migration, controller]
+
+  - id: mobile
+    name: Mobile
+    description: Mobile client work with API access
+    folders: [mobile, backend]
+    match:
+      projects: [MOB]
+      components: [Mobile]
+      labels: [mobile, ios, android]
+      issue_types: []
+      keywords: [ios, android, expo, react native, mobile]
+
+  - id: platform
+    name: Platform
+    description: Cross-cutting work across the full stack
+    tags: [ui, api, mobile, infra]
+    fallback: true
+    match:
+      projects: [PLAT]
+      components: [Platform]
+      labels: [fullstack, platform, infra]
+      issue_types: []
+      keywords: [e2e, integration, cross-cutting, deploy, terraform]
