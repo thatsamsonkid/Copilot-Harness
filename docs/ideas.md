@@ -86,6 +86,7 @@ Workspaces mix Java, Angular, and other apps. A single `docker-compose`-style "s
 - `harness start` inspects workspace siblings and prints a JSON plan: kind, command, port hint, proxy files, start order. It does **not** launch processes.
 - Optional thin `repositories.yml` `start:` override (`command`, `port`, `role`, `wait`) when discovery is wrong.
 - `/start-workspace` plus the workspace-start skill tell Copilot to start **one app at a time**: backends first, read the live port, rewrite frontend proxies in the working tree, then start UIs.
+- `harness start --workspace <id> --save` writes `workspaces/<id>.start.yml` next to the `.code-workspace` file. Later starts prefer that sequence. `--refresh` rediscovers.
 
 **Worth adding next**
 

@@ -12,6 +12,9 @@
 #     port: 8080
 #     role: backend
 #     wait: http://localhost:8080/actuator/health
+# Workspace boot order is saved separately next to the workspace file:
+#   harness start --workspace frontend --save
+#   → workspaces/frontend.start.yml
 #
 # Use group or a nested path to organize clones without putting git
 # trees inside this harness:

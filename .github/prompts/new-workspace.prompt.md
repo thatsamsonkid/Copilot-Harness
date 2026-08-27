@@ -38,6 +38,7 @@ uv run harness workspace create <id> --projects frontend,backend --name "Checkou
    - catalog path and `workspace.file`
    - `open_command` (ask them to run it if those roots are not in this window)
    - any selected repo that is not cloned (`harness clone --only …`)
+   - that they can pin the boot sequence later with `harness start --workspace <id> --save` (`workspaces/<id>.start.yml`)
 9. Stop. Do not implement product code.
 
 Never nest git clones inside this harness repo. Never invent repository names that are not in `harness repos`.

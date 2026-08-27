@@ -210,7 +210,7 @@ The API token stays in `.env`. The CLI loads it in-process for Basic auth. Copil
 
 `prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, and print the `code` command that opens the matching workspace.
 
-`harness start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files). It does not launch processes. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. Optional `repositories.yml` `start:` overrides (`command`, `port`, `role`, `wait`) win when discovery is wrong.
+`harness start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files). It does not launch processes. After the first good plan, pin it next to the workspace with `harness start --workspace <id> --save`. That writes `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. Optional `repositories.yml` `start:` overrides (`command`, `port`, `role`, `wait`) win when discovery or a saved plan is wrong for that repo.
 
 Stdout is JSON by default (`--format markdown` or `text` if you want a human view). Errors are JSON on stderr.
 
@@ -250,7 +250,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/orient` is for vague prompts against large repos. It runs `harness context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
 
-`/start-workspace` is for booting the local apps in the open feature workspace. It runs `harness start`, then starts one process at a time in **one VS Code terminal per app** (reuse that app’s terminal if it is already running) so Angular proxies can point at live backend ports.
+`/start-workspace` is for booting the local apps in the open feature workspace. It runs `harness start`, prefers a saved `workspaces/<id>.start.yml` when present, then starts one process at a time in **one VS Code terminal per app** (reuse that app’s terminal if it is already running) so Angular proxies can point at live backend ports.
 
 Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `docs/adr/`). The harness only discovers them. Convention: [docs/knowledge.md](docs/knowledge.md). More ideas: [docs/ideas.md](docs/ideas.md).
 
@@ -260,7 +260,7 @@ Typical loop:
 2. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli`
 3. Copilot runs `harness prepare PROJ-123`
 4. You open the recommended `.code-workspace` so every needed repo is a root
-5. To run the local apps: `/start-workspace` (or `uv run harness start --workspace <id>`)
+5. To run the local apps: `/start-workspace` (or `uv run harness start --workspace <id>`). Save the sequence once with `--save` so later chats reuse `workspaces/<id>.start.yml`.
 6. Copilot writes a plan (using Graphify reports and each repo's instructions when present), then hands off to Implementer when you are ready
 
 To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.

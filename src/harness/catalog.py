@@ -205,6 +205,11 @@ class Catalog:
         directory = PERSONAL_WORKSPACES_DIR if workspace.personal else WORKSPACES_DIR
         return harness_root / directory / f"{workspace.id}.code-workspace"
 
+    def workspace_start_file(self, harness_root: Path, workspace: Workspace | str) -> Path:
+        """YAML start sequence saved next to the .code-workspace file."""
+        workspace_file = self.workspace_file(harness_root, workspace)
+        return workspace_file.with_name(f"{workspace_file.stem}.start.yml")
+
 
 def load_catalog(
     harness_root: Path,
@@ -636,6 +641,10 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                 "fallback": workspace.fallback,
                 "personal": workspace.personal,
                 "file": str(catalog.workspace_file(harness_root, workspace)),
+                "start_file": str(catalog.workspace_start_file(harness_root, workspace)),
+                "start_plan": catalog.workspace_start_file(
+                    harness_root, workspace
+                ).is_file(),
                 "match": {
                     "projects": workspace.match.projects,
                     "components": workspace.match.components,

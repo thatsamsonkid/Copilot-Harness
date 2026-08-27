@@ -85,6 +85,7 @@ def list_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]
     result: list[dict[str, Any]] = []
     for workspace in catalog.workspaces:
         path = catalog.workspace_file(harness_root, workspace)
+        start_file = catalog.workspace_start_file(harness_root, workspace)
         repos = []
         for repo_id in catalog.workspace_repo_names(workspace):
             repo_path = catalog.repo_path(harness_root, repo_id)
@@ -106,6 +107,8 @@ def list_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]
                 "personal": workspace.personal,
                 "file": str(path),
                 "exists": path.exists(),
+                "start_file": str(start_file),
+                "start_plan": start_file.is_file(),
                 "repos": repos,
             }
         )

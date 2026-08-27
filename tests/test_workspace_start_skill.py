@@ -50,6 +50,9 @@ def test_skill_is_plan_then_sequential_start():
         "do not commit",
         "repositories.yml",
         "docker compose",
+        "--save",
+        "start.yml",
+        "plan_source",
     ):
         assert token in lowered
 
@@ -64,3 +67,5 @@ def test_prompt_points_at_the_skill():
     assert "one vs code terminal per app" in lowered
     assert "reuse" in lowered
     assert "never start a second" in lowered
+    assert "--save" in lowered
+    assert "start.yml" in lowered

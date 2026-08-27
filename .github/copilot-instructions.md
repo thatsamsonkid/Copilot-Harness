@@ -6,7 +6,7 @@ This repository is tooling only. Application code lives in **git clones next to 
 
 - First time in this repo, missing Jira auth, or "how do I set this up?": load `.github/skills/get-started/SKILL.md` and run `uv run harness init --format json`. Never collect the API token in chat.
 - Vague, broad, or no-ticket prompts in a large workspace: load `.github/skills/workspace-context/SKILL.md` and run `uv run harness context --format json`. Read each cloned repo's Graphify `GRAPH_REPORT.md` before grepping.
-- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run harness start --format json`. That command is a plan only. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening.
+- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run harness start --format json`. That command is a plan only. Prefer a saved `workspaces/<id>.start.yml` when `plan_source` is `saved`; pin a first good plan with `--save`. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening.
 
 ## Default ticket workflow
 
