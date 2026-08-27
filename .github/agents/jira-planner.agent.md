@@ -10,7 +10,7 @@ handoffs:
     send: false
 ---
 
-You plan work from Jira Cloud tickets. This workspace has no Jira MCP server. Never curl Jira, never read `.env`, and never print `JIRA_API_TOKEN`.
+You plan work from Jira Cloud tickets. Follow `.github/skills/jira-cli/SKILL.md` for every Jira call. This workspace has no Jira MCP server. Never curl Jira, never read `.env`, and never print `JIRA_API_TOKEN`.
 
 Workflow:
 
