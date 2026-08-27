@@ -29,6 +29,8 @@ def to_text(payload: Any) -> str:
         )
     if isinstance(payload, dict) and "template" in payload and "project" in payload:
         return _bootstrap_text(payload)
+    if isinstance(payload, dict) and "services" in payload and "order" in payload:
+        return _start_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -49,6 +51,8 @@ def to_markdown(payload: Any) -> str:
         )
     if isinstance(payload, dict) and "template" in payload and "project" in payload:
         return _bootstrap_markdown(payload)
+    if isinstance(payload, dict) and "services" in payload and "order" in payload:
+        return _start_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -187,6 +191,63 @@ def _templates_markdown(payload: dict[str, Any]) -> str:
             ]
         )
     return "\n".join(lines).strip() + "\n"
+
+
+def _start_text(payload: dict[str, Any]) -> str:
+    workspace = payload.get("workspace") or "all enabled repos"
+    lines = [f"Start plan ({workspace})", ""]
+    services = payload.get("services") or []
+    if not services:
+        lines.append("No services in this plan.")
+        return "\n".join(lines).strip() + "\n"
+    for index, item in enumerate(services, start=1):
+        port = item.get("port_hint")
+        port_label = f"port {port}" if port else "port unknown"
+        blocked = f" BLOCKED: {item['blocked']}" if item.get("blocked") else ""
+        lines.append(
+            f"{index}. {item.get('name')} [{item.get('kind')}/{item.get('role')}] "
+            f"{item.get('command') or '(no command)'} ({port_label}){blocked}"
+        )
+        for proxy in item.get("proxies") or []:
+            targets = ", ".join(
+                str(target.get("target"))
+                for target in (proxy.get("targets") or [])
+                if target.get("target")
+            )
+            suffix = f" -> {targets}" if targets else ""
+            lines.append(f"   proxy {proxy.get('relative')}{suffix}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _start_markdown(payload: dict[str, Any]) -> str:
+    workspace = payload.get("workspace") or "all enabled repos"
+    lines = [f"# Start plan (`{workspace}`)", ""]
+    services = payload.get("services") or []
+    if not services:
+        lines.append("_No services in this plan._")
+        return "\n".join(lines).strip() + "\n"
+    for index, item in enumerate(services, start=1):
+        port = item.get("port_hint")
+        port_label = f"port `{port}`" if port else "port unknown until start"
+        command = f"`{item['command']}`" if item.get("command") else "_no command_"
+        lines.append(
+            f"{index}. **{item.get('name')}** ({item.get('kind')} / {item.get('role')}) "
+            f"— {command} — {port_label}"
+        )
+        if item.get("blocked"):
+            lines.append(f"   - Blocked: {item['blocked']}")
+        for proxy in item.get("proxies") or []:
+            targets = ", ".join(
+                f"`{target.get('target')}`"
+                for target in (proxy.get("targets") or [])
+                if target.get("target")
+            )
+            detail = f" → {targets}" if targets else ""
+            lines.append(f"   - Proxy `{proxy.get('relative')}`{detail}")
+        for note in item.get("notes") or []:
+            lines.append(f"   - {note}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def _bootstrap_text(payload: dict[str, Any]) -> str:

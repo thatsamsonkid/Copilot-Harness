@@ -279,6 +279,18 @@ def _repo_yaml_entry(repo: Repo, indent: str = "  ") -> str:
         lines.append(f"{field}path: {repo.path}")
     if repo.description:
         lines.append(f"{field}description: {_yaml_scalar(repo.description)}")
+    if repo.start.configured():
+        lines.append(f"{field}start:")
+        if repo.start.command:
+            lines.append(f"{field}  command: {_yaml_scalar(repo.start.command)}")
+        if repo.start.port is not None:
+            lines.append(f"{field}  port: {repo.start.port}")
+        if repo.start.role:
+            lines.append(f"{field}  role: {repo.start.role}")
+        if repo.start.wait:
+            lines.append(f"{field}  wait: {_yaml_scalar(repo.start.wait)}")
+        if repo.start.cwd:
+            lines.append(f"{field}  cwd: {repo.start.cwd}")
     return "\n".join(lines) + "\n"
 
 

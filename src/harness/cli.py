@@ -18,6 +18,7 @@ from harness.paths import find_harness_root, load_dotenv_files
 from harness.prepare import prepare_issue
 from harness.prompt import PromptSession
 from harness.routing import recommend_workspace
+from harness.start import collect_start_plan
 from harness.templates import get_template, template_to_dict, templates_payload
 from harness.workspace import generate_workspaces, list_workspaces, open_workspace
 from harness.workspace_create import create_workspace
@@ -223,6 +224,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     context.add_argument("--repo", help="Comma-separated repository names")
 
+    start = sub.add_parser(
+        "start",
+        parents=[shared],
+        help="Print a workspace start plan (commands, ports, proxies). Does not launch processes",
+    )
+    start.add_argument("--workspace", help="Limit the plan to a catalog workspace id")
+    start.add_argument("--repo", help="Comma-separated repository names")
+
     templates = sub.add_parser(
         "templates",
         parents=[shared],
@@ -350,6 +359,13 @@ def dispatch(args: argparse.Namespace) -> Any:
         return collect_context(
             catalog,
             harness_root,
+            only=_split_ids(args.repo),
+        )
+    if args.command == "start":
+        return collect_start_plan(
+            catalog,
+            harness_root,
+            workspace_id=args.workspace,
             only=_split_ids(args.repo),
         )
     if args.command == "catalog":

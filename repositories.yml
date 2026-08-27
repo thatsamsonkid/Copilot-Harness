@@ -4,8 +4,14 @@
 #   <harness-parent>/<path or group/name or name>
 #
 # Required per entry: name, url, tags
-# Optional: path, group, default_branch, description, enabled, graphify
+# Optional: path, group, default_branch, description, enabled, graphify, start
 # graphify.out defaults to graphify-out inside that clone.
+# start is a thin override when `harness start` discovery is wrong:
+#   start:
+#     command: ./mvnw spring-boot:run
+#     port: 8080
+#     role: backend
+#     wait: http://localhost:8080/actuator/health
 #
 # Use group or a nested path to organize clones without putting git
 # trees inside this harness:

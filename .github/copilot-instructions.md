@@ -6,6 +6,7 @@ This repository is tooling only. Application code lives in **git clones next to 
 
 - First time in this repo, missing Jira auth, or "how do I set this up?": load `.github/skills/get-started/SKILL.md` and run `uv run harness init --format json`. Never collect the API token in chat.
 - Vague, broad, or no-ticket prompts in a large workspace: load `.github/skills/workspace-context/SKILL.md` and run `uv run harness context --format json`. Read each cloned repo's Graphify `GRAPH_REPORT.md` before grepping.
+- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run harness start --format json`. That command is a plan only. Start one process at a time; rewrite Angular proxies after backends are listening.
 
 ## Default ticket workflow
 
@@ -34,13 +35,13 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context.
+- CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context, start.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness.
 - Secrets: `.env` (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`). Never commit tokens or print them.
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Jira command choice, flags, and output shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context.
+Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Jira command choice, flags, and output shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start.
 
 ```bash
 uv run harness templates

@@ -15,6 +15,7 @@ To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent
 
 First-run setup: `.github/skills/get-started/SKILL.md` (`uv run harness init`).
 Vague or large-repo prompts: `.github/skills/workspace-context/SKILL.md` (`uv run harness context`).
+Local stack start: `.github/skills/workspace-start/SKILL.md` (`uv run harness start`).
 For any Jira key, follow `.github/skills/jira-cli/SKILL.md`:
 
 ```bash
