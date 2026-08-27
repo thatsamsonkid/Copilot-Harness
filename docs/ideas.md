@@ -77,6 +77,23 @@ Feature notes and ADRs belong in the product repo that changed (`docs/features/`
 - Optional `knowledge.dirs` override on a `repositories.yml` entry if a monorepo keeps notes somewhere else.
 - Confluence later, and only for specs that already live there — never as the implementation source of truth.
 
+## 5. Local stack start
+
+Workspaces mix Java, Angular, and other apps. A single `docker-compose`-style "start everything" command fails for the reasons the stack is messy: start commands differ, some ports are only known after boot, and Angular `proxy.conf` files have to point at those live local backends.
+
+**In this PR**
+
+- `harness start` inspects workspace siblings and prints a JSON plan: kind, command, port hint, proxy files, start order. It does **not** launch processes.
+- Optional thin `repositories.yml` `start:` override (`command`, `port`, `role`, `wait`) when discovery is wrong.
+- `/start-workspace` plus the workspace-start skill tell Copilot to start **one app at a time**: backends first, read the live port, rewrite frontend proxies in the working tree, then start UIs.
+
+**Worth adding next**
+
+- `harness start status` that probes `listen:<port>` / health URLs after the agent has started things.
+- A gitignored `.harness/runtime.json` of last-known ports for the session (never commit it).
+- A generated local proxy overlay instead of editing the committed `proxy.conf.json`, if teams do not want dirty trees.
+- Compose profiles only when the user asks; do not make compose the default start path.
+
 ## Other ideas (when you are ready)
 
 These are separate from the three themes but fit the same harness:

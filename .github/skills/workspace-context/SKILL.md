@@ -14,6 +14,7 @@ Product code lives in clones next to this harness (flat siblings or grouped fold
 | All enabled repos | `uv run harness context --format json` |
 | One or more repos | `uv run harness context --repo frontend,backend --format json` |
 | Ticket plus routing | `uv run harness prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`) |
+| Local stack start plan | `uv run harness start --format json` (see the workspace-start skill) |
 
 ## Vague or low-context prompts
 

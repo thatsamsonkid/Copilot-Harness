@@ -35,6 +35,8 @@ def write_harness_config(root: Path, data: dict) -> Path:
         )
         if item.get("graphify") is not None:
             repositories[-1]["graphify"] = item["graphify"]
+        if item.get("start") is not None:
+            repositories[-1]["start"] = item["start"]
         if repositories[-1]["path"] is None:
             repositories[-1].pop("path")
         if repositories[-1]["group"] is None:

@@ -94,6 +94,7 @@ repositories:
 | `path` | no | Exact destination under `parent_dir`. May be nested (`frontend/shop-web`). Defaults to `name`, or `group/name` when `group` is set |
 | `default_branch` | no | Defaults to `main` |
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
+| `start` | no | Thin override for `harness start`: `command`, `port`, `role`, `wait` |
 
 `catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
 
@@ -200,6 +201,7 @@ uv run harness jira context PROJ-123
 uv run harness jira search 'project = PROJ AND status != Done'
 uv run harness prepare PROJ-123
 uv run harness context
+uv run harness start --workspace frontend
 ```
 
 The CLI never prints the raw Jira REST payload. `catalog/stack.yaml` `jira.fields` is an allowlist of keys Copilot sees. Add custom fields with `extra_fields` + `field_aliases`, then list the alias in `fields`.
@@ -207,6 +209,8 @@ The CLI never prints the raw Jira REST payload. `catalog/stack.yaml` `jira.field
 The API token stays in `.env`. The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 
 `prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, and print the `code` command that opens the matching workspace.
+
+`harness start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files). It does not launch processes. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. Optional `repositories.yml` `start:` overrides (`command`, `port`, `role`, `wait`) win when discovery is wrong.
 
 Stdout is JSON by default (`--format markdown` or `text` if you want a human view). Errors are JSON on stderr.
 
@@ -227,11 +231,14 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | --- | --- |
 | `.github/skills/get-started/SKILL.md` | First-run walkthrough (`/get-started`) |
 | `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
+| `.github/skills/workspace-start/SKILL.md` | Local stack plan + sequential start (`/start-workspace`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
 | `.github/prompts/new-workspace.prompt.md` | `/new-workspace` |
+| `.github/prompts/orient.prompt.md` | `/orient` |
+| `.github/prompts/start-workspace.prompt.md` | `/start-workspace` |
 | `.github/prompts/bootstrap-project.prompt.md` | `/bootstrap-project` |
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |
 | `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
@@ -243,6 +250,8 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/orient` is for vague prompts against large repos. It runs `harness context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
 
+`/start-workspace` is for booting the local apps in the open feature workspace. It runs `harness start`, then starts one process at a time in **one VS Code terminal per app** (reuse that app’s terminal if it is already running) so Angular proxies can point at live backend ports.
+
 Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `docs/adr/`). The harness only discovers them. Convention: [docs/knowledge.md](docs/knowledge.md). More ideas: [docs/ideas.md](docs/ideas.md).
 
 Typical loop:
@@ -251,7 +260,8 @@ Typical loop:
 2. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli`
 3. Copilot runs `harness prepare PROJ-123`
 4. You open the recommended `.code-workspace` so every needed repo is a root
-5. Copilot writes a plan (using Graphify reports and each repo's instructions when present), then hands off to Implementer when you are ready
+5. To run the local apps: `/start-workspace` (or `uv run harness start --workspace <id>`)
+6. Copilot writes a plan (using Graphify reports and each repo's instructions when present), then hands off to Implementer when you are ready
 
 To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.
 

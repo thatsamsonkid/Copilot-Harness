@@ -72,6 +72,9 @@ def collect_context(
             "Do not start a second wiki in the harness.",
             "Do not copy product standards into the harness. Do not rebuild a graph "
             "unless the user asked.",
+            "To start local apps in this workspace, run `harness start` "
+            "(see the workspace-start skill). That command prints a plan; "
+            "it does not launch processes.",
         ],
     }
 
