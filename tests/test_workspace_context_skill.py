@@ -39,5 +39,6 @@ def test_skill_covers_graphify_and_standards():
         "suggested_verify",
         "do not copy",
         "whole monorepo",
+        "docs/features",
     ):
         assert token in lowered

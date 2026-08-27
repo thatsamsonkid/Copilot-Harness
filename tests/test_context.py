@@ -29,6 +29,10 @@ def _write_sibling(harness_root: Path, name: str) -> Path:
         encoding="utf-8",
     )
     (repo / "pnpm-lock.yaml").write_text("lockfileVersion: 9\n", encoding="utf-8")
+    (repo / "docs" / "features").mkdir(parents=True)
+    (repo / "docs" / "features" / "checkout.md").write_text(
+        "# Checkout\nUses CheckoutForm.\n", encoding="utf-8"
+    )
     return repo
 
 
@@ -43,6 +47,9 @@ def test_context_discovers_graphify_and_standards(harness_root: Path, catalog):
     kinds = {item["kind"] for item in repo["instructions"]}
     assert {"copilot", "agents", "path-instructions"} <= kinds
     assert repo["tooling"]["suggested_verify"] == ["pnpm lint", "pnpm test"]
+    assert repo["knowledge"]["dirs"][0]["kind"] == "feature"
+    assert repo["knowledge"]["files"][0]["name"] == "checkout.md"
+    assert repo["knowledge"]["template"] == "templates/feature-note.md"
 
 
 def test_context_cli_skips_missing_clone(harness_root: Path, capsys, monkeypatch):

@@ -19,6 +19,25 @@ INSTRUCTION_GLOBS = (
     (".github/agents", "*.agent.md"),
 )
 
+KNOWLEDGE_DIRS = (
+    ("docs/features", "feature"),
+    ("docs/adr", "adr"),
+    ("docs/adrs", "adr"),
+    ("docs/decisions", "adr"),
+    ("docs/architecture", "architecture"),
+    ("docs/rfcs", "rfc"),
+    ("adr", "adr"),
+)
+
+KNOWLEDGE_FILES = (
+    ("ARCHITECTURE.md", "architecture"),
+    ("docs/ARCHITECTURE.md", "architecture"),
+    ("docs/README.md", "docs-index"),
+)
+
+KNOWLEDGE_FILE_LIMIT = 20
+FEATURE_NOTE_TEMPLATE = "templates/feature-note.md"
+
 PACKAGE_VERIFY_SCRIPTS = (
     "verify",
     "check",
@@ -49,6 +68,8 @@ def collect_context(
             "For vague or low-context prompts, read each cloned repo's graphify.report "
             "before grepping the tree.",
             "Before editing a sibling repo, load its instruction files and use its tooling.",
+            "Product knowledge lives in each sibling (docs/features, ADRs, Graphify). "
+            "Do not start a second wiki in the harness.",
             "Do not copy product standards into the harness. Do not rebuild a graph "
             "unless the user asked.",
         ],
@@ -69,6 +90,7 @@ def inspect_repo(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dict
         "tags": repo.tags,
         "graphify": discover_graphify(path, repo) if cloned else _empty_graphify(repo, cloned=False),
         "instructions": discover_instructions(path) if cloned else [],
+        "knowledge": discover_knowledge(path) if cloned else _empty_knowledge(),
         "tooling": discover_tooling(path) if cloned else _empty_tooling(),
     }
 
@@ -126,6 +148,45 @@ def discover_instructions(repo_path: Path) -> list[dict[str, str]]:
             found.append({"path": str(path), "kind": _instruction_kind(str(path.relative_to(repo_path)))})
             seen.add(str(path))
     return found
+
+
+def discover_knowledge(repo_path: Path) -> dict[str, Any]:
+    dirs: list[dict[str, Any]] = []
+    files: list[dict[str, str]] = []
+    for relative, kind in KNOWLEDGE_DIRS:
+        root = repo_path / relative
+        if not root.is_dir():
+            continue
+        matches = sorted(
+            path
+            for path in root.glob("*.md")
+            if path.is_file() and path.name.lower() != "readme.md"
+        )
+        dirs.append(
+            {
+                "path": str(root),
+                "kind": kind,
+                "count": len(matches),
+            }
+        )
+        for path in matches:
+            if len(files) >= KNOWLEDGE_FILE_LIMIT:
+                break
+            files.append({"path": str(path), "kind": kind, "name": path.name})
+    for relative, kind in KNOWLEDGE_FILES:
+        path = repo_path / relative
+        if path.is_file() and not any(item["path"] == str(path) for item in files):
+            files.append({"path": str(path), "kind": kind, "name": path.name})
+    return {
+        "dirs": dirs,
+        "files": files,
+        "template": FEATURE_NOTE_TEMPLATE,
+        "write_hint": (
+            "Keep feature notes and ADRs in this sibling repo. "
+            f"Use the harness {FEATURE_NOTE_TEMPLATE} template. "
+            "Do not copy product knowledge into the harness."
+        ),
+    }
 
 
 def discover_tooling(repo_path: Path) -> dict[str, Any]:
@@ -186,6 +247,19 @@ def _empty_tooling() -> dict[str, Any]:
         "package_scripts": [],
         "make_targets": [],
         "suggested_verify": [],
+    }
+
+
+def _empty_knowledge() -> dict[str, Any]:
+    return {
+        "dirs": [],
+        "files": [],
+        "template": FEATURE_NOTE_TEMPLATE,
+        "write_hint": (
+            "Keep feature notes and ADRs in this sibling repo. "
+            f"Use the harness {FEATURE_NOTE_TEMPLATE} template. "
+            "Do not copy product knowledge into the harness."
+        ),
     }
 
 

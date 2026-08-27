@@ -51,6 +51,7 @@ def prepare_issue(
             "placeholder": repo.is_placeholder,
             "graphify": snapshot["graphify"],
             "instructions": snapshot["instructions"],
+            "knowledge": snapshot["knowledge"],
             "tooling": snapshot["tooling"],
         }
         repos.append(item)
@@ -73,7 +74,8 @@ def prepare_issue(
         f"Open the recommended workspace: {open_command(workspace_file)}",
         "Inspect only the repos listed in routing.repos unless the ticket clearly needs more.",
         "If a repo has graphify.report, read that before grepping the tree.",
-        "Before editing, load that repo's instruction files and use tooling.suggested_verify after changes.",
+        "Before editing, load that repo's instruction files and knowledge notes; use tooling.suggested_verify after changes.",
+        "If the change adds user-visible or non-obvious behavior, update docs/features (or an ADR) in that sibling. Do not file it in the harness.",
         "Write an implementation plan covering impacted repos, files, risks, and test strategy.",
         "Do not start coding until the plan is agreed, unless the user asks to implement immediately.",
     ]

@@ -136,7 +136,9 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/get-started` is the human onboarding path. It runs `harness init` and points at the token doc. Copilot must never ask anyone to paste the API token into chat.
 
-`/orient` is for vague prompts against large repos. It runs `harness context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here. More ideas: [docs/ideas.md](docs/ideas.md).
+`/orient` is for vague prompts against large repos. It runs `harness context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
+
+Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `docs/adr/`). The harness only discovers them. Convention: [docs/knowledge.md](docs/knowledge.md). More ideas: [docs/ideas.md](docs/ideas.md).
 
 Typical loop:
 

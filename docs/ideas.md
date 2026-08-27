@@ -57,6 +57,25 @@ Individual repos already have instructions and tooling. The harness should make 
 - Org-wide *invariants* only if they are few and stable: Jira key in the branch name, no secrets, one PR per sibling repo. Put those here. Everything else stays in the product repo.
 - A tiny eval folder later: 3–5 golden tickets plus “did the agent read AGENTS.md and run the repo test command?” That is how we enforce behavior without hoping the prompt is enough.
 
+## 4. Product knowledge (not a harness wiki)
+
+**Yes, write it down. No, do not file it here.**
+
+Feature notes and ADRs belong in the product repo that changed (`docs/features/`, `docs/adr/`). Graphify already indexes markdown, ADRs, and `# WHY:` comments. A second knowledge base in this harness will drift the same way a copied style guide would.
+
+**In this PR**
+
+- `harness context` / `prepare` list sibling knowledge dirs and files.
+- `templates/feature-note.md` is the short template Copilot copies *into the sibling*.
+- `docs/knowledge.md` is the convention.
+
+**Worth adding next**
+
+- Implementer reminder only when the diff adds user-visible behavior, not on every lint fix.
+- After a feature note lands, offer a *scoped* Graphify refresh in that repo.
+- Optional `knowledge.dirs` override on a `repositories.yml` entry if a monorepo keeps notes somewhere else.
+- Confluence later, and only for specs that already live there — never as the implementation source of truth.
+
 ## Other ideas (when you are ready)
 
 These are separate from the three themes but fit the same harness:

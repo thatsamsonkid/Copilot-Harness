@@ -52,3 +52,4 @@ If `uv` is missing, run `./scripts/setup.sh`. Do not use pip to install this rep
 - Before editing a sibling, read the instruction files `harness context` lists for it (`AGENTS.md`, `.github/copilot-instructions.md`, path-specific instructions, skills).
 - After editing a sibling, run that repo's `tooling.suggested_verify`. Do not skip a failing lint/test command from the product repo.
 - Do not copy product standards into this harness. Do not rebuild a Graphify graph unless the user asked, and never extract an entire monorepo unprompted.
+- Product knowledge (feature notes, ADRs) lives in the sibling repo. Discover it via `harness context` `knowledge`. Do not start a second wiki here.
