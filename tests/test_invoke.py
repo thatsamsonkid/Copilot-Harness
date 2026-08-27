@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -7,6 +8,22 @@ from pathlib import Path
 import pytest
 
 from harness.invoke import invoke_spec, terminal_env_settings
+
+
+def _clean_uv_env() -> dict[str, str]:
+    """Drop the harness venv that `uv run pytest` injects, so spawn matches Copilot."""
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in {"VIRTUAL_ENV", "UV", "UV_PROJECT", "UV_RUN_RECURSION_DEPTH"}
+        and not key.startswith("VIRTUAL_ENV_")
+    }
+    venv_bin = str((Path(__file__).resolve().parents[1] / ".venv" / "bin"))
+    path = env.get("PATH", "")
+    env["PATH"] = os.pathsep.join(
+        part for part in path.split(os.pathsep) if part and part != venv_bin
+    )
+    return env
 
 
 def test_invoke_spec_points_at_harness_root(tmp_path: Path):
@@ -43,9 +60,11 @@ def test_uv_run_harness_spawns_from_sibling_with_project(tmp_path: Path):
     repo = Path(__file__).resolve().parents[1]
     sibling = tmp_path / "frontend"
     sibling.mkdir()
+    env = _clean_uv_env()
     bare = subprocess.run(
         ["uv", "run", "harness", "--version"],
         cwd=sibling,
+        env=env,
         capture_output=True,
         text=True,
     )
@@ -56,6 +75,7 @@ def test_uv_run_harness_spawns_from_sibling_with_project(tmp_path: Path):
     pinned = subprocess.run(
         ["uv", "run", "--project", str(repo), "harness", "--version"],
         cwd=sibling,
+        env=env,
         capture_output=True,
         text=True,
     )
@@ -66,6 +86,7 @@ def test_uv_run_harness_spawns_from_sibling_with_project(tmp_path: Path):
     wrapped = subprocess.run(
         [str(script), "--version"],
         cwd=sibling,
+        env=env,
         capture_output=True,
         text=True,
     )
