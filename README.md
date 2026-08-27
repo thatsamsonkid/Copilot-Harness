@@ -36,7 +36,7 @@ Then:
 4. Clone siblings: `./scripts/clone-repos.sh`
 5. Generate workspaces: `harness workspace generate`
 6. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-7. In Copilot Chat, run **Jira Planner**, `/jira-ticket PROJ-123`, or `/bootstrap-project`
+7. In Copilot Chat, run **Jira Planner**, `/jira-ticket PROJ-123`, `/jira-cli`, or `/bootstrap-project`
 
 `setup.sh` installs [uv](https://docs.astral.sh/uv/) if needed, syncs `uv.lock` into `.venv`, and installs this package in editable mode. Prefer `uv` over pip:
 
@@ -128,7 +128,7 @@ Copilot uses the same commands. If you ask it to bootstrap a new project, it sho
 
 ## Jira CLI (basic auth)
 
-Jira Cloud MCP is not available here. Copilot talks to Jira by running `harness`.
+Jira Cloud MCP is not available here. Copilot talks to Jira by running `harness`. The **jira-cli** skill (`.github/skills/jira-cli/SKILL.md`) is the on-demand contract for those commands.
 
 Create an API token at [id.atlassian.com](https://id.atlassian.com/manage-profile/security/api-tokens) and set:
 
@@ -170,6 +170,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`). Place
 
 | File | Role |
 | --- | --- |
+| `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
@@ -177,9 +178,11 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`). Place
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 
+The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
+
 Typical loop:
 
-1. You paste `PROJ-123` into Jira Planner or `/jira-ticket`
+1. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli`
 2. Copilot runs `harness prepare PROJ-123`
 3. You open the recommended `.code-workspace` so every needed repo is a root
 4. Copilot writes a plan, then hands off to Implementer when you are ready

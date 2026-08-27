@@ -4,19 +4,19 @@ This repository is tooling only. Application code lives in **sibling git clones*
 
 ## Default ticket workflow
 
-When the user gives a Jira key or browse URL:
+When the user gives a Jira key or browse URL, load the **jira-cli** skill (`.github/skills/jira-cli/SKILL.md`) and follow it.
 
 1. Run `uv run harness prepare <KEY> --format json` from this repo (or with `HARNESS_ROOT` set).
 2. Use that CLI JSON as the only ticket source. It is already field-filtered. Do not ask Jira for more.
 3. Tell the user to open `routing.open_command` so the feature workspace loads the right roots. Do not assume sibling repos are already in the current window.
-4. If `routing.missing_repos` is non-empty, run or recommend `routing.clone_command`. Never `git clone` into this harness folder.
+4. If `routing.missing_repos` is non-empty, recommend `routing.clone_command`. Never `git clone` into this harness folder.
 5. Write a plan covering impacted repos, likely files, risks, and tests. Do not implement until the user asks.
 
 `harness` stdout is JSON by default. Read stdout. Errors are JSON on stderr with a non-zero exit code.
 
 ## Jira access (hard rules)
 
-This workspace has **no Jira MCP server**. The API token must never enter the chat or a shell command.
+This workspace has **no Jira MCP server**. The API token must never enter the chat or a shell command. These rules apply even if the jira-cli skill is not loaded.
 
 - Only talk to Jira through `uv run harness jira …` or `uv run harness prepare …`.
 - Do **not** curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
@@ -35,22 +35,12 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`).
+Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Jira command choice, flags, and output shapes live in the jira-cli skill.
 
 ```bash
-uv run harness prepare PROJ-123
-uv run harness jira get PROJ-123
-uv run harness jira context PROJ-123
-uv run harness jira search 'project = PROJ AND status != Done'
-uv run harness repos
 uv run harness templates
-uv run harness templates spartan-stack
-uv run harness bootstrap --template spartan-stack --name my-app
-uv run harness clone --only frontend,backend
-uv run harness clone --tag ui
-uv run harness workspace list
-uv run harness workspace generate
-uv run harness doctor
+uv run harness templates --tag mobile
+uv run harness bootstrap --template <name> --name <folder>
 ```
 
 If `uv` is missing, run `./scripts/setup.sh`. Do not use pip to install this repo.

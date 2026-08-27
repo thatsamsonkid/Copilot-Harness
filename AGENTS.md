@@ -11,7 +11,7 @@ uv run harness templates --format json
 uv run harness bootstrap --template <name> --name <folder> --format json
 ```
 
-For any Jira key:
+For any Jira key, follow `.github/skills/jira-cli/SKILL.md`:
 
 ```bash
 uv run harness prepare ISSUE-123 --format json
