@@ -50,14 +50,24 @@ def workspace_document(catalog: Catalog, harness_root: Path, workspace: Workspac
 def write_workspace_file(
     catalog: Catalog, harness_root: Path, workspace: Workspace
 ) -> dict[str, Any]:
-    directory = harness_root / "workspaces"
-    directory.mkdir(parents=True, exist_ok=True)
     path = catalog.workspace_file(harness_root, workspace)
+    path.parent.mkdir(parents=True, exist_ok=True)
     document = workspace_document(catalog, harness_root, workspace)
+    if workspace.personal:
+        document["harness"] = {
+            "id": workspace.id,
+            "name": workspace.name,
+            "description": workspace.description,
+            "personal": True,
+            "folders": catalog.workspace_repo_names(workspace),
+            "tags": workspace.tags,
+            "include_harness": workspace.include_harness,
+        }
     path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     return {
         "id": workspace.id,
         "name": workspace.name,
+        "personal": workspace.personal,
         "file": str(path),
         "folders": [folder["name"] for folder in document["folders"]],
     }
@@ -67,6 +77,7 @@ def generate_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, 
     return [
         write_workspace_file(catalog, harness_root, workspace)
         for workspace in catalog.workspaces
+        if not workspace.personal
     ]
 
 
@@ -92,6 +103,7 @@ def list_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]
                 "name": workspace.name,
                 "description": workspace.description,
                 "fallback": workspace.fallback,
+                "personal": workspace.personal,
                 "file": str(path),
                 "exists": path.exists(),
                 "repos": repos,

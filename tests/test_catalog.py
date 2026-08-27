@@ -103,6 +103,36 @@ def test_parses_graphify_out_and_rejects_parent_escape(
         load_catalog(root)
 
 
+def test_load_catalog_discovers_personal_workspaces(catalog, harness_root: Path):
+    from harness.prompt import PromptSession
+    from harness.workspace_create import create_workspace
+
+    create_workspace(
+        catalog,
+        harness_root,
+        workspace_id="scratch",
+        name="Scratch",
+        folders=["backend"],
+        personal=True,
+        prompt=PromptSession(interactive=False),
+    )
+    # Shared id wins if a colliding personal file appears later.
+    colliding = harness_root / "workspaces" / "personal" / "frontend.code-workspace"
+    colliding.parent.mkdir(parents=True, exist_ok=True)
+    colliding.write_text("{}", encoding="utf-8")
+    (harness_root / "workspaces" / "personal" / "broken.code-workspace").write_text(
+        "not-json", encoding="utf-8"
+    )
+
+    refreshed = load_catalog(harness_root)
+    payload = catalog_to_dict(refreshed, harness_root)
+    by_id = {item["id"]: item for item in payload["workspaces"]}
+    assert by_id["scratch"]["personal"] is True
+    assert by_id["scratch"]["folders"] == ["backend"]
+    assert by_id["frontend"]["personal"] is False
+    assert "broken" not in by_id
+
+
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
     root = tmp_path / "harness"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -8,7 +9,13 @@ import yaml
 
 from harness import HarnessError
 from harness.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
-from harness.paths import REPOS_RELATIVE, STACK_RELATIVE, TEMPLATES_RELATIVE
+from harness.paths import (
+    PERSONAL_WORKSPACES_DIR,
+    REPOS_RELATIVE,
+    STACK_RELATIVE,
+    TEMPLATES_RELATIVE,
+    WORKSPACES_DIR,
+)
 
 if TYPE_CHECKING:
     from harness.templates import Template
@@ -83,6 +90,7 @@ class Workspace:
     tags: list[str] = field(default_factory=list)
     include_harness: bool = True
     fallback: bool = False
+    personal: bool = False
     match: WorkspaceMatch = field(default_factory=WorkspaceMatch)
 
 
@@ -168,7 +176,8 @@ class Catalog:
     def workspace_file(self, harness_root: Path, workspace: Workspace | str) -> Path:
         if isinstance(workspace, str):
             workspace = self.workspace(workspace)
-        return harness_root / "workspaces" / f"{workspace.id}.code-workspace"
+        directory = PERSONAL_WORKSPACES_DIR if workspace.personal else WORKSPACES_DIR
+        return harness_root / directory / f"{workspace.id}.code-workspace"
 
 
 def load_catalog(
@@ -187,7 +196,16 @@ def load_catalog(
         Path(templates_path) if templates_path else harness_root / TEMPLATES_RELATIVE
     )
     repos, parent_dir = load_repositories(repos_file)
-    workspaces, jira = load_stack(stack_file, {repo.name for repo in repos})
+    repo_names = {repo.name for repo in repos}
+    workspaces, jira = load_stack(stack_file, repo_names)
+    workspaces = [
+        *workspaces,
+        *load_personal_workspaces(
+            harness_root,
+            repo_names,
+            reserved_ids={workspace.id for workspace in workspaces},
+        ),
+    ]
     templates = load_templates(templates_file)
     return Catalog(
         parent_dir=parent_dir,
@@ -464,6 +482,68 @@ def load_stack(
     return workspaces, jira
 
 
+def load_personal_workspaces(
+    harness_root: Path,
+    repo_names: set[str],
+    reserved_ids: set[str] | None = None,
+) -> list[Workspace]:
+    """Load local-only workspaces from workspaces/personal/ (gitignored)."""
+    directory = Path(harness_root) / PERSONAL_WORKSPACES_DIR
+    if not directory.is_dir():
+        return []
+    reserved = set(reserved_ids or ())
+    workspaces: list[Workspace] = []
+    seen: set[str] = set()
+    for path in sorted(directory.glob("*.code-workspace")):
+        workspace = parse_personal_workspace(path, repo_names)
+        if workspace is None:
+            continue
+        if workspace.id in reserved or workspace.id in seen:
+            continue
+        seen.add(workspace.id)
+        workspaces.append(workspace)
+    return workspaces
+
+
+def parse_personal_workspace(path: Path, repo_names: set[str]) -> Workspace | None:
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    meta = raw.get("harness") if isinstance(raw.get("harness"), dict) else {}
+    workspace_id = str(meta.get("id") or path.stem).strip()
+    if not workspace_id:
+        return None
+    folders = _as_list(meta.get("folders"))
+    if not folders:
+        folders = [
+            str(folder.get("name"))
+            for folder in (raw.get("folders") or [])
+            if isinstance(folder, dict)
+            and folder.get("name")
+            and str(folder.get("name")) != "harness"
+        ]
+    folders = [name for name in folders if name in repo_names]
+    include_harness = meta.get("include_harness")
+    if include_harness is None:
+        include_harness = any(
+            isinstance(folder, dict) and folder.get("name") == "harness"
+            for folder in (raw.get("folders") or [])
+        )
+    return Workspace(
+        id=workspace_id,
+        name=str(meta.get("name") or workspace_id.replace("-", " ").replace("_", " ").title()),
+        description=str(meta.get("description") or ""),
+        folders=folders,
+        tags=_as_list(meta.get("tags")),
+        include_harness=bool(include_harness),
+        fallback=False,
+        personal=True,
+    )
+
+
 def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
     sibling_root = catalog.sibling_root(harness_root)
     return {
@@ -498,6 +578,7 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                 "folders": catalog.workspace_repo_names(workspace),
                 "include_harness": workspace.include_harness,
                 "fallback": workspace.fallback,
+                "personal": workspace.personal,
                 "file": str(catalog.workspace_file(harness_root, workspace)),
                 "match": {
                     "projects": workspace.match.projects,

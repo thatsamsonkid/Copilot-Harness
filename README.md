@@ -58,7 +58,7 @@ Then:
 4. Clone product repos: `./scripts/clone-repos.sh`
 5. Generate workspaces: `harness workspace generate`
 6. Or create a new feature workspace and pick projects from `repositories.yml`:
-   `harness workspace create` (or `/new-workspace` in chat)
+   `harness workspace create` (or `/new-workspace` in chat). Choose **shared** for the team catalog, or **personal** for a local-only file under `workspaces/personal/` (gitignored).
 7. Open a feature workspace, for example `workspaces/frontend.code-workspace`
 8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/orient`, `/jira-cli`, or `/bootstrap-project`
 
@@ -121,7 +121,15 @@ harness workspace create mobile-api --tag mobile,api --name "Mobile + API"
 
 That writes `catalog/stack.yaml` and `workspaces/<id>.code-workspace`. Use `--force` to replace an existing id, `--dry-run` to preview, or `--no-prompt` when flags must be complete.
 
-Workspace files live in `workspaces/` and always include this harness as the first root so Copilot still sees the CLI and instructions.
+For a scratch mix you do not want to commit, pass `--personal` (or choose **personal** at the prompt):
+
+```bash
+harness workspace create scratch --projects frontend,backend --personal --no-prompt
+```
+
+Personal workspaces go in `workspaces/personal/` and are gitignored. They are not added to `catalog/stack.yaml` and do not participate in Jira routing. Shared workspaces stay the default so the team catalog does not change unless you ask.
+
+Workspace files always include this harness as the first root so Copilot still sees the CLI and instructions.
 
 ## Project templates
 
