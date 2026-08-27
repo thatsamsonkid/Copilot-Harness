@@ -109,6 +109,8 @@ def format_project_menu(repos: Sequence[Repo]) -> str:
         disabled = "" if repo.enabled else " [disabled]"
         lines.append(f"  {index}. {repo.name}{disabled}")
         detail = f"tags: {tags}"
+        if repo.path != repo.name:
+            detail = f"path: {repo.path}  ·  {detail}"
         if repo.description:
             detail += f"  ·  {repo.description}"
         lines.append(f"     {detail}")
@@ -363,6 +365,8 @@ def _payload(
                 "name": repo.name,
                 "tags": repo.tags,
                 "description": repo.description,
+                "group": repo.group,
+                "relpath": repo.path,
                 "path": str(repo_path),
                 "cloned": repo_path.exists(),
             }

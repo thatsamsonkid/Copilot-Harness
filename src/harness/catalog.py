@@ -53,6 +53,7 @@ class Repo:
     tags: list[str] = field(default_factory=list)
     enabled: bool = True
     graphify: GraphifyConfig = field(default_factory=GraphifyConfig)
+    group: str = ""
 
     @property
     def id(self) -> str:
@@ -231,6 +232,7 @@ def load_repositories(path: Path) -> tuple[list[Repo], str]:
         seen_names.add(repo.name)
         seen_paths.add(repo.path)
         repos.append(repo)
+    _assert_no_path_collisions(repos)
     if not repos:
         raise HarnessError(
             f"{path} has no repositories. Add entries with name, url, and tags."
@@ -246,11 +248,8 @@ def _parse_repo(item: Any) -> Repo:
     if not name or not url:
         raise HarnessError("Each repository needs name and url (GitHub clone URL)")
     name = str(name)
-    repo_path = str(item.get("path") or name)
-    if Path(repo_path).is_absolute() or ".." in Path(repo_path).parts:
-        raise HarnessError(
-            f"Repo path must be a single sibling folder name: {repo_path}"
-        )
+    validate_repo_name(name)
+    repo_path, group = resolve_repo_layout(name, item.get("path"), item.get("group"))
     tags = _as_list(item.get("tags"))
     if not tags:
         raise HarnessError(f"Repository {name} needs at least one tag")
@@ -263,7 +262,101 @@ def _parse_repo(item: Any) -> Repo:
         tags=tags,
         enabled=bool(item.get("enabled", True)),
         graphify=_parse_graphify(name, item.get("graphify")),
+        group=group,
     )
+
+
+def validate_repo_name(name: str) -> str:
+    name = str(name).strip()
+    dest = Path(name)
+    if (
+        not name
+        or dest.is_absolute()
+        or len(dest.parts) != 1
+        or dest.parts[0] in {".", ".."}
+        or "/" in name
+        or "\\" in name
+    ):
+        raise HarnessError(
+            f"Repository name must be a single id, not a path: {name}"
+        )
+    return name
+
+
+def resolve_repo_layout(
+    name: str, raw_path: Any, raw_group: Any
+) -> tuple[str, str]:
+    group = normalize_clone_relpath(str(raw_group), "Repository group") if raw_group else ""
+    if raw_path:
+        repo_path = normalize_clone_relpath(str(raw_path), "Repo path")
+        if group and repo_path != group and not repo_path.startswith(f"{group}/"):
+            raise HarnessError(
+                f"Repository {name} path {repo_path!r} must be inside group {group!r}"
+            )
+        return repo_path, group
+    if group:
+        return f"{group}/{name}", group
+    return name, ""
+
+
+def parse_project_destination(
+    dest_name: str, group: str | None = None
+) -> tuple[str, str, str]:
+    """Return (name, path, group) for a bootstrap destination under parent_dir."""
+    dest_name = (dest_name or "").strip()
+    if not dest_name:
+        raise HarnessError("Project --name is required")
+    dest_name = dest_name.replace("\\", "/")
+    group = (group or "").strip().replace("\\", "/")
+    if group:
+        group = normalize_clone_relpath(group, "Project group")
+        if "/" in dest_name:
+            repo_path = normalize_clone_relpath(dest_name, "Project path")
+            if repo_path != group and not repo_path.startswith(f"{group}/"):
+                raise HarnessError(
+                    f"Project path {repo_path!r} must be inside group {group!r}"
+                )
+        else:
+            validate_repo_name(dest_name)
+            repo_path = f"{group}/{dest_name}"
+    else:
+        repo_path = normalize_clone_relpath(dest_name, "Project path")
+        if len(Path(repo_path).parts) > 1:
+            group = "/".join(Path(repo_path).parts[:-1])
+    name = Path(repo_path).name
+    validate_repo_name(name)
+    return name, repo_path, group
+
+
+def normalize_clone_relpath(value: str, label: str) -> str:
+    text = str(value).strip().replace("\\", "/")
+    path = Path(text)
+    if (
+        not text
+        or path.is_absolute()
+        or any(part in {"", ".", ".."} for part in path.parts)
+    ):
+        raise HarnessError(
+            f"{label} must be a relative path under parent_dir, without '..': {value}"
+        )
+    return path.as_posix()
+
+
+def paths_collide(left: str, right: str) -> bool:
+    left_parts = Path(left).parts
+    right_parts = Path(right).parts
+    shared = min(len(left_parts), len(right_parts))
+    return left_parts[:shared] == right_parts[:shared]
+
+
+def _assert_no_path_collisions(repos: list[Repo]) -> None:
+    for index, repo in enumerate(repos):
+        for other in repos[index + 1 :]:
+            if paths_collide(repo.path, other.path):
+                raise HarnessError(
+                    f"Repository paths collide: {repo.path!r} ({repo.name}) and "
+                    f"{other.path!r} ({other.name}). One clone cannot live inside another."
+                )
 
 
 def _parse_graphify(repo_name: str, raw: Any) -> GraphifyConfig:
@@ -383,6 +476,7 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                 "name": repo.name,
                 "url": repo.url,
                 "path": repo.path,
+                "group": repo.group,
                 "resolved_path": str(catalog.repo_path(harness_root, repo)),
                 "default_branch": repo.default_branch,
                 "description": repo.description,
