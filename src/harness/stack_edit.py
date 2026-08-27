@@ -80,7 +80,10 @@ def upsert_workspace_text(
         new_lines[item_start:item_end] = [formatted]
     elif inline in {"", "|", ">"} or inline == "[]":
         header_line = "workspaces:\n" if inline == "[]" else header
-        new_lines[start:end] = [header_line, *lines[start + 1 : end], formatted]
+        body = list(lines[start + 1 : end])
+        if body and items and body[-1].strip():
+            body.append("\n")
+        new_lines[start:end] = [header_line, *body, formatted]
     else:
         # Flow-style list or other inline value — rewrite the section as a block.
         raw = yaml.safe_load(text) or {}

@@ -83,8 +83,8 @@ def parse_project_selection(text: str, repos: Sequence[Repo]) -> list[str]:
             for index in range(start, stop + 1):
                 _append_unique(selected, _index_name(index, repos, by_index))
             continue
-        if token in by_index:
-            _append_unique(selected, by_index[token])
+        if token.isdigit():
+            _append_unique(selected, _index_name(int(token), repos, by_index))
             continue
         if lowered in by_name:
             _append_unique(selected, by_name[lowered])

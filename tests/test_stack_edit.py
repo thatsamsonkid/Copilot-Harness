@@ -42,6 +42,7 @@ def test_append_to_handwritten_stack():
     )
     updated = upsert_workspace_text(original, _workspace())
     assert updated.startswith("# keep me\n")
+    assert "    folders: [frontend]\n\n  - id: checkout\n" in updated
     data = yaml.safe_load(updated)
     assert [item["id"] for item in data["workspaces"]] == ["frontend", "checkout"]
 
