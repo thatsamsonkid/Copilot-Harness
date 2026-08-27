@@ -5,7 +5,9 @@ description: Plan and start local apps in the current feature workspace (Java, A
 
 # Workspace start
 
-The harness does **not** own product start scripts. `harness start` inspects sibling clones (and optional `repositories.yml` `start:` overrides) and prints a plan. You start processes one at a time so real ports and proxy rewrites can be applied after each backend is up.
+The harness does **not** own product start scripts. `harness start` inspects sibling clones and prints a plan. You start processes one at a time so real ports and proxy rewrites can be applied after each backend is up.
+
+A workspace start sequence rarely changes. After the first good plan, save it next to the workspace file as `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later `harness start --workspace <id>` prefers that file over rediscovery. Live clone status, proxy files, and compose markers are still inspected. Do not put `start:` on `repositories.yml` entries.
 
 Java apps often keep args and environment variables in `.vscode/launch.json`. Those values must not enter chat. The plan only lists configuration names and env **keys**. Start those apps with `harness start run` or VS Code **Run Without Debugging** — not by reading `launch.json` and not by forcing Debug.
 
@@ -15,12 +17,14 @@ Java apps often keep args and environment variables in `.vscode/launch.json`. Th
 | --- | --- |
 | Plan for every enabled repo | `uv run harness start --format json` |
 | Plan for the open feature workspace | `uv run harness start --workspace <id> --format json` |
+| Pin the current sequence next to the workspace | `uv run harness start --workspace <id> --save --format json` |
+| Rediscover and overwrite the saved plan | `uv run harness start --workspace <id> --refresh --save --format json` |
 | One or more repos | `uv run harness start --repo frontend,backend --format json` |
 | Human-readable plan | `uv run harness start --workspace <id> --format markdown` |
 | Start one repo with launch.json env/args (no leak) | `uv run harness start run --repo <name>` |
 | Preview that run (keys only) | `uv run harness start run --repo <name> --dry-run --format json` |
 
-`harness start` (no `run`) never launches processes. Do not invent a second supervisor.
+`harness start` (no `run`) never launches processes. Do not invent a second supervisor. `--save` requires `--workspace` and writes the full workspace sequence; do not combine it with `--repo`.
 
 ## How to run the CLI
 
@@ -37,12 +41,13 @@ Always do one of:
 ## Walkthrough order
 
 1. Run `harness start` for the workspace the user has open (or `--repo` if they named apps). Use the harness cwd or `invoke.command` — do not `cd` into a product repo first.
-2. Show the plan: order, `run_via`, command, `port_hint`, proxy files, launch configuration name / env keys, and anything in `blocked`. Do not open `launch.json` to "confirm" env values.
-3. If a service is blocked (`not cloned` or `no start command`), stop that item. Clone first, or inspect that repo's README / `package.json` / `pom.xml` and ask before guessing. If `run_via` is `vscode` and there is no shell command, ask the user to **Run Without Debugging** on `launch.configuration`.
-4. Start **infra** (only if the user asked for compose) then **backends**, one at a time. Use **one VS Code terminal per app** (see below).
-5. Wait until the process is listening. Prefer `wait` (`listen:8080` or an HTTP URL). If `port_hint` is missing or wrong, read that app’s terminal log (`Tomcat started on port`, `Local: http://localhost:…`) and use the live port.
-6. For each frontend with `proxies[]`, rewrite `target` values to the live backend URL in the sibling working tree. Do **not** commit proxy edits unless the user asked.
-7. Start frontends the same way: one terminal per app. Report the running map (name, command, live port, URL, terminal).
+2. If `plan_source` is `saved`, follow that sequence. Do not rediscover or re-plan. Mention `unplanned` or `stale` names if present.
+3. If `plan_source` is `discovered` and the order looks right, save it once with `--save` so later starts skip rediscovery. Show the plan: order, `run_via`, command, `port_hint`, proxy files, launch configuration name / env keys, and anything in `blocked`. Do not open `launch.json` to "confirm" env values.
+4. If a service is blocked (`not cloned` or `no start command`), stop that item. Clone first, or inspect that repo's README / `package.json` / `pom.xml` and ask before guessing. If `run_via` is `vscode` and there is no shell command, ask the user to **Run Without Debugging** on `launch.configuration`.
+5. Start **infra** (only if the user asked for compose) then **backends**, one at a time. Use **one VS Code terminal per app** (see below).
+6. Wait until the process is listening. Prefer `wait` (`listen:8080` or an HTTP URL). If `port_hint` is missing or wrong, read that app’s terminal log (`Tomcat started on port`, `Local: http://localhost:…`) and use the live port.
+7. For each frontend with `proxies[]`, rewrite `target` values to the live backend URL in the sibling working tree. Do **not** commit proxy edits unless the user asked.
+8. Start frontends the same way: one terminal per app. Report the running map (name, command, live port, URL, terminal).
 
 ## How to start each app
 
@@ -72,7 +77,9 @@ The harness does not open terminals. You do, via the chat terminal / `runCommand
 - Do not start two apps in the same terminal.
 - Do not run `docker compose up` unless the user asked, even when `compose` files are listed.
 - Do not kill unrelated processes. If a planned port is already in use, say so and ask whether to reuse it or pick another.
-- Do not copy product start scripts into the harness. If discovery is wrong, prefer a thin `repositories.yml` `start:` override (`command`, `port`, `role`, `wait`, `launch`, `env_file`, `method`).
+- Do not copy product start scripts into `repositories.yml`. Pin the **workspace boot order** in `workspaces/<id>.start.yml` via `--save` (or edit that file). Discovery is only for the first plan.
+- Do not rewrite a saved plan unless the user asked or the workspace repos / commands changed (`--refresh --save`, or edit the YAML).
+- Prefer `plan_source: saved` over rediscovery. The sequence is workspace-level; live ports still come from process logs.
 - Do not commit generated local-dev proxy or env changes unless the user wants that default in git.
 - Never print `.env` or Jira tokens.
 - Never read sibling `.vscode/launch.json`, `envFile`, or product `.env` files. `harness start` already redacts them to names and keys.
@@ -84,32 +91,44 @@ The harness does not open terminals. You do, via the chat terminal / `runCommand
 | Symptom | What to do |
 | --- | --- |
 | `blocked: repo is not cloned` | Show `harness clone --only <name>` (or `prepare` clone command). Do not `git clone` into the harness folder |
-| `blocked: no start command found` | Read that repo's README / Makefile / `package.json`. Ask. Then add `start.command` in `repositories.yml` if it should stick |
+| `blocked: no start command found` | Read that repo's README / Makefile / `package.json`. Ask. Then put the command in `workspaces/<id>.start.yml` (`--save` or edit) |
 | `run_via: vscode` and no command | Ask the user to Run Without Debugging on `launch.configuration`. Do not open launch.json |
 | `uses_vscode_inputs` | Same as vscode. `harness start run` cannot resolve `${input:…}` |
 | Port unknown until start | Keep that app’s terminal open and read the bound port from its log, then continue |
 | Two apps in one terminal | Stop. Open a new terminal for the second app. Do not stack long-running commands |
 | Angular still hits remote API | Confirm `proxies[].path` was updated to the live local target **before** `ng serve` |
 | Java app takes minutes | Say so, wait, do not start the next service yet |
-| Override vs discovered mismatch | Trust `source: override`. Discovery is a hint |
+| Saved vs discovered mismatch | Trust `source: saved`. Discovery is a first-run hint |
+| User wants this sequence next time | `harness start --workspace <id> --save` → `workspaces/<id>.start.yml` |
+| Workspace repos or commands changed | `--refresh --save`, or edit the YAML by hand |
+| `unplanned` names in a saved plan | Those repos are in the workspace but not in the YAML. Ask before starting them; `--save` pins them |
 | `Failed to spawn: harness` / no `pyproject.toml` | Cwd is a sibling clone. Re-run from the harness folder, or use `invoke.command` / `scripts/harness.sh` (Windows: `scripts/harness.ps1`) |
 
-## Optional `repositories.yml` override
+## Workspace start plan
+
+`workspaces/<id>.start.yml` sits next to `workspaces/<id>.code-workspace`. Shared plans are committed so the team reuses the same sequence. Personal workspaces use `workspaces/personal/<id>.start.yml` (gitignored with the rest of that folder). Do not add `start:` to `repositories.yml`.
 
 ```yaml
-start:
-  command: ./mvnw spring-boot:run
-  port: 8080
-  role: backend
-  wait: http://localhost:8080/actuator/health
-  launch: Launch Backend
-  env_file: .env
-  method: harness
+workspace: frontend
+order:
+  - backend
+  - frontend
+services:
+  - name: backend
+    command: ./mvnw spring-boot:run
+    port: 8080
+    role: backend
+    wait: listen:8080
+    launch: Launch Backend
+    method: harness
+  - name: frontend
+    command: pnpm start
+    port: 4200
+    role: frontend
+    depends_on: [backend]
 ```
 
-`launch` selects a `launch.json` configuration. `env_file` is a repo-relative dotenv loaded by `harness start run`. `method` is `terminal`, `vscode`, or `harness`. Keep this thin. Do not file product secrets or architecture here.
-
-Prefer keeping secrets in a gitignored `envFile` / `.env` and referencing it from `launch.json`, rather than inlining values in a committed launch config.
+This file is the boot **sequence** (order, command, port, wait, optional `launch` / `method`). It is not a process supervisor. When discovery is wrong, edit this file. `launch` selects a `launch.json` configuration; `method` is `terminal`, `vscode`, or `harness`. Prefer keeping secrets in a gitignored `envFile` / `.env` referenced from `launch.json`.
 
 ## Related Copilot customizations
 

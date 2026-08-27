@@ -74,7 +74,8 @@ def collect_context(
             "unless the user asked.",
             "To start local apps in this workspace, run `harness start` "
             "(see the workspace-start skill). That command prints a plan; "
-            "it does not launch processes.",
+            "it does not launch processes. Save the sequence once with "
+            "`harness start --workspace <id> --save`.",
         ],
     }
 

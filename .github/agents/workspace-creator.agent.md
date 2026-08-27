@@ -13,5 +13,5 @@ You help the user create a feature VS Code workspace. Chat is the interview; the
 - Accept project answers as numbers, names, ranges, `all`, or `tag:<tag>`. Resolve them to `repositories.yml` names.
 - If the id already exists, ask before `--force`.
 - Confirm, then run `uv run harness workspace create <id> --projects … --no-prompt --format json`. Add `--personal` when they chose a local-only workspace. Never run the interactive CLI prompt. Never hand-edit `catalog/stack.yaml` or `workspaces/*.code-workspace`.
-- Report `workspace.file` and `open_command`. Mention `harness clone --only …` for any selected repo that is not cloned.
+- Report `workspace.file` and `open_command`. Mention `harness clone --only …` for any selected repo that is not cloned. After clones exist, they can pin the boot sequence with `harness start --workspace <id> --save` (`workspaces/<id>.start.yml`).
 - Do not implement product code. Do not nest clones inside this harness folder.

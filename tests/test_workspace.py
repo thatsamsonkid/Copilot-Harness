@@ -3,6 +3,7 @@ from pathlib import Path
 
 from harness.catalog import load_catalog
 from harness.prompt import PromptSession
+from harness.start import collect_start_plan
 from harness.workspace import generate_workspaces, list_workspaces, workspace_document
 from harness.workspace_create import create_workspace
 from tests.helpers import write_harness_config
@@ -52,6 +53,17 @@ def test_generate_and_list(catalog, harness_root: Path):
     assert frontend["exists"] is True
     assert frontend["personal"] is False
     assert frontend["repos"][0]["cloned"] is False
+    assert frontend["start_file"].endswith("workspaces/frontend.start.yml")
+    assert frontend["start_plan"] is False
+
+    collect_start_plan(catalog, harness_root, workspace_id="frontend", save=True)
+    start_path = harness_root / "workspaces" / "frontend.start.yml"
+    original = start_path.read_text(encoding="utf-8")
+    generate_workspaces(catalog, harness_root)
+    assert start_path.read_text(encoding="utf-8") == original
+    listed = list_workspaces(catalog, harness_root)
+    frontend = next(item for item in listed if item["id"] == "frontend")
+    assert frontend["start_plan"] is True
 
 
 def test_generate_skips_personal_and_list_includes_them(catalog, harness_root: Path):

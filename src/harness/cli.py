@@ -246,7 +246,10 @@ def build_parser() -> argparse.ArgumentParser:
     start = sub.add_parser(
         "start",
         parents=[shared],
-        help="Print a workspace start plan, or run one repo without leaking launch env",
+        help=(
+            "Print a workspace start plan, or run one repo without leaking "
+            "launch env. Prefer a saved workspaces/<id>.start.yml when present"
+        ),
     )
     start.add_argument(
         "action",
@@ -256,6 +259,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     start.add_argument("--workspace", help="Limit the plan to a catalog workspace id")
     start.add_argument("--repo", help="Comma-separated repository names")
+    start.add_argument(
+        "--save",
+        action="store_true",
+        help=(
+            "Write the current sequence to workspaces/<id>.start.yml "
+            "(requires --workspace)"
+        ),
+    )
+    start.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Ignore a saved workspace plan and rediscover from sibling clones",
+    )
     start.add_argument(
         "--configuration",
         help="launch.json configuration name for `start run`",
@@ -415,6 +431,8 @@ def dispatch(args: argparse.Namespace) -> Any:
             harness_root,
             workspace_id=args.workspace,
             only=_split_ids(args.repo),
+            save=args.save,
+            refresh=args.refresh,
         )
     if args.command == "catalog":
         return catalog_to_dict(catalog, harness_root)

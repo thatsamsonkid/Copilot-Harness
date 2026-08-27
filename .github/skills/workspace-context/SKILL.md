@@ -16,7 +16,7 @@ Run these from the harness repo. After `cd` into a sibling, use `uv run --projec
 | All enabled repos | `uv run harness context --format json` |
 | One or more repos | `uv run harness context --repo frontend,backend --format json` |
 | Ticket plus routing | `uv run harness prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`) |
-| Local stack start plan | `uv run harness start --format json` (see the workspace-start skill) |
+| Local stack start plan | `uv run harness start --format json` (see the workspace-start skill). Saved sequences live in `workspaces/<id>.start.yml`. |
 
 ## Vague or low-context prompts
 

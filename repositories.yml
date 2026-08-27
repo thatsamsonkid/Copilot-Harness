@@ -4,17 +4,13 @@
 #   <harness-parent>/<path or group/name or name>
 #
 # Required per entry: name, url, tags
-# Optional: path, group, default_branch, description, enabled, graphify, start
+# Optional: path, group, default_branch, description, enabled, graphify
 # graphify.out defaults to graphify-out inside that clone.
-# start is a thin override when `harness start` discovery is wrong:
-#   start:
-#     command: ./mvnw spring-boot:run
-#     port: 8080
-#     role: backend
-#     wait: http://localhost:8080/actuator/health
-#     launch: Launch Backend
-#     env_file: .env
-#     method: harness
+# Do not add start: here. Discover once, then pin the workspace sequence:
+#   harness start --workspace frontend --save
+#   → workspaces/frontend.start.yml
+# Java launch.json env/args stay in the sibling. The plan lists names/keys only;
+# start those apps with `harness start run --repo <name>`.
 #
 # Use group or a nested path to organize clones without putting git
 # trees inside this harness:

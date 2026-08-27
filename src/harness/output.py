@@ -196,6 +196,14 @@ def _templates_markdown(payload: dict[str, Any]) -> str:
 def _start_text(payload: dict[str, Any]) -> str:
     workspace = payload.get("workspace") or "all enabled repos"
     lines = [f"Start plan ({workspace})", ""]
+    source = payload.get("plan_source")
+    plan_file = payload.get("plan_file")
+    if source == "saved" and plan_file:
+        lines.append(f"Saved sequence: {plan_file}")
+        lines.append("")
+    elif payload.get("workspace") and plan_file and not payload.get("plan_exists"):
+        lines.append(f"No saved sequence yet. Pin with --save → {plan_file}")
+        lines.append("")
     invoke = payload.get("invoke") or {}
     if invoke.get("command"):
         lines.append(f"CLI: {invoke['command']}")
@@ -237,6 +245,14 @@ def _start_text(payload: dict[str, Any]) -> str:
 def _start_markdown(payload: dict[str, Any]) -> str:
     workspace = payload.get("workspace") or "all enabled repos"
     lines = [f"# Start plan (`{workspace}`)", ""]
+    source = payload.get("plan_source")
+    plan_file = payload.get("plan_file")
+    if source == "saved" and plan_file:
+        lines.append(f"Saved sequence: `{plan_file}`")
+        lines.append("")
+    elif payload.get("workspace") and plan_file and not payload.get("plan_exists"):
+        lines.append(f"No saved sequence yet. Pin with `--save` → `{plan_file}`")
+        lines.append("")
     invoke = payload.get("invoke") or {}
     if invoke.get("command"):
         lines.extend(

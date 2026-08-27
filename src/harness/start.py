@@ -9,8 +9,10 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
+import yaml
+
 from harness import HarnessError
-from harness.catalog import Catalog, Repo, StartConfig
+from harness.catalog import Catalog, Repo, as_list
 from harness.invoke import invoke_spec
 from harness.launch import load_launch_runtime, summarize_launch
 
@@ -60,7 +62,19 @@ def collect_start_plan(
     *,
     workspace_id: str | None = None,
     only: list[str] | None = None,
+    save: bool = False,
+    refresh: bool = False,
 ) -> dict[str, Any]:
+    if save and not workspace_id:
+        raise HarnessError(
+            "--save requires --workspace so the plan can sit next to that "
+            "workspace file (workspaces/<id>.start.yml)."
+        )
+    if save and only:
+        raise HarnessError(
+            "--save writes the full workspace sequence. Do not combine it with --repo."
+        )
+
     repos = _selected_repos(catalog, workspace_id=workspace_id, only=only)
     services = [inspect_start(catalog, harness_root, repo) for repo in repos]
     backends = [item["name"] for item in services if item.get("role") == "backend"]
@@ -70,19 +84,39 @@ def collect_start_plan(
         else:
             item.setdefault("depends_on", [])
     services.sort(key=_service_sort_key)
-    blocked = [item for item in services if item.get("blocked")]
-    return {
+    plan_file = (
+        catalog.workspace_start_file(harness_root, workspace_id)
+        if workspace_id
+        else None
+    )
+    payload = {
         "workspace": workspace_id,
         "sibling_root": str(catalog.sibling_root(harness_root)),
         "order": [item["name"] for item in services],
         "services": services,
-        "blocked": [
-            {"name": item["name"], "reason": item.get("blocked")} for item in blocked
-        ],
+        "blocked": _blocked_entries(services),
         "harness_root": str(Path(harness_root).resolve()),
         "invoke": invoke_spec(harness_root),
-        "guidance": _plan_guidance(services),
+        "plan_file": str(plan_file) if plan_file else None,
+        "plan_exists": bool(plan_file and plan_file.is_file()),
+        "plan_source": "discovered",
+        "unplanned": [],
+        "stale": [],
     }
+    if workspace_id and payload["plan_exists"] and not refresh:
+        saved = load_saved_start_plan(plan_file)
+        payload = apply_saved_start_plan(
+            payload,
+            saved,
+            catalog,
+            harness_root,
+            only=only,
+        )
+    if save:
+        payload["saved"] = write_saved_start_plan(plan_file, payload)
+        payload["plan_exists"] = True
+    payload["guidance"] = _plan_guidance(payload)
+    return payload
 
 
 def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dict[str, Any]:
@@ -96,8 +130,7 @@ def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dic
         return payload
 
     discovered = discover_start(path, repo)
-    merged = _apply_override(discovered, repo.start)
-    payload.update(merged)
+    payload.update(discovered)
     _attach_launch(payload, repo, path, harness_root)
     if not payload.get("command"):
         if payload.get("run_via") == "vscode" and payload.get("launch"):
@@ -108,7 +141,7 @@ def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dic
         else:
             payload["blocked"] = "no start command found"
             payload["notes"].append(
-                "Add repositories.yml start.command or a start/serve/dev script."
+                "Add a command to workspaces/<id>.start.yml or a start/serve/dev script."
             )
     elif payload.get("role") == "infra" and payload.get("kind") == "compose":
         payload["notes"].append(
@@ -125,6 +158,363 @@ def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dic
     return payload
 
 
+SAVED_PLAN_HEADER = """\
+# Saved start sequence for the {workspace} workspace.
+# Written by: harness start --workspace {workspace} --save
+# Edit this file when the boot order or commands change.
+# harness start prefers this over rediscovery.
+"""
+
+
+def load_saved_start_plan(path: Path) -> dict[str, Any]:
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise HarnessError(f"Invalid YAML in saved start plan {path}: {exc}") from exc
+    except OSError as exc:
+        raise HarnessError(f"Cannot read saved start plan {path}: {exc}") from exc
+    if raw is None:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise HarnessError(f"Saved start plan must be a mapping: {path}")
+    services_raw = raw.get("services") or []
+    if not isinstance(services_raw, list):
+        raise HarnessError(f"Saved start plan services must be a list: {path}")
+    services: list[dict[str, Any]] = []
+    for item in services_raw:
+        if not isinstance(item, dict) or not item.get("name"):
+            raise HarnessError(f"Each saved start service needs a name: {path}")
+        entry: dict[str, Any] = {"name": str(item["name"])}
+        command = str(item.get("command") or "").strip()
+        if command:
+            entry["command"] = command
+        port = _as_port(item.get("port"))
+        if item.get("port") not in (None, "") and port is None:
+            raise HarnessError(
+                f"Saved start plan {path} service {entry['name']} port must be an integer"
+            )
+        if port:
+            entry["port"] = port
+        role = str(item.get("role") or "").strip().lower()
+        if role:
+            entry["role"] = role
+        wait = str(item.get("wait") or item.get("health") or "").strip()
+        if wait:
+            entry["wait"] = wait
+        cwd = str(item.get("cwd") or "").strip()
+        if cwd:
+            entry["cwd"] = _relative_cwd(f"Saved start plan {path} cwd", cwd)
+        launch = str(item.get("launch") or item.get("configuration") or "").strip()
+        if launch:
+            entry["launch"] = launch
+        env_file = str(item.get("env_file") or item.get("envFile") or "").strip()
+        if env_file:
+            entry["env_file"] = _relative_cwd(
+                f"Saved start plan {path} env_file", env_file
+            )
+        method = str(item.get("method") or "").strip().lower()
+        if method and method not in {"terminal", "vscode", "harness"}:
+            raise HarnessError(
+                f"Saved start plan {path} service {entry['name']} "
+                "method must be terminal, vscode, or harness"
+            )
+        if method:
+            entry["method"] = method
+        if "depends_on" in item:
+            entry["depends_on"] = as_list(item.get("depends_on"))
+        notes = item.get("notes")
+        if notes:
+            entry["notes"] = as_list(notes)
+        services.append(entry)
+    order = as_list(raw.get("order"))
+    if not order:
+        order = [item["name"] for item in services]
+    return {
+        "workspace": str(raw.get("workspace") or "").strip() or None,
+        "order": order,
+        "services": services,
+        "notes": as_list(raw.get("notes")),
+    }
+
+
+def apply_saved_start_plan(
+    payload: dict[str, Any],
+    saved: dict[str, Any],
+    catalog: Catalog,
+    harness_root: Path,
+    *,
+    only: list[str] | None = None,
+) -> dict[str, Any]:
+    workspace_id = payload.get("workspace")
+    workspace_names = (
+        set(catalog.workspace_repo_names(workspace_id))
+        if workspace_id
+        else {item["name"] for item in payload["services"]}
+    )
+    known = {repo.name for repo in catalog.repos}
+    wanted = set(only) if only else None
+    saved_names: list[str] = []
+    for name in list(saved.get("order") or []) + [
+        item["name"] for item in saved["services"]
+    ]:
+        if name not in saved_names:
+            saved_names.append(name)
+    pins = {item["name"]: item for item in saved["services"]}
+    discovered = {item["name"]: item for item in payload["services"]}
+    services: list[dict[str, Any]] = []
+    stale: list[str] = []
+    for name in saved_names:
+        if name not in known or name not in workspace_names:
+            if name not in stale:
+                stale.append(name)
+            continue
+        if wanted is not None and name not in wanted:
+            continue
+        item = discovered.get(name) or inspect_start(catalog, harness_root, name)
+        services.append(
+            _apply_saved_service(
+                item,
+                pins.get(name) or {},
+                catalog.repo(name),
+                harness_root,
+            )
+        )
+    unplanned_items: list[dict[str, Any]] = []
+    for item in payload["services"]:
+        if item["name"] in saved_names:
+            continue
+        extra = dict(item)
+        extra["notes"] = [
+            *list(extra.get("notes") or []),
+            "Not in the saved workspace start plan.",
+        ]
+        unplanned_items.append(extra)
+    unplanned_items.sort(key=_service_sort_key)
+    services.extend(unplanned_items)
+    merged = dict(payload)
+    merged["plan_source"] = "saved"
+    merged["order"] = [item["name"] for item in services]
+    merged["services"] = services
+    merged["blocked"] = _blocked_entries(services)
+    merged["unplanned"] = [item["name"] for item in unplanned_items]
+    merged["stale"] = stale
+    if saved.get("notes"):
+        merged["saved_notes"] = list(saved["notes"])
+    return merged
+
+
+def write_saved_start_plan(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    existed = path.is_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    workspace = str(payload.get("workspace") or "workspace")
+    document = saved_start_document(payload)
+    body = yaml.safe_dump(
+        document,
+        sort_keys=False,
+        default_flow_style=False,
+        allow_unicode=True,
+    )
+    path.write_text(
+        SAVED_PLAN_HEADER.format(workspace=workspace) + body,
+        encoding="utf-8",
+    )
+    return {
+        "path": str(path),
+        "action": "updated" if existed else "created",
+    }
+
+
+def saved_start_document(payload: dict[str, Any]) -> dict[str, Any]:
+    services: list[dict[str, Any]] = []
+    for item in payload.get("services") or []:
+        entry: dict[str, Any] = {"name": item["name"]}
+        if item.get("command"):
+            entry["command"] = item["command"]
+        if item.get("port_hint"):
+            entry["port"] = item["port_hint"]
+        role = str(item.get("role") or "").strip()
+        if role and role != "unknown":
+            entry["role"] = role
+        if item.get("wait"):
+            entry["wait"] = item["wait"]
+        cwd = _saved_relative_cwd(item)
+        if cwd:
+            entry["cwd"] = cwd
+        if item.get("depends_on"):
+            entry["depends_on"] = list(item["depends_on"])
+        launch = item.get("launch") or {}
+        if isinstance(launch, dict) and launch.get("configuration"):
+            entry["launch"] = launch["configuration"]
+        elif isinstance(launch, str) and launch.strip():
+            entry["launch"] = launch.strip()
+        if isinstance(launch, dict) and launch.get("env_file"):
+            entry["env_file"] = launch["env_file"]
+        method = str(item.get("method") or item.get("run_via") or "").strip()
+        if method and method != "terminal":
+            entry["method"] = method
+        services.append(entry)
+    document: dict[str, Any] = {
+        "workspace": payload.get("workspace"),
+        "order": list(payload.get("order") or [item["name"] for item in services]),
+        "services": services,
+    }
+    if payload.get("saved_notes"):
+        document["notes"] = list(payload["saved_notes"])
+    return document
+
+
+def _apply_saved_service(
+    discovered: dict[str, Any],
+    pin: dict[str, Any],
+    repo: Repo,
+    harness_root: Path,
+) -> dict[str, Any]:
+    merged = dict(discovered)
+    applied = False
+    if pin.get("command"):
+        merged["command"] = pin["command"]
+        merged["command_source"] = "workspace start plan"
+        applied = True
+    if pin.get("port"):
+        merged["port_hint"] = pin["port"]
+        merged["port_source"] = "workspace start plan"
+        if not pin.get("wait"):
+            merged["wait"] = _default_wait(pin["port"])
+        applied = True
+    if pin.get("wait"):
+        merged["wait"] = pin["wait"]
+        applied = True
+    if pin.get("role"):
+        merged["role"] = pin["role"]
+        applied = True
+    if pin.get("cwd"):
+        base = merged.get("path") or merged.get("cwd")
+        merged["cwd"] = str(Path(str(base)) / pin["cwd"])
+        applied = True
+    if "depends_on" in pin:
+        merged["depends_on"] = list(pin["depends_on"])
+        applied = True
+    if pin.get("notes"):
+        merged["notes"] = [*list(merged.get("notes") or []), *pin["notes"]]
+    if pin.get("launch") or pin.get("env_file") or pin.get("method"):
+        _attach_launch(
+            merged,
+            repo,
+            Path(str(merged.get("path") or merged.get("cwd"))),
+            harness_root,
+            configuration=pin.get("launch"),
+            env_file=pin.get("env_file"),
+            method=pin.get("method") or "",
+        )
+        applied = True
+    if applied:
+        merged["source"] = "saved"
+        merged["confidence"] = "high"
+    if merged.get("command") and merged.get("blocked") == "no start command found":
+        merged["blocked"] = None
+        merged["notes"] = [
+            note
+            for note in (merged.get("notes") or [])
+            if "start/serve/dev script" not in note
+        ]
+    return merged
+
+
+def _saved_relative_cwd(item: dict[str, Any]) -> str | None:
+    cwd = item.get("cwd")
+    root = item.get("path")
+    if not cwd or not root:
+        return None
+    try:
+        relative = Path(str(cwd)).resolve().relative_to(Path(str(root)).resolve())
+    except ValueError:
+        return None
+    if not relative.parts or relative.parts == (".",):
+        return None
+    return relative.as_posix()
+
+
+def _relative_cwd(label: str, value: str) -> str:
+    path = Path(value)
+    if path.is_absolute() or ".." in path.parts:
+        raise HarnessError(f"{label} must be a relative path inside the repo: {value}")
+    return value
+
+
+def _blocked_entries(services: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {"name": item["name"], "reason": item.get("blocked")}
+        for item in services
+        if item.get("blocked")
+    ]
+
+
+def _plan_guidance(payload: dict[str, Any]) -> list[str]:
+    lines = [
+        "This command prints a plan. It does not start processes.",
+        "Start backends (and infra) first, one at a time. Give each app its "
+        "own VS Code terminal. Reuse a terminal already running that app; "
+        "never start a second long-running process in a busy terminal.",
+        "If port_hint is missing or the app binds a different port, read the "
+        "startup logs and use the live port.",
+        "Rewrite Angular proxy targets to the live backend URL in the sibling "
+        "working tree. Do not commit that change unless the user asked.",
+        "If discovery is wrong, edit workspaces/<id>.start.yml or rerun with "
+        "--save after you have the right commands.",
+        "Run this CLI from the harness repo (invoke.cwd). After cd into a "
+        "sibling, `uv run harness` cannot spawn. Re-run with invoke.command "
+        "or scripts/harness.sh; do not reuse an app terminal for harness.",
+    ]
+    services = payload.get("services") or []
+    if any((item.get("launch") or {}).get("secret_risk") for item in services):
+        lines.append(
+            "When run_via is harness or launch.secret_risk is true, start that "
+            "app with invoke.command plus `start run --repo <name>` (or the "
+            "service `copilot_command`) or VS Code Run Without Debugging. "
+            "Never read launch.json, envFile, or .env, and never reconstruct "
+            "env or args in the terminal."
+        )
+    workspace = payload.get("workspace")
+    saved = payload.get("saved")
+    if saved:
+        lines.append(
+            f"Saved the sequence to {saved.get('path')} ({saved.get('action')}). "
+            "Later starts will use this file instead of rediscovering."
+        )
+    elif workspace and payload.get("plan_source") == "saved":
+        lines.append(
+            f"Using saved sequence at {payload.get('plan_file')}. "
+            "Pass --refresh to rediscover, or edit that file / --save to update it."
+        )
+    elif workspace and payload.get("plan_exists"):
+        lines.append(
+            f"A saved sequence exists at {payload.get('plan_file')}. "
+            "This run rediscovered. Omit --refresh to use the saved file, "
+            "or pass --save to overwrite it."
+        )
+    elif workspace:
+        lines.append(
+            "This workspace has no saved start sequence yet. When the order "
+            f"looks right, run `harness start --workspace {workspace} --save` "
+            "to write workspaces/<id>.start.yml and skip rediscovery next time."
+        )
+    unplanned = payload.get("unplanned") or []
+    if unplanned:
+        lines.append(
+            "Workspace repos missing from the saved plan: "
+            + ", ".join(unplanned)
+            + ". Add them to the YAML or rerun with --refresh --save."
+        )
+    stale = payload.get("stale") or []
+    if stale:
+        lines.append(
+            "Saved plan lists repos that are not in this workspace: "
+            + ", ".join(stale)
+            + "."
+        )
+    return lines
+
+
 def discover_start(repo_path: Path, repo: Repo) -> dict[str, Any]:
     markers = _markers(repo_path)
     package_scripts = _all_package_scripts(repo_path)
@@ -137,7 +527,7 @@ def discover_start(repo_path: Path, repo: Repo) -> dict[str, Any]:
     port_hint, port_source = _detect_port(repo_path, kind, package_scripts)
     proxies = _detect_proxies(repo_path, kind)
     compose = _compose_files(repo_path)
-    confidence = _confidence(kind, command, port_hint, repo.start)
+    confidence = _confidence(kind, command, port_hint)
     notes: list[str] = []
     if compose and kind != "compose":
         notes.append(
@@ -213,30 +603,7 @@ def _empty_service(repo: Repo, path: Path) -> dict[str, Any]:
         "run_via": "terminal",
         "copilot_command": None,
         "launch": None,
-        "override": repo.start.to_dict(),
     }
-
-
-def _apply_override(discovered: dict[str, Any], override: StartConfig) -> dict[str, Any]:
-    if not override.configured():
-        return discovered
-    merged = dict(discovered)
-    merged["source"] = "override"
-    merged["confidence"] = "high"
-    if override.command:
-        merged["command"] = override.command
-        merged["command_source"] = "repositories.yml start.command"
-    if override.port:
-        merged["port_hint"] = override.port
-        merged["port_source"] = "repositories.yml start.port"
-        merged["wait"] = override.wait or _default_wait(override.port)
-    elif override.wait:
-        merged["wait"] = override.wait
-    if override.role:
-        merged["role"] = override.role
-    if override.cwd:
-        merged["cwd"] = str(Path(merged["cwd"]) / override.cwd)
-    return merged
 
 
 def _markers(repo_path: Path) -> list[str]:
@@ -593,11 +960,7 @@ def _compose_files(repo_path: Path) -> list[str]:
     return found
 
 
-def _confidence(
-    kind: str, command: str | None, port_hint: int | None, override: StartConfig
-) -> str:
-    if override.configured():
-        return "high"
+def _confidence(kind: str, command: str | None, port_hint: int | None) -> str:
     if kind in {"angular", "spring-boot", "django"} and command:
         return "high"
     if command and port_hint:
@@ -655,45 +1018,25 @@ def _service_sort_key(item: dict[str, Any]) -> tuple[int, int, str]:
     return (role_rank, blocked, str(item.get("name") or ""))
 
 
-def _plan_guidance(services: list[dict[str, Any]]) -> list[str]:
-    lines = [
-        "This command prints a plan. It does not start processes.",
-        "Run this CLI from the harness repo (invoke.cwd). After cd into a "
-        "sibling, `uv run harness` cannot spawn. Re-run with invoke.command "
-        "or scripts/harness.sh; do not reuse an app terminal for harness.",
-        "Start backends (and infra) first, one at a time. Give each app its "
-        "own VS Code terminal. Reuse a terminal already running that app; "
-        "never start a second long-running process in a busy terminal.",
-        "If port_hint is missing or the app binds a different port, read the "
-        "startup logs and use the live port.",
-        "Rewrite Angular proxy targets to the live backend URL in the sibling "
-        "working tree. Do not commit that change unless the user asked.",
-        "Optional repositories.yml start: {command, port, role, wait, launch, "
-        "env_file, method} overrides discovery when it is wrong.",
-    ]
-    if any((item.get("launch") or {}).get("secret_risk") for item in services):
-        lines.append(
-            "When run_via is harness or launch.secret_risk is true, start that "
-            "app with invoke.command plus `start run --repo <name>` (or the "
-            "service `copilot_command`) or VS Code Run Without Debugging. "
-            "Never read launch.json, envFile, or .env, and never reconstruct "
-            "env or args in the terminal."
-        )
-    return lines
-
-
 def _attach_launch(
-    payload: dict[str, Any], repo: Repo, repo_path: Path, harness_root: Path
+    payload: dict[str, Any],
+    repo: Repo,
+    repo_path: Path,
+    harness_root: Path,
+    *,
+    configuration: str | None = None,
+    env_file: str | None = None,
+    method: str = "",
 ) -> None:
     launch = summarize_launch(
         repo_path,
         kind=str(payload.get("kind") or ""),
         repo_name=repo.name,
-        configuration=repo.start.launch or None,
-        env_file=repo.start.env_file or None,
+        configuration=configuration or None,
+        env_file=env_file or None,
     )
     payload["launch"] = launch
-    payload["run_via"] = _run_via(payload.get("command"), repo.start.method, launch)
+    payload["run_via"] = _run_via(payload.get("command"), method, launch)
     payload["copilot_command"] = _copilot_command(
         repo.name, payload["run_via"], launch, harness_root
     )
