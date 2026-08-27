@@ -121,24 +121,17 @@ def test_start_discovers_angular_and_spring(harness_root: Path, catalog):
     assert any("--save" in item for item in payload["guidance"])
 
 
-def test_start_override_wins(sample_catalog_data: dict, harness_root: Path):
+def test_repositories_yml_rejects_start_block(
+    sample_catalog_data: dict, harness_root: Path
+):
     sample_catalog_data["repos"][1]["start"] = {
         "command": "java -jar app.jar",
         "port": 9000,
         "role": "backend",
-        "wait": "http://localhost:9000/health",
     }
     write_harness_config(harness_root, sample_catalog_data)
-    catalog = load_catalog(harness_root)
-    _write_spring(harness_root)
-    payload = collect_start_plan(catalog, harness_root, only=["backend"])
-    service = payload["services"][0]
-    assert service["source"] == "override"
-    assert service["confidence"] == "high"
-    assert service["command"] == "java -jar app.jar"
-    assert service["port_hint"] == 9000
-    assert service["wait"] == "http://localhost:9000/health"
-    assert catalog.repo("backend").start.to_dict()["port"] == 9000
+    with pytest.raises(HarnessError, match="no longer owns start commands"):
+        load_catalog(harness_root)
 
 
 def test_start_marks_uncloned_and_unknown(harness_root: Path, catalog):
@@ -180,29 +173,11 @@ def test_start_cli_and_markdown(harness_root: Path, capsys, monkeypatch):
     assert "No saved sequence" in text
 
 
-def test_start_rejects_bad_port(tmp_path: Path, sample_catalog_data: dict):
-    sample_catalog_data["repos"][0]["start"] = {"port": "abc"}
-    root = tmp_path / "harness"
-    write_harness_config(root, sample_catalog_data)
-    with pytest.raises(HarnessError, match="start.port"):
-        load_catalog(root)
-
-
-def test_catalog_to_dict_includes_start_override(
-    sample_catalog_data: dict, harness_root: Path
-):
-    sample_catalog_data["repos"][0]["start"] = {
-        "command": "pnpm start",
-        "port": 4200,
-        "role": "frontend",
-    }
-    write_harness_config(harness_root, sample_catalog_data)
-    catalog = load_catalog(harness_root)
+def test_catalog_to_dict_lists_workspace_start_file(harness_root: Path, catalog):
     from harness.catalog import catalog_to_dict
 
     payload = catalog_to_dict(catalog, harness_root)
-    assert payload["repos"][0]["start"]["port"] == 4200
-    assert payload["repos"][1]["start"] is None
+    assert "start" not in payload["repos"][0]
     frontend_ws = next(item for item in payload["workspaces"] if item["id"] == "frontend")
     assert frontend_ws["start_file"].endswith("workspaces/frontend.start.yml")
     assert frontend_ws["start_plan"] is False
@@ -305,38 +280,6 @@ services:
     assert payload["stale"] == ["gone-service"]
     frontend = next(item for item in payload["services"] if item["name"] == "frontend")
     assert any("not in the saved" in note.lower() for note in frontend["notes"])
-
-
-def test_repo_override_wins_over_saved_plan(
-    sample_catalog_data: dict, harness_root: Path
-):
-    sample_catalog_data["repos"][1]["start"] = {
-        "command": "java -jar app.jar",
-        "port": 9000,
-        "role": "backend",
-        "wait": "http://localhost:9000/health",
-    }
-    write_harness_config(harness_root, sample_catalog_data)
-    catalog = load_catalog(harness_root)
-    _write_spring(harness_root)
-    plan_path = catalog.workspace_start_file(harness_root, "backend")
-    plan_path.parent.mkdir(parents=True, exist_ok=True)
-    plan_path.write_text(
-        """workspace: backend
-order: [backend]
-services:
-  - name: backend
-    command: ./mvnw spring-boot:run
-    port: 8090
-    role: backend
-""",
-        encoding="utf-8",
-    )
-    payload = collect_start_plan(catalog, harness_root, workspace_id="backend")
-    service = payload["services"][0]
-    assert service["source"] == "override"
-    assert service["command"] == "java -jar app.jar"
-    assert service["port_hint"] == 9000
 
 
 def test_save_requires_workspace_and_rejects_repo_filter(harness_root: Path, catalog):

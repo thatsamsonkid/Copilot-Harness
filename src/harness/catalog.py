@@ -51,31 +51,6 @@ class GraphifyConfig:
 
 
 @dataclass(frozen=True)
-class StartConfig:
-    """Optional repositories.yml override when start discovery is wrong."""
-
-    command: str = ""
-    port: int | None = None
-    role: str = ""
-    wait: str = ""
-    cwd: str = ""
-
-    def configured(self) -> bool:
-        return bool(self.command or self.port or self.role or self.wait or self.cwd)
-
-    def to_dict(self) -> dict[str, Any] | None:
-        if not self.configured():
-            return None
-        return {
-            "command": self.command or None,
-            "port": self.port,
-            "role": self.role or None,
-            "wait": self.wait or None,
-            "cwd": self.cwd or None,
-        }
-
-
-@dataclass(frozen=True)
 class Repo:
     name: str
     url: str
@@ -86,7 +61,6 @@ class Repo:
     enabled: bool = True
     graphify: GraphifyConfig = field(default_factory=GraphifyConfig)
     group: str = ""
-    start: StartConfig = field(default_factory=StartConfig)
 
     @property
     def id(self) -> str:
@@ -302,6 +276,13 @@ def _parse_repo(item: Any) -> Repo:
     tags = _as_list(item.get("tags"))
     if not tags:
         raise HarnessError(f"Repository {name} needs at least one tag")
+    if item.get("start") is not None:
+        raise HarnessError(
+            f"Repository {name} has a start: block. repositories.yml no longer "
+            "owns start commands. Discover once with "
+            "`harness start --workspace <id>`, then save "
+            "workspaces/<id>.start.yml (or edit that file)."
+        )
     return Repo(
         name=name,
         url=str(url),
@@ -312,7 +293,6 @@ def _parse_repo(item: Any) -> Repo:
         enabled=bool(item.get("enabled", True)),
         graphify=_parse_graphify(name, item.get("graphify")),
         group=group,
-        start=_parse_start(name, item.get("start")),
     )
 
 
@@ -407,34 +387,6 @@ def _assert_no_path_collisions(repos: list[Repo]) -> None:
                     f"Repository paths collide: {repo.path!r} ({repo.name}) and "
                     f"{other.path!r} ({other.name}). One clone cannot live inside another."
                 )
-
-
-def _parse_start(repo_name: str, raw: Any) -> StartConfig:
-    if raw is None:
-        return StartConfig()
-    if not isinstance(raw, dict):
-        raise HarnessError(f"Repository {repo_name} start must be a mapping")
-    port_raw = raw.get("port")
-    port: int | None = None
-    if port_raw is not None and port_raw != "":
-        try:
-            port = int(port_raw)
-        except (TypeError, ValueError) as exc:
-            raise HarnessError(
-                f"Repository {repo_name} start.port must be an integer"
-            ) from exc
-        if port < 1 or port > 65535:
-            raise HarnessError(f"Repository {repo_name} start.port is out of range")
-    cwd = str(raw.get("cwd") or "").strip()
-    if cwd:
-        _require_relative_dir(f"Repository {repo_name} start.cwd", cwd)
-    return StartConfig(
-        command=str(raw.get("command") or "").strip(),
-        port=port,
-        role=str(raw.get("role") or "").strip().lower(),
-        wait=str(raw.get("wait") or raw.get("health") or "").strip(),
-        cwd=cwd,
-    )
 
 
 def _parse_graphify(repo_name: str, raw: Any) -> GraphifyConfig:
@@ -627,7 +579,6 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                     "out": repo.graphify.out,
                     "enabled": repo.graphify.enabled,
                 },
-                "start": repo.start.to_dict(),
             }
             for repo in catalog.repos
         ],

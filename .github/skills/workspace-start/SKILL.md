@@ -5,9 +5,9 @@ description: Plan and start local apps in the current feature workspace (Java, A
 
 # Workspace start
 
-The harness does **not** own product start scripts. `harness start` inspects sibling clones (and optional `repositories.yml` `start:` overrides) and prints a plan. You start processes one at a time so real ports and proxy rewrites can be applied after each backend is up.
+The harness does **not** own product start scripts. `harness start` inspects sibling clones and prints a plan. You start processes one at a time so real ports and proxy rewrites can be applied after each backend is up.
 
-A workspace start sequence rarely changes. After the first good plan, save it next to the workspace file as `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later `harness start --workspace <id>` prefers that file over rediscovery. Live clone status, proxy files, and compose markers are still inspected.
+A workspace start sequence rarely changes. After the first good plan, save it next to the workspace file as `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later `harness start --workspace <id>` prefers that file over rediscovery. Live clone status, proxy files, and compose markers are still inspected. Do not put `start:` on `repositories.yml` entries.
 
 ## Commands
 
@@ -49,7 +49,7 @@ The harness does not open terminals. You do, via the chat terminal / `runCommand
 - Do not start two apps in the same terminal.
 - Do not run `docker compose up` unless the user asked, even when `compose` files are listed.
 - Do not kill unrelated processes. If a planned port is already in use, say so and ask whether to reuse it or pick another.
-- Do not copy product start scripts into the harness. Pin the **workspace boot order** in `workspaces/<id>.start.yml` via `--save`. If one repo always starts the same way in every workspace, prefer a thin `repositories.yml` `start:` override (`command`, `port`, `role`, `wait`).
+- Do not copy product start scripts into `repositories.yml`. Pin the **workspace boot order** in `workspaces/<id>.start.yml` via `--save` (or edit that file). Discovery is only for the first plan.
 - Do not rewrite a saved plan unless the user asked or the workspace repos / commands changed (`--refresh --save`, or edit the YAML).
 - Prefer `plan_source: saved` over rediscovery. The sequence is workspace-level; live ports still come from process logs.
 - Do not commit generated local-dev proxy or env changes unless the user wants that default in git.
@@ -60,31 +60,19 @@ The harness does not open terminals. You do, via the chat terminal / `runCommand
 | Symptom | What to do |
 | --- | --- |
 | `blocked: repo is not cloned` | Show `harness clone --only <name>` (or `prepare` clone command). Do not `git clone` into the harness folder |
-| `blocked: no start command found` | Read that repo's README / Makefile / `package.json`. Ask. Then add `start.command` in `repositories.yml` if it should stick |
+| `blocked: no start command found` | Read that repo's README / Makefile / `package.json`. Ask. Then put the command in `workspaces/<id>.start.yml` (`--save` or edit) |
 | Port unknown until start | Keep that app’s terminal open and read the bound port from its log, then continue |
 | Two apps in one terminal | Stop. Open a new terminal for the second app. Do not stack long-running commands |
 | Angular still hits remote API | Confirm `proxies[].path` was updated to the live local target **before** `ng serve` |
 | Java app takes minutes | Say so, wait, do not start the next service yet |
-| Override vs discovered mismatch | Trust `source: override`, then `saved`, then discovery |
+| Saved vs discovered mismatch | Trust `source: saved`. Discovery is a first-run hint |
 | User wants this sequence next time | `harness start --workspace <id> --save` → `workspaces/<id>.start.yml` |
 | Workspace repos or commands changed | `--refresh --save`, or edit the YAML by hand |
 | `unplanned` names in a saved plan | Those repos are in the workspace but not in the YAML. Ask before starting them; `--save` pins them |
 
-## Optional `repositories.yml` override
+## Workspace start plan
 
-```yaml
-start:
-  command: ./mvnw spring-boot:run
-  port: 8080
-  role: backend
-  wait: http://localhost:8080/actuator/health
-```
-
-Use this when the same repo always starts the same way in **every** workspace. Keep it thin. Do not file product architecture here.
-
-## Optional workspace start plan
-
-`workspaces/<id>.start.yml` sits next to `workspaces/<id>.code-workspace`. Shared plans are committed so the team reuses the same sequence. Personal workspaces use `workspaces/personal/<id>.start.yml` (gitignored with the rest of that folder).
+`workspaces/<id>.start.yml` sits next to `workspaces/<id>.code-workspace`. Shared plans are committed so the team reuses the same sequence. Personal workspaces use `workspaces/personal/<id>.start.yml` (gitignored with the rest of that folder). Do not add `start:` to `repositories.yml`.
 
 ```yaml
 workspace: frontend
@@ -104,7 +92,7 @@ services:
     depends_on: [backend]
 ```
 
-This file is the boot **sequence** (order, command, port, wait). It is not a process supervisor. `repositories.yml` `start:` still wins for fields it sets.
+This file is the boot **sequence** (order, command, port, wait). It is not a process supervisor. When discovery is wrong, edit this file.
 
 ## Related Copilot customizations
 

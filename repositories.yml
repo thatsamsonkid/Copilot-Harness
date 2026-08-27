@@ -4,15 +4,9 @@
 #   <harness-parent>/<path or group/name or name>
 #
 # Required per entry: name, url, tags
-# Optional: path, group, default_branch, description, enabled, graphify, start
+# Optional: path, group, default_branch, description, enabled, graphify
 # graphify.out defaults to graphify-out inside that clone.
-# start is a thin override when `harness start` discovery is wrong:
-#   start:
-#     command: ./mvnw spring-boot:run
-#     port: 8080
-#     role: backend
-#     wait: http://localhost:8080/actuator/health
-# Workspace boot order is saved separately next to the workspace file:
+# Do not add start: here. Discover once, then pin the workspace sequence:
 #   harness start --workspace frontend --save
 #   → workspaces/frontend.start.yml
 #

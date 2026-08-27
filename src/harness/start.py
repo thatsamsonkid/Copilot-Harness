@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 
 from harness import HarnessError
-from harness.catalog import Catalog, Repo, StartConfig, as_list
+from harness.catalog import Catalog, Repo, as_list
 
 PACKAGE_START_SCRIPTS = ("start", "serve", "dev")
 MAKE_START_TARGETS = ("start", "run", "serve", "dev", "up", "bootrun")
@@ -120,12 +120,11 @@ def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dic
         return payload
 
     discovered = discover_start(path, repo)
-    merged = _apply_override(discovered, repo.start)
-    payload.update(merged)
+    payload.update(discovered)
     if not payload.get("command"):
         payload["blocked"] = "no start command found"
         payload["notes"].append(
-            "Add repositories.yml start.command or a start/serve/dev script."
+            "Add a command to workspaces/<id>.start.yml or a start/serve/dev script."
         )
     elif payload.get("role") == "infra" and payload.get("kind") == "compose":
         payload["notes"].append(
@@ -239,7 +238,7 @@ def apply_saved_start_plan(
         if wanted is not None and name not in wanted:
             continue
         item = discovered.get(name) or inspect_start(catalog, harness_root, name)
-        services.append(_apply_saved_service(item, pins.get(name) or {}, catalog.repo(name).start))
+        services.append(_apply_saved_service(item, pins.get(name) or {}))
     unplanned_items: list[dict[str, Any]] = []
     for item in payload["services"]:
         if item["name"] in saved_names:
@@ -314,28 +313,26 @@ def saved_start_document(payload: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
-def _apply_saved_service(
-    discovered: dict[str, Any], pin: dict[str, Any], override: StartConfig
-) -> dict[str, Any]:
+def _apply_saved_service(discovered: dict[str, Any], pin: dict[str, Any]) -> dict[str, Any]:
     merged = dict(discovered)
     applied = False
-    if pin.get("command") and not override.command:
+    if pin.get("command"):
         merged["command"] = pin["command"]
         merged["command_source"] = "workspace start plan"
         applied = True
-    if pin.get("port") and not override.port:
+    if pin.get("port"):
         merged["port_hint"] = pin["port"]
         merged["port_source"] = "workspace start plan"
-        if not pin.get("wait") and not override.wait:
+        if not pin.get("wait"):
             merged["wait"] = _default_wait(pin["port"])
         applied = True
-    if pin.get("wait") and not override.wait:
+    if pin.get("wait"):
         merged["wait"] = pin["wait"]
         applied = True
-    if pin.get("role") and not override.role:
+    if pin.get("role"):
         merged["role"] = pin["role"]
         applied = True
-    if pin.get("cwd") and not override.cwd:
+    if pin.get("cwd"):
         base = merged.get("path") or merged.get("cwd")
         merged["cwd"] = str(Path(str(base)) / pin["cwd"])
         applied = True
@@ -344,7 +341,7 @@ def _apply_saved_service(
         applied = True
     if pin.get("notes"):
         merged["notes"] = [*list(merged.get("notes") or []), *pin["notes"]]
-    if applied and merged.get("source") != "override":
+    if applied:
         merged["source"] = "saved"
         merged["confidence"] = "high"
     if merged.get("command") and merged.get("blocked") == "no start command found":
@@ -352,7 +349,7 @@ def _apply_saved_service(
         merged["notes"] = [
             note
             for note in (merged.get("notes") or [])
-            if "start.command" not in note
+            if "start/serve/dev script" not in note
         ]
     return merged
 
@@ -396,8 +393,8 @@ def _plan_guidance(payload: dict[str, Any]) -> list[str]:
         "startup logs and use the live port.",
         "Rewrite Angular proxy targets to the live backend URL in the sibling "
         "working tree. Do not commit that change unless the user asked.",
-        "Optional repositories.yml start: {command, port, role, wait} overrides "
-        "discovery when it is wrong.",
+        "If discovery is wrong, edit workspaces/<id>.start.yml or rerun with "
+        "--save after you have the right commands.",
     ]
     workspace = payload.get("workspace")
     saved = payload.get("saved")
@@ -452,7 +449,7 @@ def discover_start(repo_path: Path, repo: Repo) -> dict[str, Any]:
     port_hint, port_source = _detect_port(repo_path, kind, package_scripts)
     proxies = _detect_proxies(repo_path, kind)
     compose = _compose_files(repo_path)
-    confidence = _confidence(kind, command, port_hint, repo.start)
+    confidence = _confidence(kind, command, port_hint)
     notes: list[str] = []
     if compose and kind != "compose":
         notes.append(
@@ -525,30 +522,7 @@ def _empty_service(repo: Repo, path: Path) -> dict[str, Any]:
         "markers": [],
         "notes": [],
         "blocked": None,
-        "override": repo.start.to_dict(),
     }
-
-
-def _apply_override(discovered: dict[str, Any], override: StartConfig) -> dict[str, Any]:
-    if not override.configured():
-        return discovered
-    merged = dict(discovered)
-    merged["source"] = "override"
-    merged["confidence"] = "high"
-    if override.command:
-        merged["command"] = override.command
-        merged["command_source"] = "repositories.yml start.command"
-    if override.port:
-        merged["port_hint"] = override.port
-        merged["port_source"] = "repositories.yml start.port"
-        merged["wait"] = override.wait or _default_wait(override.port)
-    elif override.wait:
-        merged["wait"] = override.wait
-    if override.role:
-        merged["role"] = override.role
-    if override.cwd:
-        merged["cwd"] = str(Path(merged["cwd"]) / override.cwd)
-    return merged
 
 
 def _markers(repo_path: Path) -> list[str]:
@@ -904,11 +878,7 @@ def _compose_files(repo_path: Path) -> list[str]:
     return found
 
 
-def _confidence(
-    kind: str, command: str | None, port_hint: int | None, override: StartConfig
-) -> str:
-    if override.configured():
-        return "high"
+def _confidence(kind: str, command: str | None, port_hint: int | None) -> str:
     if kind in {"angular", "spring-boot", "django"} and command:
         return "high"
     if command and port_hint:

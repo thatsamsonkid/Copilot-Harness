@@ -94,7 +94,6 @@ repositories:
 | `path` | no | Exact destination under `parent_dir`. May be nested (`frontend/shop-web`). Defaults to `name`, or `group/name` when `group` is set |
 | `default_branch` | no | Defaults to `main` |
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
-| `start` | no | Thin override for `harness start`: `command`, `port`, `role`, `wait` |
 
 `catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
 
@@ -210,7 +209,7 @@ The API token stays in `.env`. The CLI loads it in-process for Basic auth. Copil
 
 `prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, and print the `code` command that opens the matching workspace.
 
-`harness start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files). It does not launch processes. After the first good plan, pin it next to the workspace with `harness start --workspace <id> --save`. That writes `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. Optional `repositories.yml` `start:` overrides (`command`, `port`, `role`, `wait`) win when discovery or a saved plan is wrong for that repo.
+`harness start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files). It does not launch processes. After the first good plan, pin it next to the workspace with `harness start --workspace <id> --save`. That writes `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. Do not put `start:` on `repositories.yml` entries — edit the workspace plan when discovery is wrong.
 
 Stdout is JSON by default (`--format markdown` or `text` if you want a human view). Errors are JSON on stderr.
 
