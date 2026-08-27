@@ -12,6 +12,9 @@
 #     port: 8080
 #     role: backend
 #     wait: http://localhost:8080/actuator/health
+#     launch: Launch Backend
+#     env_file: .env
+#     method: harness
 #
 # Use group or a nested path to organize clones without putting git
 # trees inside this harness:
