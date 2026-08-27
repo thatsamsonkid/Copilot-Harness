@@ -1,0 +1,33 @@
+# Full-app repository manifest.
+# Every product repo Copilot may need lives here. Clones land as siblings
+# of this harness: <harness-parent>/<path or name>
+#
+# Required per entry: name, url, tags
+# Optional: path, default_branch, description, enabled
+#
+# Replace YOUR_ORG with your GitHub org, then:
+#   ./scripts/clone-repos.sh
+#   harness workspace generate
+
+parent_dir: ..
+
+repositories:
+  - name: frontend
+    url: git@github.com:YOUR_ORG/frontend.git
+    tags: [ui, frontend, web]
+    description: Customer-facing web UI
+
+  - name: backend
+    url: git@github.com:YOUR_ORG/backend.git
+    tags: [api, backend]
+    description: API and domain services
+
+  - name: mobile
+    url: git@github.com:YOUR_ORG/mobile.git
+    tags: [mobile, ios, android]
+    description: Mobile client
+
+  - name: infra
+    url: git@github.com:YOUR_ORG/infra.git
+    tags: [infra, devops]
+    description: Infrastructure and deployment

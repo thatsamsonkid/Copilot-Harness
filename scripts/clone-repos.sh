@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Clone catalog repos as siblings of this harness (never inside it).
+# Clone repositories.yml remotes as siblings of this harness (never inside it).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

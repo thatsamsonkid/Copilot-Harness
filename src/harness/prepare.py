@@ -35,13 +35,15 @@ def prepare_issue(
     workspace_file = catalog.workspace_file(harness_root, workspace)
     repos = []
     missing = []
-    for repo_id in workspace.folders:
+    for repo_id in catalog.workspace_repo_names(workspace):
         repo = catalog.repo(repo_id)
         path = catalog.repo_path(harness_root, repo)
         present = path.exists()
         item = {
-            "id": repo.id,
+            "name": repo.name,
+            "id": repo.name,
             "url": repo.url,
+            "tags": repo.tags,
             "path": str(path),
             "cloned": present,
             "placeholder": repo.is_placeholder,

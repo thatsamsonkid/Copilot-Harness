@@ -5,16 +5,22 @@ from pathlib import Path
 
 from harness import HarnessError
 
-CATALOG_RELATIVE = Path("catalog") / "stack.yaml"
+REPOS_RELATIVE = Path("repositories.yml")
+STACK_RELATIVE = Path("catalog") / "stack.yaml"
+
+
+def is_harness_root(path: Path) -> bool:
+    return (path / REPOS_RELATIVE).exists() or (path / STACK_RELATIVE).exists()
 
 
 def find_harness_root(start: Path | None = None) -> Path:
     env = os.environ.get("HARNESS_ROOT")
     if env:
         root = Path(env).expanduser().resolve()
-        if not (root / CATALOG_RELATIVE).exists():
+        if not is_harness_root(root):
             raise HarnessError(
-                f"HARNESS_ROOT={root} does not contain {CATALOG_RELATIVE}"
+                f"HARNESS_ROOT={root} does not contain {REPOS_RELATIVE} "
+                f"or {STACK_RELATIVE}"
             )
         return root
 
@@ -30,11 +36,11 @@ def find_harness_root(start: Path | None = None) -> Path:
             if path in seen:
                 continue
             seen.add(path)
-            if (path / CATALOG_RELATIVE).exists():
+            if is_harness_root(path):
                 return path
 
     raise HarnessError(
-        f"Could not find harness root ({CATALOG_RELATIVE}). "
+        f"Could not find harness root ({REPOS_RELATIVE}). "
         "Run from the harness repo or set HARNESS_ROOT."
     )
 

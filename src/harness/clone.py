@@ -26,6 +26,7 @@ def clone_repos(
     harness_root: Path,
     *,
     only: list[str] | None = None,
+    tags: list[str] | None = None,
     update: bool = False,
     dry_run: bool = False,
     https: bool = False,
@@ -43,7 +44,7 @@ def clone_repos(
         )
 
     results: list[dict[str, Any]] = []
-    for repo in catalog.enabled_repos(only):
+    for repo in catalog.enabled_repos(only, tags):
         dest = catalog.repo_path(harness_root, repo)
         results.append(
             _clone_one(
@@ -91,7 +92,7 @@ def _clone_one(
         record["action"] = "blocked"
         record["error"] = (
             "URL still contains a placeholder (YOUR_ORG/example). "
-            "Update catalog/stack.yaml first."
+            "Update repositories.yml first."
         )
         return record
 

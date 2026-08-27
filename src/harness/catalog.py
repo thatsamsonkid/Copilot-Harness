@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 
 from harness import HarnessError
+from harness.paths import REPOS_RELATIVE, STACK_RELATIVE
 
 
 def _as_list(value: Any) -> list[str]:
@@ -19,15 +20,28 @@ def _as_list(value: Any) -> list[str]:
     raise HarnessError(f"Expected a list or string, got {type(value).__name__}")
 
 
+def _read_yaml(path: Path) -> Any:
+    if not path.exists():
+        raise HarnessError(f"File not found: {path}")
+    try:
+        return yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise HarnessError(f"Invalid YAML in {path}: {exc}") from exc
+
+
 @dataclass(frozen=True)
 class Repo:
-    id: str
+    name: str
     url: str
     path: str
     default_branch: str = "main"
     description: str = ""
     tags: list[str] = field(default_factory=list)
     enabled: bool = True
+
+    @property
+    def id(self) -> str:
+        return self.name
 
     @property
     def is_placeholder(self) -> bool:
@@ -50,6 +64,7 @@ class Workspace:
     name: str
     description: str = ""
     folders: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     include_harness: bool = True
     fallback: bool = False
     match: WorkspaceMatch = field(default_factory=WorkspaceMatch)
@@ -68,12 +83,13 @@ class Catalog:
     workspaces: list[Workspace]
     jira: JiraSettings
     source: Path
+    repos_source: Path
 
     def repo(self, repo_id: str) -> Repo:
         for repo in self.repos:
-            if repo.id == repo_id:
+            if repo.name == repo_id:
                 return repo
-        raise HarnessError(f"Unknown repo id: {repo_id}")
+        raise HarnessError(f"Unknown repo name: {repo_id}")
 
     def workspace(self, workspace_id: str) -> Workspace:
         for workspace in self.workspaces:
@@ -81,17 +97,39 @@ class Catalog:
                 return workspace
         raise HarnessError(f"Unknown workspace id: {workspace_id}")
 
-    def enabled_repos(self, only: list[str] | None = None) -> list[Repo]:
+    def repos_with_tags(self, tags: list[str]) -> list[Repo]:
+        wanted = {tag.lower() for tag in tags}
+        return [
+            repo
+            for repo in self.repos
+            if wanted.intersection(tag.lower() for tag in repo.tags)
+        ]
+
+    def enabled_repos(
+        self, only: list[str] | None = None, tags: list[str] | None = None
+    ) -> list[Repo]:
         selected = [repo for repo in self.repos if repo.enabled]
         if only:
             wanted = set(only)
-            unknown = wanted.difference(repo.id for repo in self.repos)
+            unknown = wanted.difference(repo.name for repo in self.repos)
             if unknown:
                 raise HarnessError(
-                    "Unknown repo id(s): " + ", ".join(sorted(unknown))
+                    "Unknown repo name(s): " + ", ".join(sorted(unknown))
                 )
-            selected = [repo for repo in selected if repo.id in wanted]
+            selected = [repo for repo in selected if repo.name in wanted]
+        if tags:
+            tagged = {repo.name for repo in self.repos_with_tags(tags)}
+            selected = [repo for repo in selected if repo.name in tagged]
         return selected
+
+    def workspace_repo_names(self, workspace: Workspace | str) -> list[str]:
+        if isinstance(workspace, str):
+            workspace = self.workspace(workspace)
+        names: list[str] = []
+        for name in [*workspace.folders, *(repo.name for repo in self.repos_with_tags(workspace.tags))]:
+            if name not in names:
+                names.append(name)
+        return names
 
     def sibling_root(self, harness_root: Path) -> Path:
         return (harness_root / self.parent_dir).resolve()
@@ -116,47 +154,103 @@ class Catalog:
         return harness_root / "workspaces" / f"{workspace.id}.code-workspace"
 
 
-def load_catalog(path: Path) -> Catalog:
-    if not path.exists():
-        raise HarnessError(f"Catalog not found: {path}")
-    try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except yaml.YAMLError as exc:
-        raise HarnessError(f"Invalid YAML in {path}: {exc}") from exc
-    if not isinstance(raw, dict):
-        raise HarnessError(f"Catalog root must be a mapping: {path}")
-    return _parse_catalog(raw, path)
+def load_catalog(
+    harness_root: Path,
+    *,
+    stack_path: Path | None = None,
+    repos_path: Path | None = None,
+) -> Catalog:
+    harness_root = Path(harness_root)
+    repos_file = Path(repos_path) if repos_path else harness_root / REPOS_RELATIVE
+    stack_file = Path(stack_path) if stack_path else harness_root / STACK_RELATIVE
+    repos, parent_dir = load_repositories(repos_file)
+    workspaces, jira = load_stack(stack_file, {repo.name for repo in repos})
+    return Catalog(
+        parent_dir=parent_dir,
+        repos=repos,
+        workspaces=workspaces,
+        jira=jira,
+        source=stack_file,
+        repos_source=repos_file,
+    )
 
 
-def _parse_catalog(raw: dict[str, Any], source: Path) -> Catalog:
-    repos: list[Repo] = []
-    seen_repo_ids: set[str] = set()
-    seen_repo_paths: set[str] = set()
-    for item in raw.get("repos") or []:
-        if not isinstance(item, dict) or "id" not in item or "url" not in item:
-            raise HarnessError("Each repo needs id and url")
-        repo_id = str(item["id"])
-        repo_path = str(item.get("path") or repo_id)
-        if repo_id in seen_repo_ids:
-            raise HarnessError(f"Duplicate repo id: {repo_id}")
-        if repo_path in seen_repo_paths:
-            raise HarnessError(f"Duplicate repo path: {repo_path}")
-        if Path(repo_path).is_absolute() or ".." in Path(repo_path).parts:
+def load_repositories(path: Path) -> tuple[list[Repo], str]:
+    raw = _read_yaml(path)
+    parent_dir = ".."
+    items: list[Any]
+    if raw is None:
+        items = []
+    elif isinstance(raw, list):
+        items = raw
+    elif isinstance(raw, dict):
+        if raw.get("repos") and not raw.get("repositories"):
             raise HarnessError(
-                f"Repo path must be a single sibling folder name: {repo_path}"
+                f"{path} uses `repos:`. Rename that key to `repositories:` "
+                "and give each entry name, url, and tags."
             )
-        seen_repo_ids.add(repo_id)
-        seen_repo_paths.add(repo_path)
-        repos.append(
-            Repo(
-                id=repo_id,
-                url=str(item["url"]),
-                path=repo_path,
-                default_branch=str(item.get("default_branch") or "main"),
-                description=str(item.get("description") or ""),
-                tags=_as_list(item.get("tags")),
-                enabled=bool(item.get("enabled", True)),
-            )
+        parent_dir = str(raw.get("parent_dir") or "..")
+        items = raw.get("repositories") or []
+    else:
+        raise HarnessError(f"{path} must be a mapping or a list of repositories")
+
+    repos: list[Repo] = []
+    seen_names: set[str] = set()
+    seen_paths: set[str] = set()
+    for item in items:
+        repo = _parse_repo(item)
+        if repo.name in seen_names:
+            raise HarnessError(f"Duplicate repository name: {repo.name}")
+        if repo.path in seen_paths:
+            raise HarnessError(f"Duplicate repository path: {repo.path}")
+        seen_names.add(repo.name)
+        seen_paths.add(repo.path)
+        repos.append(repo)
+    if not repos:
+        raise HarnessError(
+            f"{path} has no repositories. Add entries with name, url, and tags."
+        )
+    return repos, parent_dir
+
+
+def _parse_repo(item: Any) -> Repo:
+    if not isinstance(item, dict):
+        raise HarnessError("Each repository entry must be a mapping")
+    name = item.get("name") or item.get("id")
+    url = item.get("url") or item.get("clone_url") or item.get("git")
+    if not name or not url:
+        raise HarnessError("Each repository needs name and url (GitHub clone URL)")
+    name = str(name)
+    repo_path = str(item.get("path") or name)
+    if Path(repo_path).is_absolute() or ".." in Path(repo_path).parts:
+        raise HarnessError(
+            f"Repo path must be a single sibling folder name: {repo_path}"
+        )
+    tags = _as_list(item.get("tags"))
+    if not tags:
+        raise HarnessError(f"Repository {name} needs at least one tag")
+    return Repo(
+        name=name,
+        url=str(url),
+        path=repo_path,
+        default_branch=str(item.get("default_branch") or item.get("branch") or "main"),
+        description=str(item.get("description") or ""),
+        tags=tags,
+        enabled=bool(item.get("enabled", True)),
+    )
+
+
+def load_stack(
+    path: Path, repo_names: set[str]
+) -> tuple[list[Workspace], JiraSettings]:
+    raw = _read_yaml(path)
+    if raw is None:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise HarnessError(f"Stack catalog root must be a mapping: {path}")
+    if raw.get("repos") or raw.get("repositories"):
+        raise HarnessError(
+            f"{path} must not list repositories. Put them in {REPOS_RELATIVE}."
         )
 
     workspaces: list[Workspace] = []
@@ -172,11 +266,13 @@ def _parse_catalog(raw: dict[str, Any], source: Path) -> Catalog:
         if not isinstance(match_raw, dict):
             raise HarnessError(f"Workspace {workspace_id} match must be a mapping")
         folders = _as_list(item.get("folders"))
-        unknown = [folder for folder in folders if folder not in seen_repo_ids]
+        tags = _as_list(item.get("tags"))
+        unknown = [folder for folder in folders if folder not in repo_names]
         if unknown:
             raise HarnessError(
-                f"Workspace {workspace_id} references unknown repo id(s): "
+                f"Workspace {workspace_id} references unknown repo name(s): "
                 + ", ".join(unknown)
+                + f". Add them to {REPOS_RELATIVE}."
             )
         workspaces.append(
             Workspace(
@@ -184,6 +280,7 @@ def _parse_catalog(raw: dict[str, Any], source: Path) -> Catalog:
                 name=str(item.get("name") or workspace_id),
                 description=str(item.get("description") or ""),
                 folders=folders,
+                tags=tags,
                 include_harness=bool(item.get("include_harness", True)),
                 fallback=bool(item.get("fallback", False)),
                 match=WorkspaceMatch(
@@ -209,15 +306,9 @@ def _parse_catalog(raw: dict[str, Any], source: Path) -> Catalog:
             "Only one workspace can be fallback=true; found: " + ", ".join(fallbacks)
         )
 
-    return Catalog(
-        parent_dir=str(raw.get("parent_dir") or ".."),
-        repos=repos,
-        workspaces=workspaces,
-        jira=JiraSettings(
-            extra_fields=_as_list(jira_raw.get("extra_fields")),
-            field_aliases={str(key): str(value) for key, value in aliases.items()},
-        ),
-        source=source,
+    return workspaces, JiraSettings(
+        extra_fields=_as_list(jira_raw.get("extra_fields")),
+        field_aliases={str(key): str(value) for key, value in aliases.items()},
     )
 
 
@@ -225,11 +316,12 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
     sibling_root = catalog.sibling_root(harness_root)
     return {
         "source": str(catalog.source),
+        "repos_source": str(catalog.repos_source),
         "parent_dir": catalog.parent_dir,
         "sibling_root": str(sibling_root),
         "repos": [
             {
-                "id": repo.id,
+                "name": repo.name,
                 "url": repo.url,
                 "path": repo.path,
                 "resolved_path": str(catalog.repo_path(harness_root, repo)),
@@ -246,7 +338,7 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                 "id": workspace.id,
                 "name": workspace.name,
                 "description": workspace.description,
-                "folders": workspace.folders,
+                "folders": catalog.workspace_repo_names(workspace),
                 "include_harness": workspace.include_harness,
                 "fallback": workspace.fallback,
                 "file": str(catalog.workspace_file(harness_root, workspace)),

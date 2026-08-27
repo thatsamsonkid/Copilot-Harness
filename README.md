@@ -4,7 +4,7 @@ Tooling for using **GitHub Copilot in Visual Studio Code** against a multi-repo 
 
 Product code does **not** live here. This repo holds:
 
-1. A catalog of git remotes and feature-focused Code workspaces
+1. A `repositories.yml` manifest of every product repo, plus feature-focused Code workspaces
 2. A clone script that places those remotes as **siblings** of this harness
 3. A `harness` CLI Copilot can run to pull Jira Cloud tickets over basic auth (no Jira MCP)
 
@@ -29,7 +29,7 @@ Put this repo inside a project folder (for example `~/src/Copilot-Harness`), not
 
 Then:
 
-1. Edit `catalog/stack.yaml` — replace `YOUR_ORG` remotes with your team's repositories.
+1. Edit `repositories.yml` — add each product repo (`name`, GitHub `url`, `tags`).
 2. Copy `.env.example` to `.env` and set Jira Cloud values.
 3. Clone siblings: `./scripts/clone-repos.sh`
 4. Generate workspaces: `harness workspace generate`
@@ -49,16 +49,35 @@ Without the venv:
 PYTHONPATH=src python3 -m harness doctor
 ```
 
-## Catalog
+## Repository manifest
 
-`catalog/stack.yaml` is the source of truth.
+`repositories.yml` is the source of truth for every git repo in the app:
 
-| Block | Purpose |
-| --- | --- |
-| `repos` | Remote URL, sibling folder `path`, default branch, tags |
-| `workspaces` | Feature multi-root sets (`folders` are repo ids) |
-| `workspaces[].match` | Jira project / component / label / keyword routing |
-| `jira.extra_fields` | Extra custom field ids to include on issue fetch |
+```yaml
+parent_dir: ..
+repositories:
+  - name: frontend
+    url: git@github.com:YOUR_ORG/frontend.git
+    tags: [ui, frontend, web]
+  - name: backend
+    url: git@github.com:YOUR_ORG/backend.git
+    tags: [api, backend]
+```
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `name` | yes | Stable id and default sibling folder name |
+| `url` | yes | GitHub clone URL (`clone_url` / `git` also accepted) |
+| `tags` | yes | Labels used to clone or compose workspaces (`harness clone --tag ui`) |
+| `path` | no | Override the sibling folder name |
+| `default_branch` | no | Defaults to `main` |
+
+`catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository names. Workspace `tags` pull in every manifest repo with those tags.
+
+```bash
+harness repos
+harness clone --tag api
+```
 
 One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `harness workspace generate`.
 
@@ -97,7 +116,7 @@ Stdout is JSON by default (`--format markdown` or `text` if you want a human vie
 ./scripts/clone-repos.sh --https --dry-run
 ```
 
-Clones always land in `parent_dir` from the catalog (default `..`). Placeholder URLs that still contain `YOUR_ORG` are refused so a half-edited catalog cannot create junk remotes.
+Clones always land in `parent_dir` from `repositories.yml` (default `..`). Placeholder URLs that still contain `YOUR_ORG` are refused so a half-edited manifest cannot create junk remotes.
 
 ## Copilot in VS Code
 

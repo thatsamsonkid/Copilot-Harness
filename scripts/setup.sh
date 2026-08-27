@@ -16,4 +16,4 @@ if [[ ! -f .env && -f .env.example ]]; then
 fi
 
 harness workspace generate
-echo "Setup complete. Next: edit catalog/stack.yaml, then ./scripts/clone-repos.sh"
+echo "Setup complete. Next: edit repositories.yml, then ./scripts/clone-repos.sh"

@@ -49,11 +49,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Stdout format. Copilot should keep json.",
     )
     parser.add_argument("--catalog", type=Path, help="Override catalog/stack.yaml")
+    parser.add_argument("--repos", type=Path, help="Override repositories.yml")
     parser.add_argument("--root", type=Path, help="Override harness root")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    clone = sub.add_parser("clone", help="Clone catalog repos as siblings of the harness")
-    clone.add_argument("--only", help="Comma-separated repo ids")
+    clone = sub.add_parser("clone", help="Clone repositories.yml remotes as siblings of the harness")
+    clone.add_argument("--only", help="Comma-separated repository names")
+    clone.add_argument("--tag", help="Comma-separated tags from repositories.yml")
     clone.add_argument("--update", action="store_true", help="Fetch and fast-forward existing clones")
     clone.add_argument("--dry-run", action="store_true")
     clone.add_argument("--https", action="store_true", help="Rewrite git@github.com URLs to HTTPS")
@@ -102,21 +104,27 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--ping-jira", action="store_true")
 
     sub.add_parser("catalog", help="Show the resolved catalog")
+    sub.add_parser("repos", help="Show the repositories.yml manifest")
     return parser
 
 
 def dispatch(args: argparse.Namespace) -> Any:
     harness_root = Path(args.root).resolve() if args.root else find_harness_root()
     load_dotenv_files(harness_root)
-    catalog_path = Path(args.catalog).resolve() if args.catalog else harness_root / "catalog" / "stack.yaml"
-    catalog = load_catalog(catalog_path)
+    catalog = load_catalog(
+        harness_root,
+        stack_path=Path(args.catalog).resolve() if args.catalog else None,
+        repos_path=Path(args.repos).resolve() if args.repos else None,
+    )
 
     if args.command == "clone":
         only = _split_ids(args.only)
+        tags = _split_ids(getattr(args, "tag", None))
         repos = clone_repos(
             catalog,
             harness_root,
             only=only,
+            tags=tags,
             update=args.update,
             dry_run=args.dry_run,
             https=args.https,
@@ -127,7 +135,7 @@ def dispatch(args: argparse.Namespace) -> Any:
         }
         if any(item.get("action") == "blocked" for item in repos):
             raise _payload_error(
-                "One or more repo URLs are still placeholders. Update catalog/stack.yaml.",
+                "One or more repo URLs are still placeholders. Update repositories.yml.",
                 payload,
             )
         return payload
@@ -151,6 +159,14 @@ def dispatch(args: argparse.Namespace) -> Any:
         return payload
     if args.command == "catalog":
         return catalog_to_dict(catalog, harness_root)
+    if args.command == "repos":
+        payload = catalog_to_dict(catalog, harness_root)
+        return {
+            "manifest": payload["repos_source"],
+            "parent_dir": payload["parent_dir"],
+            "sibling_root": payload["sibling_root"],
+            "repositories": payload["repos"],
+        }
     raise HarnessError(f"Unknown command: {args.command}")
 
 

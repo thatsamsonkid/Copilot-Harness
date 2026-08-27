@@ -6,11 +6,20 @@ from pathlib import Path
 from harness.cli import main
 
 
+def test_repos_command(harness_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(harness_root)
+    assert main(["--root", str(harness_root), "repos"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["manifest"].endswith("repositories.yml")
+    assert [repo["name"] for repo in payload["repositories"]] == ["frontend", "backend"]
+    assert payload["repositories"][0]["tags"] == ["ui"]
+
+
 def test_catalog_and_workspace_generate(harness_root: Path, capsys, monkeypatch):
     monkeypatch.chdir(harness_root)
     assert main(["--root", str(harness_root), "catalog"]) == 0
     catalog = json.loads(capsys.readouterr().out)
-    assert catalog["repos"][0]["id"] == "frontend"
+    assert catalog["repos"][0]["name"] == "frontend"
 
     assert main(["--root", str(harness_root), "workspace", "generate"]) == 0
     generated = json.loads(capsys.readouterr().out)
@@ -45,10 +54,10 @@ def test_error_is_json_on_stderr(harness_root: Path, capsys, monkeypatch):
 def test_clone_placeholder_exits_nonzero(
     harness_root: Path, sample_catalog_data: dict, capsys, monkeypatch
 ):
-    from tests.conftest import write_catalog
+    from tests.helpers import write_harness_config
 
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
-    write_catalog(harness_root / "catalog" / "stack.yaml", sample_catalog_data)
+    write_harness_config(harness_root, sample_catalog_data)
     monkeypatch.chdir(harness_root)
     assert main(["--root", str(harness_root), "clone", "--only", "frontend"]) == 1
     error = json.loads(capsys.readouterr().err)

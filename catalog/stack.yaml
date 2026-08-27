@@ -1,44 +1,10 @@
-# Team stack catalog.
-# Clone destinations are siblings of this harness: <harness-parent>/<path>
-#
-# Replace YOUR_ORG and the repo names with your remotes, then run:
-#   ./scripts/clone-repos.sh
-#   harness workspace generate
-
-parent_dir: ..
+# Feature workspaces and Jira routing.
+# Repository remotes live in ../repositories.yml — reference them by name
+# in `folders`, or pull a set in by `tags`.
 
 jira:
   extra_fields: []
   field_aliases: {}
-
-repos:
-  - id: frontend
-    url: git@github.com:YOUR_ORG/frontend.git
-    path: frontend
-    default_branch: main
-    description: Customer-facing web UI
-    tags: [ui, frontend, web]
-
-  - id: backend
-    url: git@github.com:YOUR_ORG/backend.git
-    path: backend
-    default_branch: main
-    description: API and domain services
-    tags: [api, backend]
-
-  - id: mobile
-    url: git@github.com:YOUR_ORG/mobile.git
-    path: mobile
-    default_branch: main
-    description: Mobile client
-    tags: [mobile]
-
-  - id: infra
-    url: git@github.com:YOUR_ORG/infra.git
-    path: infra
-    default_branch: main
-    description: Infrastructure and deployment
-    tags: [infra, devops]
 
 workspaces:
   - id: frontend
@@ -77,7 +43,7 @@ workspaces:
   - id: platform
     name: Platform
     description: Cross-cutting work across the full stack
-    folders: [frontend, backend, mobile, infra]
+    tags: [ui, api, mobile, infra]
     fallback: true
     match:
       projects: [PLAT]

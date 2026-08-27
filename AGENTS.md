@@ -2,7 +2,7 @@
 
 This repo is a **Copilot / VS Code harness**, not the product codebase.
 
-Application repositories are cloned as **siblings** of this folder. See `catalog/stack.yaml` and `.github/copilot-instructions.md`.
+Application repositories are cloned as **siblings** of this folder. The full-app list lives in `repositories.yml`. See also `catalog/stack.yaml` and `.github/copilot-instructions.md`.
 
 For any Jira key:
 

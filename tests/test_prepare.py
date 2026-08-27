@@ -4,7 +4,7 @@ from pathlib import Path
 
 from harness.jira_client import JiraClient
 from harness.prepare import prepare_issue
-from tests.test_jira_client import FakeHttp, _json
+from tests.helpers import FakeHttp, json_response as _json
 
 
 def _issue_payload() -> dict:

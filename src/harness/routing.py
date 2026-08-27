@@ -16,7 +16,7 @@ def match_workspaces(
                 "id": workspace.id,
                 "name": workspace.name,
                 "description": workspace.description,
-                "folders": workspace.folders,
+                "folders": catalog.workspace_repo_names(workspace),
                 "fallback": workspace.fallback,
                 "score": score,
                 "reasons": reasons,

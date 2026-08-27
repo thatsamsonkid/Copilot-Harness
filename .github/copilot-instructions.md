@@ -16,7 +16,8 @@ When the user gives a Jira key or browse URL:
 
 ## Repo layout
 
-- Catalog: `catalog/stack.yaml` — remotes, sibling folder names, feature workspaces, Jira routing rules.
+- Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`).
+- Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
 - CLI: `src/harness` — clone, Jira basic auth, workspace generate/match, prepare.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness.
 - Secrets: `.env` (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`). Never commit tokens or print them.
@@ -28,7 +29,9 @@ harness prepare PROJ-123
 harness jira get PROJ-123
 harness jira context PROJ-123
 harness jira search 'project = PROJ AND status != Done'
+harness repos
 harness clone --only frontend,backend
+harness clone --tag ui
 harness workspace list
 harness workspace generate
 harness doctor

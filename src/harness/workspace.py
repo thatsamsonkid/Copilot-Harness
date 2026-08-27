@@ -20,11 +20,11 @@ def workspace_document(catalog: Catalog, harness_root: Path, workspace: Workspac
                 "path": _rel(workspace_file, harness_root),
             }
         )
-    for repo_id in workspace.folders:
+    for repo_id in catalog.workspace_repo_names(workspace):
         repo = catalog.repo(repo_id)
         folders.append(
             {
-                "name": repo.id,
+                "name": repo.name,
                 "path": _rel(workspace_file, catalog.repo_path(harness_root, repo)),
             }
         )
@@ -71,7 +71,7 @@ def list_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]
     for workspace in catalog.workspaces:
         path = catalog.workspace_file(harness_root, workspace)
         repos = []
-        for repo_id in workspace.folders:
+        for repo_id in catalog.workspace_repo_names(workspace):
             repo_path = catalog.repo_path(harness_root, repo_id)
             repos.append(
                 {

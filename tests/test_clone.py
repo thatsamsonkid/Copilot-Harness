@@ -8,7 +8,7 @@ import pytest
 from harness import HarnessError
 from harness.catalog import load_catalog
 from harness.clone import clone_repos, rewrite_clone_url
-from tests.conftest import write_catalog
+from tests.helpers import write_harness_config
 
 
 def _git(cwd: Path, *args: str) -> None:
@@ -49,8 +49,8 @@ def test_clone_as_sibling_and_skip_existing(
     remotes = tmp_path / "remotes"
     sample_catalog_data["repos"][0]["url"] = str(_bare_repo(remotes / "frontend.git"))
     sample_catalog_data["repos"][1]["url"] = str(_bare_repo(remotes / "backend.git"))
-    write_catalog(harness_root / "catalog" / "stack.yaml", sample_catalog_data)
-    catalog = load_catalog(harness_root / "catalog" / "stack.yaml")
+    write_harness_config(harness_root, sample_catalog_data)
+    catalog = load_catalog(harness_root)
 
     first = clone_repos(catalog, harness_root)
     assert {item["action"] for item in first} == {"clone"}
@@ -68,8 +68,8 @@ def test_placeholder_urls_are_blocked(
     harness_root: Path, sample_catalog_data: dict
 ):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
-    write_catalog(harness_root / "catalog" / "stack.yaml", sample_catalog_data)
-    catalog = load_catalog(harness_root / "catalog" / "stack.yaml")
+    write_harness_config(harness_root, sample_catalog_data)
+    catalog = load_catalog(harness_root)
     result = clone_repos(catalog, harness_root, only=["frontend"])
     assert result[0]["action"] == "blocked"
     assert not (harness_root.parent / "frontend").exists()
@@ -79,8 +79,8 @@ def test_refuses_filesystem_root_parent(
     harness_root: Path, sample_catalog_data: dict
 ):
     sample_catalog_data["parent_dir"] = "/"
-    write_catalog(harness_root / "catalog" / "stack.yaml", sample_catalog_data)
-    catalog = load_catalog(harness_root / "catalog" / "stack.yaml")
+    write_harness_config(harness_root, sample_catalog_data)
+    catalog = load_catalog(harness_root)
     with pytest.raises(HarnessError, match="filesystem root"):
         clone_repos(catalog, harness_root, only=["frontend"], dry_run=True)
 
