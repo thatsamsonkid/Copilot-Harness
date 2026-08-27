@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import shlex
+import subprocess
+import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import yaml
 
 from harness import HarnessError
 from harness.catalog import Catalog, Repo, as_list
+from harness.invoke import invoke_spec
+from harness.launch import load_launch_runtime, summarize_launch
+
+RunFn = Callable[[str, Path, dict[str, str]], int]
 
 PACKAGE_START_SCRIPTS = ("start", "serve", "dev")
 MAKE_START_TARGETS = ("start", "run", "serve", "dev", "up", "bootrun")
@@ -87,6 +95,8 @@ def collect_start_plan(
         "order": [item["name"] for item in services],
         "services": services,
         "blocked": _blocked_entries(services),
+        "harness_root": str(Path(harness_root).resolve()),
+        "invoke": invoke_spec(harness_root),
         "plan_file": str(plan_file) if plan_file else None,
         "plan_exists": bool(plan_file and plan_file.is_file()),
         "plan_source": "discovered",
@@ -121,11 +131,18 @@ def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dic
 
     discovered = discover_start(path, repo)
     payload.update(discovered)
+    _attach_launch(payload, repo, path, harness_root)
     if not payload.get("command"):
-        payload["blocked"] = "no start command found"
-        payload["notes"].append(
-            "Add a command to workspaces/<id>.start.yml or a start/serve/dev script."
-        )
+        if payload.get("run_via") == "vscode" and payload.get("launch"):
+            payload["notes"].append(
+                "No shell start command. Use VS Code Run Without Debugging on "
+                f"{payload['launch'].get('configuration')!r}."
+            )
+        else:
+            payload["blocked"] = "no start command found"
+            payload["notes"].append(
+                "Add a command to workspaces/<id>.start.yml or a start/serve/dev script."
+            )
     elif payload.get("role") == "infra" and payload.get("kind") == "compose":
         payload["notes"].append(
             "Do not start docker compose unless the user asked for the local stack."
@@ -187,6 +204,22 @@ def load_saved_start_plan(path: Path) -> dict[str, Any]:
         cwd = str(item.get("cwd") or "").strip()
         if cwd:
             entry["cwd"] = _relative_cwd(f"Saved start plan {path} cwd", cwd)
+        launch = str(item.get("launch") or item.get("configuration") or "").strip()
+        if launch:
+            entry["launch"] = launch
+        env_file = str(item.get("env_file") or item.get("envFile") or "").strip()
+        if env_file:
+            entry["env_file"] = _relative_cwd(
+                f"Saved start plan {path} env_file", env_file
+            )
+        method = str(item.get("method") or "").strip().lower()
+        if method and method not in {"terminal", "vscode", "harness"}:
+            raise HarnessError(
+                f"Saved start plan {path} service {entry['name']} "
+                "method must be terminal, vscode, or harness"
+            )
+        if method:
+            entry["method"] = method
         if "depends_on" in item:
             entry["depends_on"] = as_list(item.get("depends_on"))
         notes = item.get("notes")
@@ -238,7 +271,14 @@ def apply_saved_start_plan(
         if wanted is not None and name not in wanted:
             continue
         item = discovered.get(name) or inspect_start(catalog, harness_root, name)
-        services.append(_apply_saved_service(item, pins.get(name) or {}))
+        services.append(
+            _apply_saved_service(
+                item,
+                pins.get(name) or {},
+                catalog.repo(name),
+                harness_root,
+            )
+        )
     unplanned_items: list[dict[str, Any]] = []
     for item in payload["services"]:
         if item["name"] in saved_names:
@@ -302,6 +342,16 @@ def saved_start_document(payload: dict[str, Any]) -> dict[str, Any]:
             entry["cwd"] = cwd
         if item.get("depends_on"):
             entry["depends_on"] = list(item["depends_on"])
+        launch = item.get("launch") or {}
+        if isinstance(launch, dict) and launch.get("configuration"):
+            entry["launch"] = launch["configuration"]
+        elif isinstance(launch, str) and launch.strip():
+            entry["launch"] = launch.strip()
+        if isinstance(launch, dict) and launch.get("env_file"):
+            entry["env_file"] = launch["env_file"]
+        method = str(item.get("method") or item.get("run_via") or "").strip()
+        if method and method != "terminal":
+            entry["method"] = method
         services.append(entry)
     document: dict[str, Any] = {
         "workspace": payload.get("workspace"),
@@ -313,7 +363,12 @@ def saved_start_document(payload: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
-def _apply_saved_service(discovered: dict[str, Any], pin: dict[str, Any]) -> dict[str, Any]:
+def _apply_saved_service(
+    discovered: dict[str, Any],
+    pin: dict[str, Any],
+    repo: Repo,
+    harness_root: Path,
+) -> dict[str, Any]:
     merged = dict(discovered)
     applied = False
     if pin.get("command"):
@@ -341,6 +396,17 @@ def _apply_saved_service(discovered: dict[str, Any], pin: dict[str, Any]) -> dic
         applied = True
     if pin.get("notes"):
         merged["notes"] = [*list(merged.get("notes") or []), *pin["notes"]]
+    if pin.get("launch") or pin.get("env_file") or pin.get("method"):
+        _attach_launch(
+            merged,
+            repo,
+            Path(str(merged.get("path") or merged.get("cwd"))),
+            harness_root,
+            configuration=pin.get("launch"),
+            env_file=pin.get("env_file"),
+            method=pin.get("method") or "",
+        )
+        applied = True
     if applied:
         merged["source"] = "saved"
         merged["confidence"] = "high"
@@ -395,7 +461,19 @@ def _plan_guidance(payload: dict[str, Any]) -> list[str]:
         "working tree. Do not commit that change unless the user asked.",
         "If discovery is wrong, edit workspaces/<id>.start.yml or rerun with "
         "--save after you have the right commands.",
+        "Run this CLI from the harness repo (invoke.cwd). After cd into a "
+        "sibling, `uv run harness` cannot spawn. Re-run with invoke.command "
+        "or scripts/harness.sh; do not reuse an app terminal for harness.",
     ]
+    services = payload.get("services") or []
+    if any((item.get("launch") or {}).get("secret_risk") for item in services):
+        lines.append(
+            "When run_via is harness or launch.secret_risk is true, start that "
+            "app with invoke.command plus `start run --repo <name>` (or the "
+            "service `copilot_command`) or VS Code Run Without Debugging. "
+            "Never read launch.json, envFile, or .env, and never reconstruct "
+            "env or args in the terminal."
+        )
     workspace = payload.get("workspace")
     saved = payload.get("saved")
     if saved:
@@ -522,6 +600,9 @@ def _empty_service(repo: Repo, path: Path) -> dict[str, Any]:
         "markers": [],
         "notes": [],
         "blocked": None,
+        "run_via": "terminal",
+        "copilot_command": None,
+        "launch": None,
     }
 
 
@@ -537,6 +618,7 @@ def _markers(repo_path: Path) -> list[str]:
         ("manage.py", "manage.py"),
         ("mvnw", "mvnw"),
         ("gradlew", "gradlew"),
+        ("launch.json", ".vscode/launch.json"),
     ]
     found = [name for name, relative in names if (repo_path / relative).exists()]
     if any((repo_path / name).exists() for name in COMPOSE_FILENAMES) and "compose" not in found:
@@ -934,3 +1016,255 @@ def _service_sort_key(item: dict[str, Any]) -> tuple[int, int, str]:
     role_rank = ROLE_ORDER.get(str(item.get("role") or ""), 9)
     blocked = 1 if item.get("blocked") else 0
     return (role_rank, blocked, str(item.get("name") or ""))
+
+
+def _attach_launch(
+    payload: dict[str, Any],
+    repo: Repo,
+    repo_path: Path,
+    harness_root: Path,
+    *,
+    configuration: str | None = None,
+    env_file: str | None = None,
+    method: str = "",
+) -> None:
+    launch = summarize_launch(
+        repo_path,
+        kind=str(payload.get("kind") or ""),
+        repo_name=repo.name,
+        configuration=configuration or None,
+        env_file=env_file or None,
+    )
+    payload["launch"] = launch
+    payload["run_via"] = _run_via(payload.get("command"), method, launch)
+    payload["copilot_command"] = _copilot_command(
+        repo.name, payload["run_via"], launch, harness_root
+    )
+    if not launch:
+        return
+    if launch.get("file"):
+        payload.setdefault("markers", [])
+        if "launch.json" not in payload["markers"]:
+            payload["markers"].append("launch.json")
+    if launch.get("secret_risk"):
+        config = launch.get("configuration") or "the named launch configuration"
+        if payload["run_via"] == "vscode":
+            payload["notes"].append(
+                f"This app has launch.json env/args. Start with VS Code Run "
+                f"Without Debugging on {config!r}. Do not read launch.json or "
+                "reconstruct env in the terminal."
+            )
+        else:
+            payload["notes"].append(
+                f"This app has launch.json env/args. Start with "
+                f"`{invoke_spec(harness_root)['command']} start run --repo {repo.name}` "
+                "or VS Code Run "
+                f"Without Debugging on {config!r}. Do not read launch.json or "
+                "reconstruct env in the terminal."
+            )
+
+
+def _run_via(
+    command: str | None,
+    method: str,
+    launch: dict[str, Any] | None,
+) -> str:
+    secret_risk = bool(launch and launch.get("secret_risk"))
+    uses_inputs = bool(launch and launch.get("uses_vscode_inputs"))
+    if uses_inputs:
+        return "vscode"
+    if method == "vscode":
+        return "vscode"
+    if method == "harness" and command:
+        return "harness"
+    if method == "terminal" and secret_risk:
+        return "harness" if command else "vscode"
+    if method == "terminal":
+        return "terminal"
+    if secret_risk and command:
+        return "harness"
+    if secret_risk:
+        return "vscode"
+    return "terminal"
+
+
+def _copilot_command(
+    repo_name: str,
+    run_via: str,
+    launch: dict[str, Any] | None,
+    harness_root: Path,
+) -> str | None:
+    if run_via != "harness":
+        return None
+    command = f"{invoke_spec(harness_root)['command']} start run --repo {repo_name}"
+    config = (launch or {}).get("configuration")
+    if isinstance(config, str) and config:
+        command += f" --configuration {shlex.quote(config)}"
+    return command
+
+
+def prepare_start_run(
+    catalog: Catalog,
+    harness_root: Path,
+    repo_name: str,
+    *,
+    configuration: str | None = None,
+) -> dict[str, Any]:
+    """Build a redacted start-run payload and the in-process env/args."""
+    service = inspect_start(catalog, harness_root, repo_name)
+    if service.get("blocked") == "repo is not cloned":
+        raise HarnessError(f"Repository {repo_name} is not cloned")
+    launch = service.get("launch")
+    if isinstance(configuration, str) and configuration.strip():
+        launch = summarize_launch(
+            Path(service["path"]),
+            kind=str(service.get("kind") or ""),
+            repo_name=repo_name,
+            configuration=configuration.strip(),
+            env_file=(launch or {}).get("env_file") if launch else None,
+        )
+        service["launch"] = launch
+    runtime = load_launch_runtime(
+        Path(service["path"]),
+        launch if isinstance(launch, dict) else None,
+        configuration=configuration,
+    )
+    if runtime.get("uses_vscode_inputs"):
+        raise HarnessError(
+            "launch.json env/args use VS Code input variables. "
+            "Use Run Without Debugging on "
+            f"{(launch or {}).get('configuration')!r}; "
+            "do not reconstruct those values in the terminal."
+        )
+    command = service.get("command")
+    if not command:
+        config = (launch or {}).get("configuration")
+        raise HarnessError(
+            "No shell start command for "
+            f"{repo_name}. Use VS Code Run Without Debugging on {config!r}."
+        )
+    cwd = runtime.get("cwd") or Path(service["cwd"])
+    env = dict(runtime.get("env") or {})
+    exec_command = _command_with_launch_args(
+        str(command),
+        str(service.get("kind") or ""),
+        runtime.get("args"),
+        runtime.get("vm_args"),
+        env,
+    )
+    env_keys = sorted(env)
+    return {
+        "name": service["name"],
+        "cwd": str(cwd),
+        "command": str(command),
+        "exec_command": exec_command,
+        "env": env,
+        "env_keys": env_keys,
+        "env_file": (launch or {}).get("env_file") if launch else None,
+        "launch_configuration": (launch or {}).get("configuration") if launch else None,
+        "applied_args": bool(runtime.get("args")),
+        "applied_vm_args": bool(runtime.get("vm_args")),
+        "run_via": "harness",
+    }
+
+
+def start_run_preview(prepared: dict[str, Any]) -> dict[str, Any]:
+    """JSON-safe view of a prepared run. No env/arg values."""
+    return {
+        "name": prepared["name"],
+        "cwd": prepared["cwd"],
+        "command": prepared["command"],
+        "env_keys": list(prepared.get("env_keys") or []),
+        "env_file": prepared.get("env_file"),
+        "launch_configuration": prepared.get("launch_configuration"),
+        "applied_args": bool(prepared.get("applied_args")),
+        "applied_vm_args": bool(prepared.get("applied_vm_args")),
+        "run_via": "harness",
+        "dry_run": True,
+    }
+
+
+def execute_start_run(
+    catalog: Catalog,
+    harness_root: Path,
+    repo_name: str,
+    *,
+    configuration: str | None = None,
+    dry_run: bool = False,
+    run: RunFn | None = None,
+) -> dict[str, Any]:
+    prepared = prepare_start_run(
+        catalog, harness_root, repo_name, configuration=configuration
+    )
+    preview = start_run_preview(prepared)
+    if dry_run:
+        return preview
+    env = os.environ.copy()
+    env.update(prepared["env"])
+    _print_run_banner(preview)
+    runner = run or _run_foreground
+    exit_code = runner(prepared["exec_command"], Path(prepared["cwd"]), env)
+    return {
+        **preview,
+        "dry_run": False,
+        "exit_code": exit_code,
+    }
+
+
+def _print_run_banner(preview: dict[str, Any]) -> None:
+    keys = preview.get("env_keys") or []
+    config = preview.get("launch_configuration")
+    parts = [f"Starting {preview['name']}"]
+    if config:
+        parts.append(f"launch {config!r}")
+    if keys:
+        parts.append("env_keys=" + ",".join(keys))
+    print(" ".join(parts), file=sys.stderr)
+
+
+def _run_foreground(command: str, cwd: Path, env: dict[str, str]) -> int:
+    completed = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        shell=True,
+        check=False,
+    )
+    return int(completed.returncode)
+
+
+def _command_with_launch_args(
+    command: str,
+    kind: str,
+    args: Any,
+    vm_args: Any,
+    env: dict[str, str],
+) -> str:
+    del kind
+    args_str = _join_cli_args(args)
+    vm_str = _join_cli_args(vm_args)
+    if vm_str and "spring-boot:run" not in command:
+        existing = env.get("JAVA_TOOL_OPTIONS", "")
+        env["JAVA_TOOL_OPTIONS"] = f"{existing} {vm_str}".strip()
+    if not args_str and not (vm_str and "spring-boot:run" in command):
+        return command
+    if "spring-boot:run" in command:
+        extra: list[str] = []
+        if args_str:
+            extra.append(f"-Dspring-boot.run.arguments={shlex.quote(args_str)}")
+        if vm_str:
+            extra.append(f"-Dspring-boot.run.jvmArguments={shlex.quote(vm_str)}")
+        return f"{command} {' '.join(extra)}"
+    if "bootRun" in command and args_str:
+        return f"{command} --args={shlex.quote(args_str)}"
+    if args_str:
+        return f"{command} {args_str}".strip()
+    return command
+
+
+def _join_cli_args(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return " ".join(str(part) for part in value if part is not None and part != "")
+    return str(value)

@@ -41,7 +41,7 @@ def test_skill_is_plan_then_sequential_start():
     lowered = body.lower()
     for token in (
         "uv run harness start",
-            "never launches",
+        "never launches",
         "one at a time",
         "one vs code terminal per app",
         "reuse",
@@ -53,6 +53,13 @@ def test_skill_is_plan_then_sequential_start():
         "--save",
         "start.yml",
         "plan_source",
+        "failed to spawn",
+        "--project",
+        "do not `cd`",
+        "launch.json",
+        "harness start run",
+        "run without debugging",
+        "never read",
     ):
         assert token in lowered
 
@@ -69,3 +76,6 @@ def test_prompt_points_at_the_skill():
     assert "never start a second" in lowered
     assert "--save" in lowered
     assert "start.yml" in lowered
+    assert "harness start run" in lowered
+    assert "run without debugging" in lowered
+    assert "launch.json" in lowered

@@ -11,6 +11,15 @@
     "jira-ticket": "Plan work from a Jira key."
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "terminal.integrated.env.linux": {
+    "HARNESS_ROOT": "${workspaceFolder}"
+  },
+  "terminal.integrated.env.osx": {
+    "HARNESS_ROOT": "${workspaceFolder}"
+  },
+  "terminal.integrated.env.windows": {
+    "HARNESS_ROOT": "${workspaceFolder}"
+  },
   "files.exclude": {
     "**/.env": true,
     "**/__pycache__": true,

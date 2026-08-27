@@ -15,7 +15,16 @@
     "git.repositoryScanMaxDepth": 1,
     "git.openRepositoryInParentFolders": "never",
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
-    "chat.useCustomizationsInParentRepositories": true
+    "chat.useCustomizationsInParentRepositories": true,
+    "terminal.integrated.env.linux": {
+      "HARNESS_ROOT": "${workspaceFolder:harness}"
+    },
+    "terminal.integrated.env.osx": {
+      "HARNESS_ROOT": "${workspaceFolder:harness}"
+    },
+    "terminal.integrated.env.windows": {
+      "HARNESS_ROOT": "${workspaceFolder:harness}"
+    }
   },
   "extensions": {
     "recommendations": [

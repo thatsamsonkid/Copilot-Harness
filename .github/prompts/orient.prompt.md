@@ -7,7 +7,7 @@ agent: plan
 
 The user has a vague, broad, or low-context request (no ticket, unclear repo, or "how does this work?"). Load `.github/skills/workspace-context/SKILL.md`.
 
-1. Run `#tool:runCommands` with `uv run harness context --format json`.
+1. Run `#tool:runCommands` with cwd = the harness folder and `uv run harness context --format json`. Do not `cd` into a sibling first. If cwd is already a product clone, use `uv run --project "$HARNESS_ROOT" harness context --format json`.
 2. Summarize each cloned repo: Graphify report present or not, instruction files, knowledge notes/ADRs, and suggested verify commands.
 3. If any `graphify.report` or `knowledge.files` exist, read those Markdown files before searching product code.
 4. If the user named two concepts, prefer `graphify path` / `graphify query` from the JSON over grepping a monorepo.

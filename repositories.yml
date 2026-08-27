@@ -9,6 +9,8 @@
 # Do not add start: here. Discover once, then pin the workspace sequence:
 #   harness start --workspace frontend --save
 #   → workspaces/frontend.start.yml
+# Java launch.json env/args stay in the sibling. The plan lists names/keys only;
+# start those apps with `harness start run --repo <name>`.
 #
 # Use group or a nested path to organize clones without putting git
 # trees inside this harness:

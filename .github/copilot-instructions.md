@@ -6,13 +6,13 @@ This repository is tooling only. Application code lives in **git clones next to 
 
 - First time in this repo, missing Jira auth, or "how do I set this up?": load `.github/skills/get-started/SKILL.md` and run `uv run harness init --format json`. Never collect the API token in chat.
 - Vague, broad, or no-ticket prompts in a large workspace: load `.github/skills/workspace-context/SKILL.md` and run `uv run harness context --format json`. Read each cloned repo's Graphify `GRAPH_REPORT.md` before grepping.
-- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run harness start --format json`. That command is a plan only. Prefer a saved `workspaces/<id>.start.yml` when `plan_source` is `saved`; pin a first good plan with `--save`. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening.
+- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run harness start --format json`. That command is a plan only. Prefer a saved `workspaces/<id>.start.yml` when `plan_source` is `saved`; pin a first good plan with `--save`. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening. If `run_via` is `harness`, run `harness start run --repo <name>` instead of reconstructing launch.json env/args. Never read sibling `.vscode/launch.json` or product `.env` files.
 
 ## Default ticket workflow
 
 When the user gives a Jira key or browse URL, load the **jira-cli** skill (`.github/skills/jira-cli/SKILL.md`) and follow it.
 
-1. Run `uv run harness prepare <KEY> --format json` from this repo (or with `HARNESS_ROOT` set).
+1. Run `uv run harness prepare <KEY> --format json` from this repo (first workspace folder). If cwd is a sibling clone, `uv run harness` cannot spawn — use `uv run --project "$HARNESS_ROOT" harness prepare <KEY> --format json` or `./scripts/harness.sh`.
 2. Use that CLI JSON as the only ticket source. It is already field-filtered. Do not ask Jira for more.
 3. Tell the user to open `routing.open_command` so the feature workspace loads the right roots. Do not assume sibling repos are already in the current window.
 4. If `routing.missing_repos` is non-empty, recommend `routing.clone_command`. Never `git clone` into this harness folder.
@@ -27,6 +27,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Only talk to Jira through `uv run harness jira …`, `uv run harness prepare …`, or `uv run harness init` / `doctor`.
 - Do **not** curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
 - Do **not** read `.env`, print `env`, or expand `$JIRA_API_TOKEN` / `$JIRA_TOKEN`.
+- Do **not** read sibling `.vscode/launch.json` env/args or product `.env` / `envFile` values. Use `harness start` (redacted keys) and `harness start run`.
 - Do **not** configure or call an MCP Jira tool.
 - If credentials are missing, tell the user to edit `.env` locally. Never ask them to paste a token into chat.
 
@@ -41,7 +42,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Jira command choice, flags, and output shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start.
+Prefer `uv` for Python. Run the CLI as `uv run harness <command>` **from this harness repo**, or `uv run --project "$HARNESS_ROOT" harness <command>` / `./scripts/harness.sh` (Windows: `.\scripts\harness.ps1`) from any cwd. Sibling clones are not a uv project; `uv run harness` fails there with Failed to spawn. Jira command choice, flags, and output shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start.
 
 ```bash
 uv run harness templates

@@ -10,7 +10,7 @@ from harness.catalog import load_catalog
 from harness.cli import main
 from harness.output import render
 from harness.prompt import PromptSession
-from harness.start import collect_start_plan, load_saved_start_plan
+from harness.start import collect_start_plan, execute_start_run, load_saved_start_plan
 from harness.workspace_create import create_workspace
 from tests.helpers import write_harness_config
 
@@ -93,6 +93,10 @@ def test_start_discovers_angular_and_spring(harness_root: Path, catalog):
     _write_spring(harness_root)
     payload = collect_start_plan(catalog, harness_root, workspace_id="frontend")
     assert payload["order"] == ["backend", "frontend"]
+    assert payload["harness_root"] == str(harness_root.resolve())
+    assert payload["invoke"]["cwd"] == str(harness_root.resolve())
+    assert "--project" in payload["invoke"]["command"]
+    assert any("cannot spawn" in item.lower() for item in payload["guidance"])
     by_name = {item["name"]: item for item in payload["services"]}
 
     backend = by_name["backend"]
@@ -103,6 +107,8 @@ def test_start_discovers_angular_and_spring(harness_root: Path, catalog):
     assert backend["port_source"].endswith("application.yml")
     assert backend["wait"] == "listen:8090"
     assert backend["source"] == "discovered"
+    assert backend["run_via"] == "terminal"
+    assert backend["launch"] is None
 
     frontend = by_name["frontend"]
     assert frontend["kind"] == "angular"
@@ -165,6 +171,7 @@ def test_start_cli_and_markdown(harness_root: Path, capsys, monkeypatch):
 
     markdown = render(payload, "markdown")
     assert "# Start plan (`frontend`)" in markdown
+    assert "--project" in markdown
     assert "pnpm start" in markdown
     assert "proxy.conf.json" in markdown
     assert "--save" in markdown
@@ -354,3 +361,201 @@ def test_start_save_cli(harness_root: Path, capsys, monkeypatch):
     )
     error = json.loads(capsys.readouterr().err)
     assert "--repo" in error["error"] or "combine" in error["error"]
+
+
+def _write_java_launch(
+    repo: Path,
+    *,
+    secret: str = "s3cret-do-not-print",
+    args: str = "--spring.profiles.active=local --token=dont-print-me",
+    env_file: str | None = "${workspaceFolder}/.env",
+    extra_config: dict | None = None,
+) -> None:
+    vscode = repo / ".vscode"
+    vscode.mkdir(parents=True, exist_ok=True)
+    configurations = [
+        {
+            "type": "java",
+            "name": "Launch Backend",
+            "request": "launch",
+            "mainClass": "com.example.ApiApplication",
+            "args": args,
+            "vmArgs": "-Xmx512m",
+            "env": {
+                "DB_PASSWORD": secret,
+                "API_TOKEN": "tok_live_xxx",
+            },
+        },
+        {
+            "type": "java",
+            "name": "Attach",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5005,
+        },
+    ]
+    if env_file:
+        configurations[0]["envFile"] = env_file
+    if extra_config:
+        configurations.append(extra_config)
+    (vscode / "launch.json").write_text(
+        """// VS Code launch
+{
+  "version": "0.2.0",
+  "configurations": """
+        + json.dumps(configurations, indent=2)
+        + """,
+}
+""",
+        encoding="utf-8",
+    )
+
+
+def test_start_redacts_launch_json_secrets(harness_root: Path, catalog):
+    repo = _write_spring(harness_root)
+    _write_java_launch(repo)
+    (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
+    payload = collect_start_plan(catalog, harness_root, only=["backend"])
+    dumped = json.dumps(payload)
+    assert "s3cret-do-not-print" not in dumped
+    assert "tok_live_xxx" not in dumped
+    assert "dont-print-me" not in dumped
+    assert "another-hidden-value" not in dumped
+
+    service = payload["services"][0]
+    assert service["run_via"] == "harness"
+    assert "harness start run --repo backend" in service["copilot_command"]
+    assert "--project" in service["copilot_command"]
+    launch = service["launch"]
+    assert launch["configuration"] == "Launch Backend"
+    assert launch["secret_risk"] is True
+    assert launch["has_env"] is True
+    assert launch["has_args"] is True
+    assert "DB_PASSWORD" in launch["env_keys"]
+    assert launch["env_file"] == ".env"
+    assert "MORE_SECRET" in launch["env_file_keys"]
+    assert any("harness start run" in note for note in service["notes"])
+    assert any("never read launch.json" in item.lower() for item in payload["guidance"])
+    markdown = render(payload, "markdown")
+    assert "Launch Backend" in markdown
+    assert "s3cret-do-not-print" not in markdown
+
+
+def test_start_run_applies_env_without_leaking(harness_root: Path, catalog):
+    repo = _write_spring(harness_root)
+    _write_java_launch(repo)
+    (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
+    recorded: dict = {}
+
+    def fake_run(command: str, cwd: Path, env: dict[str, str]) -> int:
+        recorded["command"] = command
+        recorded["cwd"] = cwd
+        recorded["password"] = env.get("DB_PASSWORD")
+        recorded["file_secret"] = env.get("MORE_SECRET")
+        return 0
+
+    payload = execute_start_run(
+        catalog, harness_root, "backend", dry_run=False, run=fake_run
+    )
+    assert recorded["password"] == "s3cret-do-not-print"
+    assert recorded["file_secret"] == "another-hidden-value"
+    assert "spring-boot.run.arguments" in recorded["command"]
+    dumped = json.dumps(payload)
+    assert "s3cret-do-not-print" not in dumped
+    assert "another-hidden-value" not in dumped
+    assert "dont-print-me" not in dumped
+    assert payload["command"] == "./mvnw spring-boot:run"
+    assert payload["env_keys"] == ["API_TOKEN", "DB_PASSWORD", "MORE_SECRET"]
+    assert payload["applied_args"] is True
+    assert payload["exit_code"] == 0
+
+
+def test_start_run_dry_run_cli(harness_root: Path, capsys, monkeypatch):
+    repo = _write_spring(harness_root)
+    _write_java_launch(repo)
+    monkeypatch.chdir(harness_root)
+    assert (
+        main(
+            [
+                "--root",
+                str(harness_root),
+                "start",
+                "run",
+                "--repo",
+                "backend",
+                "--dry-run",
+            ]
+        )
+        == 0
+    )
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["dry_run"] is True
+    assert payload["name"] == "backend"
+    assert "DB_PASSWORD" in payload["env_keys"]
+    assert "s3cret-do-not-print" not in out
+    assert payload.get("env") is None
+    assert payload.get("exec_command") is None
+
+
+def test_start_vscode_inputs_force_vscode_run(harness_root: Path, catalog):
+    repo = _write_spring(harness_root)
+    _write_java_launch(
+        repo,
+        extra_config={
+            "type": "java",
+            "name": "Prompted",
+            "request": "launch",
+            "mainClass": "com.example.ApiApplication",
+            "env": {"DB_PASSWORD": "${input:dbPassword}"},
+        },
+    )
+    plan_path = catalog.workspace_start_file(harness_root, "frontend")
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
+    plan_path.write_text(
+        """workspace: frontend
+order:
+  - backend
+services:
+  - name: backend
+    command: ./mvnw spring-boot:run
+    role: backend
+    launch: Prompted
+""",
+        encoding="utf-8",
+    )
+    payload = collect_start_plan(catalog, harness_root, workspace_id="frontend")
+    service = next(item for item in payload["services"] if item["name"] == "backend")
+    assert service["launch"]["configuration"] == "Prompted"
+    assert service["launch"]["uses_vscode_inputs"] is True
+    assert service["run_via"] == "vscode"
+    assert service["copilot_command"] is None
+    dumped = json.dumps(payload)
+    assert "${input:dbPassword}" not in dumped
+    with pytest.raises(HarnessError, match="input variables"):
+        execute_start_run(
+            catalog, harness_root, "backend", configuration="Prompted"
+        )
+
+
+def test_start_launch_only_uses_vscode_without_blocking(harness_root: Path, catalog):
+    repo = harness_root.parent / "backend"
+    repo.mkdir(parents=True)
+    _write_java_launch(repo)
+    payload = collect_start_plan(catalog, harness_root, only=["backend"])
+    service = payload["services"][0]
+    assert service["command"] is None
+    assert service["run_via"] == "vscode"
+    assert service["blocked"] is None
+    assert any("Run Without Debugging" in note for note in service["notes"])
+
+
+def test_saved_plan_rejects_bad_method(harness_root: Path, catalog):
+    plan_path = catalog.workspace_start_file(harness_root, "frontend")
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
+    plan_path.write_text(
+        "workspace: frontend\nservices:\n  - name: backend\n    method: debug\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(HarnessError, match="method must be terminal"):
+        collect_start_plan(catalog, harness_root, workspace_id="frontend")
