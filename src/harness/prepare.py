@@ -53,6 +53,7 @@ def prepare_issue(
             "instructions": snapshot["instructions"],
             "knowledge": snapshot["knowledge"],
             "tooling": snapshot["tooling"],
+            "readiness": snapshot["readiness"],
         }
         repos.append(item)
         if not present:
@@ -75,6 +76,7 @@ def prepare_issue(
         "Inspect only the repos listed in routing.repos unless the ticket clearly needs more.",
         "If a repo has graphify.report, read that before grepping the tree.",
         "Before editing, load that repo's instruction files and knowledge notes; use tooling.suggested_verify after changes.",
+        "If routing.repos[].readiness.ok is false, align that sibling (AGENTS.md / verify command) instead of inventing checks.",
         "If the change adds user-visible or non-obvious behavior, update docs/features (or an ADR) in that sibling. Do not file it in the harness.",
         "Write an implementation plan covering impacted repos, files, risks, and test strategy.",
         "Do not start coding until the plan is agreed, unless the user asks to implement immediately.",
@@ -84,6 +86,19 @@ def prepare_issue(
         next_steps.insert(
             1,
             f"Clone missing repos: harness clone --only {ids}",
+        )
+    unaligned = [
+        item["id"]
+        for item in repos
+        if item.get("cloned") and not (item.get("readiness") or {}).get("ok", True)
+    ]
+    if unaligned:
+        next_steps.insert(
+            2 if missing else 1,
+            "Align Copilot context in "
+            + ", ".join(unaligned)
+            + " (AGENTS.md or copilot-instructions.md, plus a verify command). "
+            "See docs/sibling-context.md.",
         )
 
     return {

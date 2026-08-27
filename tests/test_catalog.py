@@ -103,6 +103,25 @@ def test_parses_graphify_out_and_rejects_parent_escape(
         load_catalog(root)
 
 
+def test_parses_verify_commands_and_rejects_blank(
+    tmp_path: Path, sample_catalog_data: dict
+):
+    sample_catalog_data["repos"][0]["verify"] = "./gradlew check"
+    sample_catalog_data["repos"][1]["verify"] = ["just test", "just lint"]
+    root = tmp_path / "harness"
+    write_harness_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    assert catalog.repo("frontend").verify == ["./gradlew check"]
+    assert catalog.repo("backend").verify == ["just test", "just lint"]
+    payload = catalog_to_dict(catalog, root)
+    assert payload["repos"][0]["verify"] == ["./gradlew check"]
+
+    sample_catalog_data["repos"][0]["verify"] = [" "]
+    write_harness_config(root, sample_catalog_data)
+    with pytest.raises(HarnessError, match="non-empty single-line"):
+        load_catalog(root)
+
+
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
     root = tmp_path / "harness"

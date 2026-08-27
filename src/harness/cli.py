@@ -222,6 +222,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Discover Graphify graphs, instruction files, and verify commands in sibling repos",
     )
     context.add_argument("--repo", help="Comma-separated repository names")
+    context.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "Exit non-zero when a cloned repo is missing AGENTS.md / "
+            "copilot-instructions.md or a discoverable verify command"
+        ),
+    )
 
     templates = sub.add_parser(
         "templates",
@@ -347,11 +355,18 @@ def dispatch(args: argparse.Namespace) -> Any:
             ping_jira=args.ping_jira,
         )
     if args.command == "context":
-        return collect_context(
+        payload = collect_context(
             catalog,
             harness_root,
             only=_split_ids(args.repo),
         )
+        if args.check and not payload.get("alignment", {}).get("ok", True):
+            raise _payload_error(
+                payload["alignment"].get("detail")
+                or "Cloned repos are missing Copilot context.",
+                payload,
+            )
+        return payload
     if args.command == "catalog":
         return catalog_to_dict(catalog, harness_root)
     if args.command == "repos":

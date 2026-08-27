@@ -37,8 +37,10 @@ def test_skill_covers_graphify_and_standards():
         "uv run harness context",
         "graphify.report",
         "suggested_verify",
+        "readiness.gaps",
         "do not copy",
         "whole monorepo",
         "docs/features",
+        "harness context --check",
     ):
         assert token in lowered

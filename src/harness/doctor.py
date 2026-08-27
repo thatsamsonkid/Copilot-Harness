@@ -111,16 +111,15 @@ def run_doctor(
     for repo in catalog.enabled_repos():
         path = catalog.repo_path(harness_root, repo)
         cloned = path.exists()
-        repos.append(
-            {
-                "id": repo.id,
-                "path": str(path),
-                "relpath": repo.path,
-                "group": repo.group,
-                "cloned": cloned,
-                "placeholder": repo.is_placeholder,
-            }
-        )
+        record: dict[str, Any] = {
+            "id": repo.id,
+            "path": str(path),
+            "relpath": repo.path,
+            "group": repo.group,
+            "cloned": cloned,
+            "placeholder": repo.is_placeholder,
+        }
+        repos.append(record)
         checks.append(
             _check(
                 f"repo:{repo.id}",
@@ -132,6 +131,10 @@ def run_doctor(
         if cloned:
             snapshot = inspect_repo(catalog, harness_root, repo)
             graphify = snapshot["graphify"]
+            readiness = snapshot["readiness"]
+            tooling = snapshot["tooling"]
+            record["suggested_verify"] = tooling.get("suggested_verify") or []
+            record["readiness"] = readiness
             checks.append(
                 _check(
                     f"graphify:{repo.id}",
@@ -140,15 +143,36 @@ def run_doctor(
                     ok_when_false=True,
                 )
             )
-            instruction_count = len(snapshot["instructions"])
+            instruction_gap = _gap(readiness, "instructions")
+            primary = [
+                item["path"]
+                for item in snapshot["instructions"]
+                if item.get("kind") in {"copilot", "agents"}
+            ]
             checks.append(
                 _check(
                     f"instructions:{repo.id}",
-                    instruction_count > 0,
+                    instruction_gap is None,
                     (
-                        f"{instruction_count} instruction file(s)"
-                        if instruction_count
-                        else "no Copilot/AGENTS instruction files found"
+                        f"{len(primary)} Copilot/AGENTS instruction file(s)"
+                        if primary
+                        else (instruction_gap or {}).get("detail")
+                        or "no AGENTS.md or .github/copilot-instructions.md"
+                    ),
+                    ok_when_false=True,
+                )
+            )
+            verify_gap = _gap(readiness, "verify")
+            verify_commands = tooling.get("suggested_verify") or []
+            checks.append(
+                _check(
+                    f"verify:{repo.id}",
+                    verify_gap is None,
+                    (
+                        ", ".join(verify_commands)
+                        if verify_commands
+                        else (verify_gap or {}).get("detail")
+                        or "no discoverable verify command"
                     ),
                     ok_when_false=True,
                 )
@@ -212,6 +236,13 @@ def run_doctor(
         "checks": checks,
         "onboarding": steps,
     }
+
+
+def _gap(readiness: dict[str, Any], gap_id: str) -> dict[str, Any] | None:
+    for gap in readiness.get("gaps") or []:
+        if gap.get("id") == gap_id:
+            return gap
+    return None
 
 
 def _check(name: str, ok: bool, detail: str, ok_when_false: bool = False) -> dict[str, Any]:

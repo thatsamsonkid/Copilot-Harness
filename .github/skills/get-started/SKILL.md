@@ -16,6 +16,7 @@ This skill is the first-run contract. Secrets stay in `.env`. Chat only sees `ha
 | Fill missing values in a local terminal | Tell them to run `uv run harness init --interactive` themselves |
 | Recheck catalog, clones, Jira env | `uv run harness doctor` |
 | Live Jira ping | `uv run harness doctor --ping-jira` or `uv run harness jira whoami` |
+| Check sibling Copilot context | `uv run harness context --check` after clones exist |
 
 ## Walkthrough order
 

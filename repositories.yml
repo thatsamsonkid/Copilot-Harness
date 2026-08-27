@@ -4,8 +4,12 @@
 #   <harness-parent>/<path or group/name or name>
 #
 # Required per entry: name, url, tags
-# Optional: path, group, default_branch, description, enabled, graphify
+# Optional: path, group, default_branch, description, enabled, graphify, verify
 # graphify.out defaults to graphify-out inside that clone.
+# verify: is a list (or string) of commands to run after edits when Makefile /
+# package.json / justfile discovery cannot see the real check. See
+# docs/sibling-context.md. `harness context --check` flags cloned repos that
+# lack AGENTS.md / copilot-instructions.md or any verify command.
 #
 # Use group or a nested path to organize clones without putting git
 # trees inside this harness:

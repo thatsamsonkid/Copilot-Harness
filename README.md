@@ -94,8 +94,18 @@ repositories:
 | `path` | no | Exact destination under `parent_dir`. May be nested (`frontend/shop-web`). Defaults to `name`, or `group/name` when `group` is set |
 | `default_branch` | no | Defaults to `main` |
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
+| `verify` | no | Command(s) to run after edits when Makefile / `package.json` / justfile discovery cannot see them |
 
 `catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
+
+Each cloned sibling should have Copilot context the harness can discover: `AGENTS.md` or `.github/copilot-instructions.md`, plus a verify command (discovered from the repo, or declared as `verify:`). That is how existing or ad hoc repos get aligned with this stack. Check:
+
+```bash
+uv run harness context --check
+uv run harness doctor
+```
+
+`context --check` exits non-zero when a **cloned** repo is missing those pieces. Uncloned repos are listed, not failed. Doctor reports the same gaps as advisories. Checklist: [docs/sibling-context.md](docs/sibling-context.md).
 
 One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this harness.
 

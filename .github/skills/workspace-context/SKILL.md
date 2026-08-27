@@ -13,7 +13,8 @@ Product code lives in clones next to this harness (flat siblings or grouped fold
 | --- | --- |
 | All enabled repos | `uv run harness context --format json` |
 | One or more repos | `uv run harness context --repo frontend,backend --format json` |
-| Ticket plus routing | `uv run harness prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`) |
+| Check each clone has Copilot context | `uv run harness context --check --format json` |
+| Ticket plus routing | `uv run harness prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`, `readiness`) |
 
 ## Vague or low-context prompts
 
@@ -29,6 +30,7 @@ The harness does not own product patterns.
 
 - Before editing a sibling, read its `instructions` files (`copilot-instructions.md`, `AGENTS.md`, path-specific `*.instructions.md`, skills).
 - After edits, run that repo's `tooling.suggested_verify`. If it fails, fix or report. Do not skip it.
+- If `readiness.ok` is false or `alignment.ok` is false, report `readiness.gaps` (or `alignment.missing_instructions` / `missing_verify`). Do not invent a verify command. Point at `docs/sibling-context.md`.
 - Do not copy those files into the harness. Do not invent style rules that contradict them.
 - Product knowledge stays in the sibling (`docs/features`, ADRs). If you added user-visible or non-obvious behavior, update or create a note there using `templates/feature-note.md`. Do not start a wiki in the harness.
 

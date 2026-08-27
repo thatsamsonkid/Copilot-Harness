@@ -54,6 +54,7 @@ class Repo:
     enabled: bool = True
     graphify: GraphifyConfig = field(default_factory=GraphifyConfig)
     group: str = ""
+    verify: list[str] = field(default_factory=list)
 
     @property
     def id(self) -> str:
@@ -263,6 +264,7 @@ def _parse_repo(item: Any) -> Repo:
         enabled=bool(item.get("enabled", True)),
         graphify=_parse_graphify(name, item.get("graphify")),
         group=group,
+        verify=_parse_verify(name, item.get("verify")),
     )
 
 
@@ -357,6 +359,21 @@ def _assert_no_path_collisions(repos: list[Repo]) -> None:
                     f"Repository paths collide: {repo.path!r} ({repo.name}) and "
                     f"{other.path!r} ({other.name}). One clone cannot live inside another."
                 )
+
+
+def _parse_verify(repo_name: str, raw: Any) -> list[str]:
+    if raw is None:
+        return []
+    commands: list[str] = []
+    for item in as_list(raw):
+        command = str(item).strip()
+        if not command or "\n" in command or "\r" in command:
+            raise HarnessError(
+                f"Repository {repo_name} verify commands must be non-empty single-line strings"
+            )
+        if command not in commands:
+            commands.append(command)
+    return commands
 
 
 def _parse_graphify(repo_name: str, raw: Any) -> GraphifyConfig:
@@ -487,6 +504,7 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                     "out": repo.graphify.out,
                     "enabled": repo.graphify.enabled,
                 },
+                "verify": list(repo.verify),
             }
             for repo in catalog.repos
         ],

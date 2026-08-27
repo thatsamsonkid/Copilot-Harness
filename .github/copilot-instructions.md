@@ -69,6 +69,6 @@ When the user asks to create, scaffold, or bootstrap a new project:
 - After catalog edits, run `harness workspace generate`. To add a workspace, prefer `/new-workspace` or the **Workspace Creator** agent so chat can collect id and `repositories.yml` projects, then run `harness workspace create <id> --projects … --no-prompt`. In a terminal the same command prompts. Never hand-edit `catalog/stack.yaml` or run the interactive CLI from chat.
 - When coding in a sibling repo, follow that repo's conventions. This harness does not override product architecture.
 - Before editing a sibling, read the instruction files `harness context` lists for it (`AGENTS.md`, `.github/copilot-instructions.md`, path-specific instructions, skills).
-- After editing a sibling, run that repo's `tooling.suggested_verify`. Do not skip a failing lint/test command from the product repo.
+- After editing a sibling, run that repo's `tooling.suggested_verify`. Do not skip a failing lint/test command from the product repo. If `readiness.ok` is false, report the gap instead of inventing a verify command (`docs/sibling-context.md`).
 - Do not copy product standards into this harness. Do not rebuild a Graphify graph unless the user asked, and never extract an entire monorepo unprompted.
 - Product knowledge (feature notes, ADRs) lives in the sibling repo. Discover it via `harness context` `knowledge`. Do not start a second wiki here.

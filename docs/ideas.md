@@ -50,6 +50,8 @@ Individual repos already have instructions and tooling. The harness should make 
 - `harness context` lists `.github/copilot-instructions.md`, `AGENTS.md`, path instructions, skills, and suggested verify commands (`make check`, `pnpm lint`, …).
 - Implementer / always-on rules: load those files before editing; run `tooling.suggested_verify` after.
 - Harness-level rules stay limited to secrets, sibling clones, and Jira-via-CLI.
+- Each cloned repo is checked for that context: `readiness` / `alignment` on `harness context`, `harness context --check` for a hard fail, and `verify:<repo>` / tightened `instructions:<repo>` advisories on `harness doctor`.
+- Existing or ad hoc repos can declare `verify:` on the `repositories.yml` entry when discovery cannot see the real command. Checklist: `docs/sibling-context.md`.
 
 **Worth adding next**
 

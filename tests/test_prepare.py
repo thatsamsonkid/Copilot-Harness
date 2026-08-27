@@ -86,4 +86,5 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, harness_root: Pa
     assert frontend["graphify"]["present"] is False
     assert frontend["instructions"] == []
     assert frontend["knowledge"]["files"] == []
+    assert frontend["readiness"]["checked"] is False
     assert "Read the issue summary" in payload["next_steps"][0]

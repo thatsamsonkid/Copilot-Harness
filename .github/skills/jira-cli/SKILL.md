@@ -52,7 +52,7 @@ Use these objects only:
 - `routing.open_command` — tell the user to run this so sibling repos become workspace roots
 - `routing.missing_repos` / `routing.clone_command`
 - `routing.repos` — inspect only these folders unless the ticket clearly needs more
-- `routing.repos[].graphify` / `instructions` / `tooling` — use these before grepping or inventing verify commands
+- `routing.repos[].graphify` / `instructions` / `tooling` / `readiness` — use these before grepping or inventing verify commands
 - `next_steps`
 
 If `routing.score` is `0` or reasons are only fallback, ask which workspace to open.
