@@ -4,7 +4,7 @@ This repo is a **Copilot / VS Code harness**, not the product codebase.
 
 Application repositories are cloned as **siblings** of this folder. The full-app list lives in `repositories.yml`. See also `catalog/stack.yaml` and `.github/copilot-instructions.md`.
 
-For any Jira key:
+For any Jira key, follow `.github/skills/jira-cli/SKILL.md`:
 
 ```bash
 uv run harness prepare ISSUE-123 --format json
