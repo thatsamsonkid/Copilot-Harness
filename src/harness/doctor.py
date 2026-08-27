@@ -58,6 +58,42 @@ def run_doctor(
         )
     )
 
+    templates_file = catalog.templates_source
+    template_placeholders = [
+        template.name for template in catalog.templates if template.is_placeholder
+    ]
+    if templates_file and templates_file.exists():
+        checks.append(
+            _check(
+                "templates",
+                bool(catalog.templates),
+                f"{len(catalog.templates)} template(s) listed"
+                if catalog.templates
+                else "templates.yml has no entries",
+                ok_when_false=True,
+            )
+        )
+        checks.append(
+            _check(
+                "template_urls",
+                not template_placeholders,
+                "template URLs look real"
+                if not template_placeholders
+                else "placeholder template URLs remain: "
+                + ", ".join(template_placeholders),
+                ok_when_false=True,
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "templates",
+                False,
+                "templates.yml is missing (optional until you bootstrap a project)",
+                ok_when_false=True,
+            )
+        )
+
     try:
         sibling_root = catalog.require_safe_sibling_root(harness_root)
         checks.append(
@@ -159,6 +195,15 @@ def run_doctor(
         "harness_root": str(harness_root),
         "sibling_root": str(sibling_root),
         "repos": repos,
+        "templates": [
+            {
+                "name": template.name,
+                "url": template.url,
+                "tags": template.tags,
+                "placeholder": template.is_placeholder,
+            }
+            for template in catalog.templates
+        ],
         "workspaces": generated,
         "jira": jira,
         "uv": uv,

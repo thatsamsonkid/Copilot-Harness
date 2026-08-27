@@ -83,4 +83,5 @@ This skill is the CLI contract, not an implementer.
 - First-run setup: get-started skill or `/get-started`
 - Vague / large-repo orientation: workspace-context skill or `/orient`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
+- Create a feature workspace: Workspace Creator agent or `/new-workspace`
 - Implement an agreed plan: Implementer agent

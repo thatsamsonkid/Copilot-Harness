@@ -32,22 +32,41 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 ## Repo layout
 
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`).
+- Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/harness` — clone, Jira basic auth, workspace generate/match, prepare, init, context.
+- CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness.
 - Secrets: `.env` (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`). Never commit tokens or print them.
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Jira command shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context.
+Prefer `uv` for Python. Run the CLI as `uv run harness <command>` (or `./scripts/harness.sh`). Jira command choice, flags, and output shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context.
+
+```bash
+uv run harness templates
+uv run harness templates --tag mobile
+uv run harness bootstrap --template <name> --name <folder>
+```
 
 If `uv` is missing, follow `docs/install-uv.md` for the user's OS. macOS/Linux: `./scripts/setup.sh`. Windows: `.\scripts\setup.ps1`. Do not use pip to install this repo. Do not tell Windows users to run the bash setup script.
+
+## Bootstrap a new project
+
+When the user asks to create, scaffold, or bootstrap a new project:
+
+1. Run `uv run harness templates --format json` and treat that list as the source of truth.
+2. If they named a listed template (or one clearly matches), run
+   `uv run harness bootstrap --template <name> --name <folder>`.
+3. If they did not name one, show the listed templates and ask which to use. Do not invent a scaffold when a listed template fits.
+4. Put the new project in a sibling folder. Never `git clone` into this harness directory.
+5. Ask before `--register` (adds the project to `repositories.yml`) or `--fresh-git`.
+6. After bootstrap, follow the CLI `next_steps` and the new repo's own conventions.
 
 ## Constraints
 
 - Keep clones as siblings (`../<path>`). Do not add git submodules or nest repos here.
 - Prefer the matched workspace repos. Only load extra roots when the ticket clearly needs them.
-- After catalog edits, run `harness workspace generate`.
+- After catalog edits, run `harness workspace generate`. To add a workspace, prefer `/new-workspace` or the **Workspace Creator** agent so chat can collect id and `repositories.yml` projects, then run `harness workspace create <id> --projects … --no-prompt`. In a terminal the same command prompts. Never hand-edit `catalog/stack.yaml` or run the interactive CLI from chat.
 - When coding in a sibling repo, follow that repo's conventions. This harness does not override product architecture.
 - Before editing a sibling, read the instruction files `harness context` lists for it (`AGENTS.md`, `.github/copilot-instructions.md`, path-specific instructions, skills).
 - After editing a sibling, run that repo's `tooling.suggested_verify`. Do not skip a failing lint/test command from the product repo.

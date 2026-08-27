@@ -47,23 +47,27 @@ def workspace_document(catalog: Catalog, harness_root: Path, workspace: Workspac
     }
 
 
-def generate_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]]:
-    written: list[dict[str, Any]] = []
+def write_workspace_file(
+    catalog: Catalog, harness_root: Path, workspace: Workspace
+) -> dict[str, Any]:
     directory = harness_root / "workspaces"
     directory.mkdir(parents=True, exist_ok=True)
-    for workspace in catalog.workspaces:
-        path = catalog.workspace_file(harness_root, workspace)
-        document = workspace_document(catalog, harness_root, workspace)
-        path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
-        written.append(
-            {
-                "id": workspace.id,
-                "name": workspace.name,
-                "file": str(path),
-                "folders": [folder["name"] for folder in document["folders"]],
-            }
-        )
-    return written
+    path = catalog.workspace_file(harness_root, workspace)
+    document = workspace_document(catalog, harness_root, workspace)
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    return {
+        "id": workspace.id,
+        "name": workspace.name,
+        "file": str(path),
+        "folders": [folder["name"] for folder in document["folders"]],
+    }
+
+
+def generate_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]]:
+    return [
+        write_workspace_file(catalog, harness_root, workspace)
+        for workspace in catalog.workspaces
+    ]
 
 
 def list_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]]:

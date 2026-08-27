@@ -2,16 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
 from harness import HarnessError
 from harness.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
-from harness.paths import REPOS_RELATIVE, STACK_RELATIVE
+from harness.paths import REPOS_RELATIVE, STACK_RELATIVE, TEMPLATES_RELATIVE
+
+if TYPE_CHECKING:
+    from harness.templates import Template
 
 
-def _as_list(value: Any) -> list[str]:
+def as_list(value: Any) -> list[str]:
     if value is None:
         return []
     if isinstance(value, str):
@@ -21,13 +24,17 @@ def _as_list(value: Any) -> list[str]:
     raise HarnessError(f"Expected a list or string, got {type(value).__name__}")
 
 
-def _read_yaml(path: Path) -> Any:
+def read_yaml(path: Path) -> Any:
     if not path.exists():
         raise HarnessError(f"File not found: {path}")
     try:
         return yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
         raise HarnessError(f"Invalid YAML in {path}: {exc}") from exc
+
+
+_as_list = as_list
+_read_yaml = read_yaml
 
 
 @dataclass(frozen=True)
@@ -86,12 +93,19 @@ class Catalog:
     jira: JiraSettings
     source: Path
     repos_source: Path
+    templates: list[Template] = field(default_factory=list)
+    templates_source: Path | None = None
 
     def repo(self, repo_id: str) -> Repo:
         for repo in self.repos:
             if repo.name == repo_id:
                 return repo
         raise HarnessError(f"Unknown repo name: {repo_id}")
+
+    def template(self, template_id: str):
+        from harness.templates import get_template
+
+        return get_template(self.templates, template_id)
 
     def workspace(self, workspace_id: str) -> Workspace:
         for workspace in self.workspaces:
@@ -161,12 +175,19 @@ def load_catalog(
     *,
     stack_path: Path | None = None,
     repos_path: Path | None = None,
+    templates_path: Path | None = None,
 ) -> Catalog:
+    from harness.templates import load_templates
+
     harness_root = Path(harness_root)
     repos_file = Path(repos_path) if repos_path else harness_root / REPOS_RELATIVE
     stack_file = Path(stack_path) if stack_path else harness_root / STACK_RELATIVE
+    templates_file = (
+        Path(templates_path) if templates_path else harness_root / TEMPLATES_RELATIVE
+    )
     repos, parent_dir = load_repositories(repos_file)
     workspaces, jira = load_stack(stack_file, {repo.name for repo in repos})
+    templates = load_templates(templates_file)
     return Catalog(
         parent_dir=parent_dir,
         repos=repos,
@@ -174,6 +195,8 @@ def load_catalog(
         jira=jira,
         source=stack_file,
         repos_source=repos_file,
+        templates=templates,
+        templates_source=templates_file,
     )
 
 
@@ -393,4 +416,19 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
             for workspace in catalog.workspaces
         ],
         "jira": catalog.jira.schema(),
+        "templates_source": str(catalog.templates_source) if catalog.templates_source else None,
+        "templates": [
+            {
+                "name": template.name,
+                "url": template.url,
+                "tags": template.tags,
+                "description": template.description,
+                "language": template.language,
+                "kind": template.kind,
+                "default_branch": template.default_branch,
+                "enabled": template.enabled,
+                "placeholder": template.is_placeholder,
+            }
+            for template in catalog.templates
+        ],
     }

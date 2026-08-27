@@ -30,6 +30,24 @@ def sample_catalog_data() -> dict:
                 "tags": ["api"],
             },
         ],
+        "templates": [
+            {
+                "name": "web-starter",
+                "url": "https://github.com/acme/web-starter.git",
+                "tags": ["frontend", "web"],
+                "description": "Web starter",
+                "language": "typescript",
+                "kind": "frontend",
+            },
+            {
+                "name": "api-starter",
+                "url": "https://github.com/acme/api-starter.git",
+                "tags": ["backend", "api"],
+                "description": "API starter",
+                "language": "python",
+                "kind": "backend",
+            },
+        ],
         "workspaces": [
             {
                 "id": "frontend",
