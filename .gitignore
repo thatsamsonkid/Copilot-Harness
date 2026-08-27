@@ -13,3 +13,7 @@ build/
 .ruff_cache/
 .DS_Store
 .uv/
+
+# Local-only workspaces from `harness workspace create --personal`
+workspaces/personal/*
+!workspaces/personal/README.md

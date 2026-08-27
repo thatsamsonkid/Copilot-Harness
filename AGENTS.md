@@ -11,7 +11,7 @@ uv run harness templates --format json
 uv run harness bootstrap --template <name> --name <folder> --format json
 ```
 
-To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through id plus `repositories.yml` projects, then run `uv run harness workspace create <id> --projects … --no-prompt`. In a terminal, `harness workspace create` prompts on its own.
+To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through shared vs personal, id, and `repositories.yml` projects, then run `uv run harness workspace create <id> --projects … --no-prompt` (add `--personal` for a local-only file under `workspaces/personal/`). In a terminal, `harness workspace create` prompts on its own.
 
 First-run setup: `.github/skills/get-started/SKILL.md` (`uv run harness init`).
 Vague or large-repo prompts: `.github/skills/workspace-context/SKILL.md` (`uv run harness context`).

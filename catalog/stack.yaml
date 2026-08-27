@@ -1,6 +1,7 @@
 # Feature workspaces and Jira routing.
 # Repository remotes live in ../repositories.yml — reference them by name
 # in `folders`, or pull a set in by `tags`.
+# Local-only mixes: `harness workspace create --personal` (workspaces/personal/).
 
 jira:
   # Allowlist of fields the CLI returns to Copilot. Raw Jira payloads are never emitted.
