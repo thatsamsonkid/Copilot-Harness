@@ -55,6 +55,24 @@ def _cwd_hint(catalog: Catalog, harness_root: Path, cwd: Path) -> dict[str, Any]
             "kind": "harness",
             "detail": "cwd is the harness. Open a feature .code-workspace so sibling repos are roots.",
         }
+    sibling_root = catalog.sibling_root(harness_root).resolve()
+    try:
+        relative = resolved.relative_to(sibling_root)
+    except ValueError:
+        relative = None
+    if relative is not None and relative.parts:
+        folder = relative.parts[0]
+        for repo in catalog.enabled_repos():
+            if repo.name == folder or repo.path == folder:
+                return {
+                    "kind": "sibling",
+                    "repo": repo.name,
+                    "detail": (
+                        f"cwd is the {repo.name} clone. Open the matching "
+                        "workspaces/<id>.code-workspace so the harness and other "
+                        "siblings are loaded too."
+                    ),
+                }
     for repo in catalog.enabled_repos():
         path = catalog.repo_path(harness_root, repo).resolve()
         if resolved == path or path in resolved.parents:

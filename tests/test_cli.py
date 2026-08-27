@@ -75,6 +75,18 @@ def test_jira_mine_uses_current_user_jql(harness_root: Path, capsys, monkeypatch
     assert payload["issues"][0]["key"] == "WEB-1"
 
 
+def test_root_flag_works_before_or_after_subcommand(
+    harness_root: Path, capsys, monkeypatch
+):
+    monkeypatch.chdir("/")
+    assert main(["--root", str(harness_root), "repos"]) == 0
+    before = json.loads(capsys.readouterr().out)
+    assert main(["repos", "--root", str(harness_root)]) == 0
+    after = json.loads(capsys.readouterr().out)
+    assert before["sibling_root"] == after["sibling_root"]
+    assert before["sibling_root"] == str(harness_root.parent.resolve())
+
+
 def test_error_is_json_on_stderr(harness_root: Path, capsys, monkeypatch):
     monkeypatch.chdir(harness_root)
     assert main(["--root", str(harness_root), "workspace", "path", "nope"]) == 1

@@ -30,7 +30,9 @@ JIRA_MINE_JQL = "assignee = currentUser() AND resolution = EMPTY ORDER BY update
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
+    raw = list(argv) if argv is not None else sys.argv[1:]
+    args = parser.parse_args(raw)
+    _apply_leading_globals(args, raw)
     try:
         payload = dispatch(args)
         if payload is not None:
@@ -399,6 +401,7 @@ def dispatch(args: argparse.Namespace) -> Any:
             catalog,
             harness_root,
             only=_split_ids(args.repo),
+            cwd=Path.cwd(),
         )
     if args.command == "branch":
         return align_branches(
@@ -557,6 +560,28 @@ def _dispatch_bootstrap(args: argparse.Namespace, catalog: Any, harness_root: Pa
 def _client() -> JiraClient:
     base_url, email, token = jira_settings_from_env()
     return JiraClient(base_url, email, token)
+
+
+def _apply_leading_globals(args: argparse.Namespace, argv: list[str]) -> None:
+    """Keep `harness --root X status` working.
+
+    Shared options are on both the top parser and each subparser. argparse
+    then overwrites dests such as `root` with the subparser default (None)
+    when the flag appears before the subcommand.
+    """
+    command = getattr(args, "command", None)
+    if not command or command not in argv:
+        return
+    leading = argv[: argv.index(command)]
+    if not leading:
+        return
+    parsed, _ = _shared_options().parse_known_args(leading)
+    for key in ("root", "catalog", "repos", "templates"):
+        value = getattr(parsed, key, None)
+        if value is not None and getattr(args, key, None) is None:
+            setattr(args, key, value)
+    if "--format" in leading:
+        args.format = parsed.format
 
 
 def _split_ids(value: str | None) -> list[str] | None:
