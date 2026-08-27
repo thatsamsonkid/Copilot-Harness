@@ -34,6 +34,8 @@ def test_init_lists_missing_jira_keys_without_reading_secrets(
     assert payload["created_env"] is True
     assert payload["ready"] is False
     assert payload["token_docs"] == "docs/jira-api-token.md"
+    assert payload["keychain_guide"]["macos"]["store"] == "macOS Keychain"
+    assert payload["keychain_guide"]["windows"]["store"] == "Windows Credential Manager"
     assert payload["uv_docs"] == "docs/install-uv.md"
     assert "macos" in payload["uv"]["install"]
     assert "windows" in payload["uv"]["install"]
@@ -41,12 +43,13 @@ def test_init_lists_missing_jira_keys_without_reading_secrets(
     assert "uv" in ids
     assert ids["jira_api_token"]["ok"] is False
     assert "docs/jira-api-token.md" in ids["jira_api_token"]["action"]
+    assert "jira login" in ids["jira_api_token"]["action"]
     dumped = json.dumps(payload)
     assert "ATLASSIAN-SECRET" not in dumped
 
 
-def test_interactive_init_writes_env_and_omits_token_from_json(
-    harness_root: Path, catalog, monkeypatch
+def test_interactive_init_stores_token_in_keychain(
+    harness_root: Path, catalog, monkeypatch, isolated_keychain
 ):
     _clear_jira_env(monkeypatch)
     answers = iter(
@@ -64,14 +67,67 @@ def test_interactive_init_writes_env_and_omits_token_from_json(
     )
     env_text = (harness_root / ".env").read_text(encoding="utf-8")
     assert "JIRA_EMAIL=ada@acme.test" in env_text
+    assert "ATLASSIAN-SECRET" not in env_text
+    assert "ATLASSIAN-SECRET" not in json.dumps(payload)
+    assert "JIRA_API_TOKEN" not in payload["wrote_keys"]
+    assert set(payload["wrote_keys"]) == {
+        "JIRA_BASE_URL",
+        "JIRA_EMAIL",
+    }
+    assert payload["token_store"] == "keychain"
+    assert isolated_keychain.get_password("copilot-harness", "jira-api-token") == (
+        "ATLASSIAN-SECRET"
+    )
+
+
+def test_interactive_init_falls_back_to_env_without_keychain(
+    harness_root: Path, catalog, monkeypatch
+):
+    from harness.keychain import UnavailableStore, set_store
+
+    _clear_jira_env(monkeypatch)
+    set_store(UnavailableStore(), backend="unavailable", available=False)
+    answers = iter(
+        [
+            "https://acme.atlassian.net",
+            "ada@acme.test",
+        ]
+    )
+    payload = run_init(
+        catalog,
+        harness_root,
+        interactive=True,
+        prompt_fn=lambda _msg: next(answers),
+        secret_fn=lambda _msg: "ATLASSIAN-SECRET",
+    )
+    env_text = (harness_root / ".env").read_text(encoding="utf-8")
     assert "JIRA_API_TOKEN=ATLASSIAN-SECRET" in env_text
     assert "ATLASSIAN-SECRET" not in json.dumps(payload)
-    assert "ATLASSIAN-SECRET" not in payload["wrote_keys"]
+    assert payload["token_store"] == "env"
     assert set(payload["wrote_keys"]) == {
         "JIRA_BASE_URL",
         "JIRA_EMAIL",
         "JIRA_API_TOKEN",
     }
+
+
+def test_init_treats_keychain_token_as_present(
+    harness_root: Path, catalog, monkeypatch, isolated_keychain
+):
+    _clear_jira_env(monkeypatch)
+    (harness_root / ".env").write_text(
+        "JIRA_BASE_URL=https://acme.atlassian.net\nJIRA_EMAIL=ada@acme.test\n",
+        encoding="utf-8",
+    )
+    isolated_keychain.set_password("copilot-harness", "jira-api-token", "hidden")
+    payload = run_init(catalog, harness_root)
+    ids = {step["id"]: step for step in payload["steps"]}
+    assert ids["jira_api_token"]["ok"] is True
+    assert "keychain" in ids["jira_api_token"]["detail"].lower() or "in-memory" in (
+        ids["jira_api_token"]["detail"].lower()
+    )
+    assert payload["token_store"] == "keychain"
+    assert "hidden" not in json.dumps(payload)
 
 
 def test_init_treats_env_file_values_as_present(

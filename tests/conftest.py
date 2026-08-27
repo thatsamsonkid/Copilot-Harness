@@ -4,7 +4,16 @@ from pathlib import Path
 
 import pytest
 
+from harness.keychain import MemoryStore, reset_store, set_store
 from tests.helpers import load_test_catalog, write_harness_config
+
+
+@pytest.fixture(autouse=True)
+def isolated_keychain():
+    store = MemoryStore()
+    set_store(store, backend="in-memory (tests)", available=True)
+    yield store
+    reset_store()
 
 
 @pytest.fixture

@@ -27,7 +27,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Do **not** curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
 - Do **not** read `.env`, print `env`, or expand `$JIRA_API_TOKEN` / `$JIRA_TOKEN`.
 - Do **not** configure or call an MCP Jira tool.
-- If credentials are missing, tell the user to edit `.env` locally. Never ask them to paste a token into chat.
+- If credentials are missing, tell the user to set `JIRA_BASE_URL` / `JIRA_EMAIL` in `.env` and run `uv run harness jira login` in their own terminal (macOS Keychain or Windows Credential Manager). Never ask them to paste a token into chat.
 
 ## Repo layout
 
@@ -36,7 +36,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
 - CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness.
-- Secrets: `.env` (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`). Never commit tokens or print them.
+- Secrets: site URL and email in `.env`; API token in the OS keychain via `harness jira login` (`.env` is a fallback). Never commit tokens or print them.
 
 ## Commands
 

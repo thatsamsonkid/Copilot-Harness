@@ -140,7 +140,7 @@ def test_search_falls_back_to_legacy_endpoint():
     assert issues[0]["summary"] == "Add endpoint"
 
 
-def test_auth_error():
+def test_auth_error_mentions_keychain_or_env():
     http = FakeHttp(
         {
             ("GET", "https://acme.atlassian.net/rest/api/3/myself"): HttpResponse(
@@ -149,5 +149,7 @@ def test_auth_error():
         }
     )
     client = JiraClient("https://acme.atlassian.net", "a@b.com", "bad", http=http)
-    with pytest.raises(HarnessError, match="authentication"):
+    with pytest.raises(HarnessError, match="authentication") as exc:
         client.myself()
+    assert "keychain" in exc.value.message.lower()
+    assert ".env" in exc.value.message

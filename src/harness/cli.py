@@ -12,6 +12,7 @@ from harness.clone import clone_repos
 from harness.context import collect_context
 from harness.doctor import run_doctor
 from harness.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
+from harness.keychain import login_token, logout_token
 from harness.onboard import run_init
 from harness.output import render
 from harness.paths import find_harness_root, load_dotenv_files
@@ -96,6 +97,31 @@ def build_parser() -> argparse.ArgumentParser:
     jira_context.add_argument("issue")
     jira_sub.add_parser("whoami", parents=[shared], help="Validate Jira credentials")
     jira_sub.add_parser("schema", parents=[shared], help="Show configured Jira output fields")
+    jira_login = jira_sub.add_parser(
+        "login",
+        parents=[shared],
+        help="Store the Jira API token in macOS Keychain or Windows Credential Manager",
+    )
+    jira_login.add_argument(
+        "--from-env",
+        action="store_true",
+        help="Move JIRA_API_TOKEN from .env into the OS keychain, then blank .env",
+    )
+    jira_login.add_argument(
+        "--keep-env",
+        action="store_true",
+        help="Leave JIRA_API_TOKEN in .env after storing it in the keychain",
+    )
+    jira_logout = jira_sub.add_parser(
+        "logout",
+        parents=[shared],
+        help="Remove the Jira API token from the OS keychain",
+    )
+    jira_logout.add_argument(
+        "--clear-env",
+        action="store_true",
+        help="Also blank JIRA_API_TOKEN in .env",
+    )
 
     workspace = sub.add_parser(
         "workspace", parents=[shared], help="Feature workspace helpers"
@@ -318,7 +344,7 @@ def dispatch(args: argparse.Namespace) -> Any:
             )
         return payload
     if args.command == "jira":
-        return _dispatch_jira(args, catalog)
+        return _dispatch_jira(args, catalog, harness_root)
     if args.command == "workspace":
         return _dispatch_workspace(args, catalog, harness_root)
     if args.command == "prepare":
@@ -365,10 +391,18 @@ def dispatch(args: argparse.Namespace) -> Any:
     raise HarnessError(f"Unknown command: {args.command}")
 
 
-def _dispatch_jira(args: argparse.Namespace, catalog: Any) -> Any:
+def _dispatch_jira(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
     settings = catalog.jira
     if args.jira_command == "schema":
         return {"jira": settings.schema()}
+    if args.jira_command == "login":
+        return login_token(
+            harness_root,
+            from_env=args.from_env,
+            clear_env=not args.keep_env,
+        )
+    if args.jira_command == "logout":
+        return logout_token(harness_root, clear_env=args.clear_env)
     client = _client()
     if args.jira_command == "get":
         return client.get_issue(args.issue, settings=settings)

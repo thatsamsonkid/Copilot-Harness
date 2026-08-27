@@ -9,6 +9,14 @@ from harness import HarnessError
 from harness.catalog import Catalog
 from harness.context import inspect_repo
 from harness.jira_client import JiraClient, jira_settings_from_env
+from harness.keychain import (
+    SOURCE_ENV,
+    SOURCE_KEYCHAIN,
+    backend_display_name,
+    keychain_status,
+    resolve_token,
+    storage_guides,
+)
 from harness.onboard import onboarding_steps
 from harness.uv_check import detect_uv, uv_missing_action
 from harness.workspace import generate_workspaces
@@ -161,20 +169,44 @@ def run_doctor(
         )
     )
 
-    jira_ok = all(
-        os.environ.get(name)
-        for name in ("JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN")
-    ) or all(
-        os.environ.get(name)
-        for name in ("JIRA_BASE_URL", "JIRA_USERNAME", "JIRA_TOKEN")
-    )
+    base_url = os.environ.get("JIRA_BASE_URL")
+    email = os.environ.get("JIRA_EMAIL") or os.environ.get("JIRA_USERNAME")
+    token, source = resolve_token()
+    jira_ok = bool(base_url and email and token)
     jira: dict[str, Any] | None = None
+    status = keychain_status()
+    if source == SOURCE_KEYCHAIN:
+        checks.append(
+            _check(
+                "jira_token_store",
+                True,
+                f"Jira token is in {backend_display_name()}",
+            )
+        )
+    elif source == SOURCE_ENV:
+        checks.append(
+            _check(
+                "jira_token_store",
+                False,
+                "Jira token is in .env; prefer `uv run harness jira login --from-env`",
+                ok_when_false=True,
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "jira_token_store",
+                False,
+                "Jira token is not in the OS keychain or .env",
+                ok_when_false=True,
+            )
+        )
     if not jira_ok:
         checks.append(
             _check(
                 "jira_env",
                 False,
-                "Jira env vars are not fully set",
+                "Jira site URL, email, or token is missing",
                 ok_when_false=True,
             )
         )
@@ -186,7 +218,7 @@ def run_doctor(
         except Exception as exc:  # noqa: BLE001 - doctor should not crash
             checks.append(_check("jira_auth", False, str(exc)))
     else:
-        checks.append(_check("jira_env", True, "Jira env vars are present"))
+        checks.append(_check("jira_env", True, f"Jira credentials are present ({source})"))
 
     ok = all(item["ok"] or item.get("advisory") for item in checks)
     steps = onboarding_steps(catalog, harness_root, uv=uv)
@@ -206,6 +238,9 @@ def run_doctor(
         ],
         "workspaces": generated,
         "jira": jira,
+        "jira_token_source": source,
+        "keychain": status.as_dict(),
+        "keychain_guide": storage_guides(),
         "uv": uv,
         "checks": checks,
         "onboarding": steps,

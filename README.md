@@ -38,7 +38,7 @@ Then:
 
 1. Edit `repositories.yml` — add each product repo (`name`, GitHub `url`, `tags`).
 2. Edit `templates.yml` — add starter remotes you want Copilot or `harness bootstrap` to offer.
-3. Copy `.env.example` to `.env` and set Jira Cloud values.
+3. Copy `.env.example` to `.env` and set `JIRA_BASE_URL` / `JIRA_EMAIL`. Store the API token with `uv run harness jira login` (macOS Keychain or Windows Credential Manager). See [docs/jira-api-token.md](docs/jira-api-token.md).
 4. Clone siblings: `./scripts/clone-repos.sh`
 5. Generate workspaces: `harness workspace generate`
 6. Or create a new feature workspace and pick projects from `repositories.yml`:
@@ -153,13 +153,17 @@ Copilot uses the same commands. If you ask it to bootstrap a new project, it sho
 
 Jira Cloud MCP is not available here. Copilot talks to Jira by running `harness`. The **jira-cli** skill (`.github/skills/jira-cli/SKILL.md`) is the on-demand contract for those commands.
 
-Create an API token using [docs/jira-api-token.md](docs/jira-api-token.md) (or the [Atlassian token page](https://id.atlassian.com/manage-profile/security/api-tokens)) and set:
+Create an API token using [docs/jira-api-token.md](docs/jira-api-token.md) (or the [Atlassian token page](https://id.atlassian.com/manage-profile/security/api-tokens)). Put the site URL and email in `.env`, then store the token in the OS keychain:
 
 ```bash
 JIRA_BASE_URL=https://your-domain.atlassian.net
 JIRA_EMAIL=you@company.com
-JIRA_API_TOKEN=...
+# leave JIRA_API_TOKEN empty
+
+uv run harness jira login
 ```
+
+`jira login` writes to macOS Keychain or Windows Credential Manager. `jira login --from-env` moves a token that is already in `.env`. `.env` remains a fallback for CI or machines without a keychain.
 
 ```bash
 uv run harness init
@@ -174,7 +178,7 @@ uv run harness context
 
 The CLI never prints the raw Jira REST payload. `catalog/stack.yaml` `jira.fields` is an allowlist of keys Copilot sees. Add custom fields with `extra_fields` + `field_aliases`, then list the alias in `fields`.
 
-The API token stays in `.env`. The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
+The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 
 `prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, and print the `code` command that opens the matching workspace.
 
