@@ -15,6 +15,15 @@ def test_workspace_paths_point_at_siblings(catalog, harness_root: Path):
     assert document["folders"][0]["path"] == ".."
     assert document["folders"][1]["path"] == "../../frontend"
     assert document["folders"][2]["path"] == "../../backend"
+    assert (
+        document["settings"]["terminal.integrated.env.linux"]["HARNESS_ROOT"]
+        == "${workspaceFolder:harness}"
+    )
+    assert (
+        document["settings"]["terminal.integrated.env.osx"]["HARNESS_ROOT"]
+        == "${workspaceFolder:harness}"
+    )
+    assert "UV_PROJECT" not in document["settings"]["terminal.integrated.env.linux"]
 
 
 def test_workspace_paths_for_grouped_repos(tmp_path: Path, sample_catalog_data: dict):

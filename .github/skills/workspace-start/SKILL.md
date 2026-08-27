@@ -22,9 +22,21 @@ Java apps often keep args and environment variables in `.vscode/launch.json`. Th
 
 `harness start` (no `run`) never launches processes. Do not invent a second supervisor.
 
+## How to run the CLI
+
+`uv run harness` only works when the process **cwd is this harness repo** (`pyproject.toml` / `uv.lock`). Sibling product clones do not have that project. If you `cd` into a repo (or set the terminal/`runCommands` cwd there) uv fails with **Failed to spawn: `harness`**.
+
+Always do one of:
+
+1. Keep cwd on the harness root (first workspace folder, named `harness`). Do not `cd` before this command.
+2. `uv run --project "$HARNESS_ROOT" harness start --format json` from any cwd (same `--project` form for `start run`)
+3. `./scripts/harness.sh start --format json` or `.\scripts\harness.ps1 start --format json` using the harness-root path
+
+`harness start` JSON includes `invoke.command`, `invoke.cwd`, and `invoke.script` for the cwd-safe form. App terminals stay in each service `path`. Never run `uv run harness` from those terminals.
+
 ## Walkthrough order
 
-1. Run `harness start` for the workspace the user has open (or `--repo` if they named apps).
+1. Run `harness start` for the workspace the user has open (or `--repo` if they named apps). Use the harness cwd or `invoke.command` — do not `cd` into a product repo first.
 2. Show the plan: order, `run_via`, command, `port_hint`, proxy files, launch configuration name / env keys, and anything in `blocked`. Do not open `launch.json` to "confirm" env values.
 3. If a service is blocked (`not cloned` or `no start command`), stop that item. Clone first, or inspect that repo's README / `package.json` / `pom.xml` and ask before guessing. If `run_via` is `vscode` and there is no shell command, ask the user to **Run Without Debugging** on `launch.configuration`.
 4. Start **infra** (only if the user asked for compose) then **backends**, one at a time. Use **one VS Code terminal per app** (see below).
@@ -38,7 +50,7 @@ Use `run_via` from the plan. Do not invent a shell command that exports secrets.
 
 | `run_via` | What to do |
 | --- | --- |
-| `harness` | In that app’s terminal, run `copilot_command` (`uv run harness start run --repo <name>`). The CLI loads launch.json / envFile in-process and does not print values |
+| `harness` | Run `copilot_command` from the harness cwd (it already includes `--project`). Do not `cd` into the sibling first — the CLI starts the process in the repo cwd. Bare `uv run harness` cannot spawn from an app terminal. The CLI loads launch.json / envFile in-process and does not print values |
 | `vscode` | Tell the user (or invoke) **Run Without Debugging** on `launch.configuration`. Do **not** start Debugging unless they asked. Do not read `launch.json` |
 | `terminal` | Run `command` in that app’s `cwd` as before |
 
@@ -51,7 +63,7 @@ The harness does not open terminals. You do, via the chat terminal / `runCommand
 - **One long-running process per terminal.** Never start a second app in a terminal that is already hosting Spring, `ng serve`, or similar.
 - **Reuse if that app is already up.** If a terminal is already named for the repo (or is clearly running that command in that `cwd`), do not launch another copy. Read its log for the live port and continue.
 - **Otherwise open a new terminal** in that service’s `cwd` (`path` from the plan). Title or label it with the repo name when the tool allows (`backend`, `frontend`).
-- Leave those terminals running. Do not reuse a busy app terminal to run `harness start` or git commands.
+- Leave those terminals running. Do not reuse a busy app terminal to run `harness start` or git commands. `uv run harness` cannot spawn from a product-repo cwd.
 
 ## Hard rules
 
@@ -80,6 +92,7 @@ The harness does not open terminals. You do, via the chat terminal / `runCommand
 | Angular still hits remote API | Confirm `proxies[].path` was updated to the live local target **before** `ng serve` |
 | Java app takes minutes | Say so, wait, do not start the next service yet |
 | Override vs discovered mismatch | Trust `source: override`. Discovery is a hint |
+| `Failed to spawn: harness` / no `pyproject.toml` | Cwd is a sibling clone. Re-run from the harness folder, or use `invoke.command` / `scripts/harness.sh` (Windows: `scripts/harness.ps1`) |
 
 ## Optional `repositories.yml` override
 

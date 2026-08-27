@@ -4,6 +4,8 @@ This repo is a **Copilot / VS Code harness**, not the product codebase.
 
 Application repositories are cloned **next to** this folder (flat siblings, or grouped under `parent_dir` folders such as `frontend/`, `backend/`, `infra/`, `shared/`). The full-app list lives in `repositories.yml`. Starter remotes for new projects live in `templates.yml`. See also `catalog/stack.yaml` and `.github/copilot-instructions.md`.
 
+Run `uv run harness …` from this harness repo (or `uv run --project "$HARNESS_ROOT" harness …` / `./scripts/harness.sh`). After `cd` into a sibling clone, bare `uv run harness` cannot spawn.
+
 When asked to bootstrap a new project:
 
 ```bash

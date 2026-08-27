@@ -11,6 +11,7 @@ from typing import Any, Callable
 
 from harness import HarnessError
 from harness.catalog import Catalog, Repo, StartConfig
+from harness.invoke import invoke_spec
 from harness.launch import load_launch_runtime, summarize_launch
 
 RunFn = Callable[[str, Path, dict[str, str]], int]
@@ -78,6 +79,8 @@ def collect_start_plan(
         "blocked": [
             {"name": item["name"], "reason": item.get("blocked")} for item in blocked
         ],
+        "harness_root": str(Path(harness_root).resolve()),
+        "invoke": invoke_spec(harness_root),
         "guidance": _plan_guidance(services),
     }
 
@@ -95,7 +98,7 @@ def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dic
     discovered = discover_start(path, repo)
     merged = _apply_override(discovered, repo.start)
     payload.update(merged)
-    _attach_launch(payload, repo, path)
+    _attach_launch(payload, repo, path, harness_root)
     if not payload.get("command"):
         if payload.get("run_via") == "vscode" and payload.get("launch"):
             payload["notes"].append(
@@ -655,6 +658,9 @@ def _service_sort_key(item: dict[str, Any]) -> tuple[int, int, str]:
 def _plan_guidance(services: list[dict[str, Any]]) -> list[str]:
     lines = [
         "This command prints a plan. It does not start processes.",
+        "Run this CLI from the harness repo (invoke.cwd). After cd into a "
+        "sibling, `uv run harness` cannot spawn. Re-run with invoke.command "
+        "or scripts/harness.sh; do not reuse an app terminal for harness.",
         "Start backends (and infra) first, one at a time. Give each app its "
         "own VS Code terminal. Reuse a terminal already running that app; "
         "never start a second long-running process in a busy terminal.",
@@ -668,14 +674,17 @@ def _plan_guidance(services: list[dict[str, Any]]) -> list[str]:
     if any((item.get("launch") or {}).get("secret_risk") for item in services):
         lines.append(
             "When run_via is harness or launch.secret_risk is true, start that "
-            "app with `uv run harness start run --repo <name>` or VS Code Run "
-            "Without Debugging. Never read launch.json, envFile, or .env, and "
-            "never reconstruct env or args in the terminal."
+            "app with invoke.command plus `start run --repo <name>` (or the "
+            "service `copilot_command`) or VS Code Run Without Debugging. "
+            "Never read launch.json, envFile, or .env, and never reconstruct "
+            "env or args in the terminal."
         )
     return lines
 
 
-def _attach_launch(payload: dict[str, Any], repo: Repo, repo_path: Path) -> None:
+def _attach_launch(
+    payload: dict[str, Any], repo: Repo, repo_path: Path, harness_root: Path
+) -> None:
     launch = summarize_launch(
         repo_path,
         kind=str(payload.get("kind") or ""),
@@ -686,7 +695,7 @@ def _attach_launch(payload: dict[str, Any], repo: Repo, repo_path: Path) -> None
     payload["launch"] = launch
     payload["run_via"] = _run_via(payload.get("command"), repo.start.method, launch)
     payload["copilot_command"] = _copilot_command(
-        repo.name, payload["run_via"], launch
+        repo.name, payload["run_via"], launch, harness_root
     )
     if not launch:
         return
@@ -705,7 +714,8 @@ def _attach_launch(payload: dict[str, Any], repo: Repo, repo_path: Path) -> None
         else:
             payload["notes"].append(
                 f"This app has launch.json env/args. Start with "
-                f"`uv run harness start run --repo {repo.name}` or VS Code Run "
+                f"`{invoke_spec(harness_root)['command']} start run --repo {repo.name}` "
+                "or VS Code Run "
                 f"Without Debugging on {config!r}. Do not read launch.json or "
                 "reconstruct env in the terminal."
             )
@@ -736,11 +746,14 @@ def _run_via(
 
 
 def _copilot_command(
-    repo_name: str, run_via: str, launch: dict[str, Any] | None
+    repo_name: str,
+    run_via: str,
+    launch: dict[str, Any] | None,
+    harness_root: Path,
 ) -> str | None:
     if run_via != "harness":
         return None
-    command = f"uv run harness start run --repo {repo_name}"
+    command = f"{invoke_spec(harness_root)['command']} start run --repo {repo_name}"
     config = (launch or {}).get("configuration")
     if isinstance(config, str) and config:
         command += f" --configuration {shlex.quote(config)}"

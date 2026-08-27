@@ -62,10 +62,13 @@ Then:
 7. Open a feature workspace, for example `workspaces/frontend.code-workspace`
 8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/orient`, `/jira-cli`, or `/bootstrap-project`
 
-`setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, and install this package in editable mode. Prefer `uv` over pip:
+`setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, and install this package in editable mode. Prefer `uv` over pip. Run the CLI from this repo. After `cd` into a sibling clone, `uv run harness` cannot spawn — use `--project` or the wrapper script:
 
 ```bash
 uv run harness doctor
+uv run --project "$HARNESS_ROOT" harness doctor   # any cwd
+./scripts/harness.sh doctor                       # macOS / Linux, any cwd
+.\scripts\harness.ps1 doctor                      # Windows, any cwd
 ```
 
 ## Repository manifest

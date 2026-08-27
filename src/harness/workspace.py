@@ -8,6 +8,7 @@ from typing import Any
 
 from harness import HarnessError
 from harness.catalog import Catalog, Workspace
+from harness.invoke import HARNESS_FOLDER_NAME, terminal_env_settings
 
 
 def workspace_document(catalog: Catalog, harness_root: Path, workspace: Workspace) -> dict[str, Any]:
@@ -16,7 +17,7 @@ def workspace_document(catalog: Catalog, harness_root: Path, workspace: Workspac
     if workspace.include_harness:
         folders.append(
             {
-                "name": "harness",
+                "name": HARNESS_FOLDER_NAME,
                 "path": _rel(workspace_file, harness_root),
             }
         )
@@ -28,16 +29,19 @@ def workspace_document(catalog: Catalog, harness_root: Path, workspace: Workspac
                 "path": _rel(workspace_file, catalog.repo_path(harness_root, repo)),
             }
         )
+    settings: dict[str, Any] = {
+        "git.autoRepositoryDetection": True,
+        "git.detectSubmodules": False,
+        "git.repositoryScanMaxDepth": 1,
+        "git.openRepositoryInParentFolders": "never",
+        "github.copilot.chat.codeGeneration.useInstructionFiles": True,
+        "chat.useCustomizationsInParentRepositories": True,
+    }
+    if workspace.include_harness:
+        settings.update(terminal_env_settings(folder_name=HARNESS_FOLDER_NAME))
     return {
         "folders": folders,
-        "settings": {
-            "git.autoRepositoryDetection": True,
-            "git.detectSubmodules": False,
-            "git.repositoryScanMaxDepth": 1,
-            "git.openRepositoryInParentFolders": "never",
-            "github.copilot.chat.codeGeneration.useInstructionFiles": True,
-            "chat.useCustomizationsInParentRepositories": True,
-        },
+        "settings": settings,
         "extensions": {
             "recommendations": [
                 "GitHub.copilot",

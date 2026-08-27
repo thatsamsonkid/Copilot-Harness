@@ -196,6 +196,10 @@ def _templates_markdown(payload: dict[str, Any]) -> str:
 def _start_text(payload: dict[str, Any]) -> str:
     workspace = payload.get("workspace") or "all enabled repos"
     lines = [f"Start plan ({workspace})", ""]
+    invoke = payload.get("invoke") or {}
+    if invoke.get("command"):
+        lines.append(f"CLI: {invoke['command']}")
+        lines.append("")
     services = payload.get("services") or []
     if not services:
         lines.append("No services in this plan.")
@@ -233,6 +237,14 @@ def _start_text(payload: dict[str, Any]) -> str:
 def _start_markdown(payload: dict[str, Any]) -> str:
     workspace = payload.get("workspace") or "all enabled repos"
     lines = [f"# Start plan (`{workspace}`)", ""]
+    invoke = payload.get("invoke") or {}
+    if invoke.get("command"):
+        lines.extend(
+            [
+                f"CLI (any cwd): `{invoke['command']}`",
+                "",
+            ]
+        )
     services = payload.get("services") or []
     if not services:
         lines.append("_No services in this plan._")

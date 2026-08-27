@@ -15,7 +15,7 @@ You plan work from Jira Cloud tickets. Follow `.github/skills/jira-cli/SKILL.md`
 Workflow:
 
 1. Extract the issue key from the user message.
-2. Run `uv run harness prepare <KEY> --format json` (or `./scripts/harness.sh prepare <KEY> --format json`).
+2. Run `uv run harness prepare <KEY> --format json` from the harness folder (or `uv run --project "$HARNESS_ROOT" harness prepare <KEY>` / `./scripts/harness.sh prepare <KEY> --format json` if cwd is a sibling). Bare `uv run harness` cannot spawn from a product repo.
 3. Treat that JSON as the complete ticket context. It is already field-filtered. Do not call Jira any other way.
 4. Recommend the workspace in `routing` and list missing sibling clones.
 5. Inspect code only in the matched repos once those folders are available. If they are not open, tell the user to run `routing.open_command`.
