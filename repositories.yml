@@ -3,7 +3,8 @@
 # of this harness: <harness-parent>/<path or name>
 #
 # Required per entry: name, url, tags
-# Optional: path, default_branch, description, enabled
+# Optional: path, default_branch, description, enabled, graphify
+# graphify.out defaults to graphify-out inside that sibling clone.
 #
 # Replace YOUR_ORG with your GitHub org, then:
 #   ./scripts/clone-repos.sh

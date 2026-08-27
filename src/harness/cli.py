@@ -9,8 +9,10 @@ from harness import HarnessError, __version__
 from harness.bootstrap import bootstrap_project
 from harness.catalog import catalog_to_dict, load_catalog
 from harness.clone import clone_repos
+from harness.context import collect_context
 from harness.doctor import run_doctor
 from harness.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
+from harness.onboard import run_init
 from harness.output import render
 from harness.paths import find_harness_root, load_dotenv_files
 from harness.prepare import prepare_issue
@@ -202,6 +204,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     doctor.add_argument("--ping-jira", action="store_true")
 
+    init = sub.add_parser(
+        "init",
+        parents=[shared],
+        help="First-run checklist for .env, Jira token, and repository setup",
+    )
+    init.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Prompt in the terminal for missing Jira values (never use this in chat)",
+    )
+    init.add_argument("--ping-jira", action="store_true")
+
+    context = sub.add_parser(
+        "context",
+        parents=[shared],
+        help="Discover Graphify graphs, instruction files, and verify commands in sibling repos",
+    )
+    context.add_argument("--repo", help="Comma-separated repository names")
+
     templates = sub.add_parser(
         "templates",
         parents=[shared],
@@ -314,6 +335,19 @@ def dispatch(args: argparse.Namespace) -> Any:
         if not payload.get("ok"):
             raise _payload_error("Doctor found blocking issues.", payload)
         return payload
+    if args.command == "init":
+        return run_init(
+            catalog,
+            harness_root,
+            interactive=args.interactive,
+            ping_jira=args.ping_jira,
+        )
+    if args.command == "context":
+        return collect_context(
+            catalog,
+            harness_root,
+            only=_split_ids(args.repo),
+        )
     if args.command == "catalog":
         return catalog_to_dict(catalog, harness_root)
     if args.command == "repos":

@@ -14,3 +14,5 @@ Jira access is CLI-only. There is no Jira MCP server in this workspace. Load `.g
 Parse issue keys from either `PROJ-123` or a browse URL. Prefer `prepare` over assembling get/match/clone yourself.
 
 When planning from a ticket, cite the issue key, status, components, labels, and the matched workspace id. If routing confidence is low (score 0 or only fallback reasons), ask which workspace to open.
+
+If `routing.repos` include Graphify reports or instruction files, read those before searching the sibling tree. Product standards stay in the sibling repo.

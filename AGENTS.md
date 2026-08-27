@@ -13,6 +13,8 @@ uv run harness bootstrap --template <name> --name <folder> --format json
 
 To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through id plus `repositories.yml` projects, then run `uv run harness workspace create <id> --projects … --no-prompt`. In a terminal, `harness workspace create` prompts on its own.
 
+First-run setup: `.github/skills/get-started/SKILL.md` (`uv run harness init`).
+Vague or large-repo prompts: `.github/skills/workspace-context/SKILL.md` (`uv run harness context`).
 For any Jira key, follow `.github/skills/jira-cli/SKILL.md`:
 
 ```bash

@@ -8,7 +8,7 @@ agent: plan
 The user will provide a Jira issue key or browse URL as `${input:issue:Jira issue key or URL}`. Follow `.github/skills/jira-cli/SKILL.md` for CLI rules.
 
 1. From the harness repo, run `#tool:runCommands` with `uv run harness prepare ${input:issue} --format json`.
-2. If `uv` is missing, run `./scripts/setup.sh`, then retry with `./scripts/harness.sh prepare ${input:issue} --format json`.
+2. If `uv` is missing, follow `docs/install-uv.md` for the user's OS (macOS/Linux: `./scripts/setup.sh`; Windows: `.\scripts\setup.ps1`), then retry.
 3. Use only that CLI JSON. Do not curl Jira, read `.env`, or call MCP.
 4. Summarize the ticket in 5–8 lines: key, type, status, priority, requester intent, and acceptance criteria (including `custom` fields when present).
 5. State the recommended workspace, why it matched, required repos, and whether any clones are missing.

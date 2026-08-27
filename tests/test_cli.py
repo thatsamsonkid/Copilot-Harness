@@ -50,6 +50,9 @@ def test_clone_dry_run_and_doctor(harness_root: Path, capsys, monkeypatch):
     doctor = json.loads(capsys.readouterr().out)
     assert doctor["sibling_root"] == str(harness_root.parent.resolve())
     assert any(check["name"] == "jira_env" for check in doctor["checks"])
+    assert any(check["name"] == "uv" for check in doctor["checks"])
+    assert "onboarding" in doctor
+    assert "uv" in doctor
 
 
 def test_error_is_json_on_stderr(harness_root: Path, capsys, monkeypatch):

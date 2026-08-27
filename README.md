@@ -25,8 +25,14 @@ Put this repo inside a project folder (for example `~/src/Copilot-Harness`), not
 ## Quick start
 
 ```bash
+# macOS / Linux
 ./scripts/setup.sh
+
+# Windows (PowerShell)
+.\scripts\setup.ps1
 ```
+
+If `uv` is not installed yet, `/get-started` and `harness init` will say so and point at [docs/install-uv.md](docs/install-uv.md) for the macOS or Windows command.
 
 Then:
 
@@ -38,9 +44,9 @@ Then:
 6. Or create a new feature workspace and pick projects from `repositories.yml`:
    `harness workspace create` (or `/new-workspace` in chat)
 7. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-8. In Copilot Chat, run **Jira Planner**, `/jira-ticket PROJ-123`, `/jira-cli`, or `/bootstrap-project`
+8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/orient`, `/jira-cli`, or `/bootstrap-project`
 
-`setup.sh` installs [uv](https://docs.astral.sh/uv/) if needed, syncs `uv.lock` into `.venv`, and installs this package in editable mode. Prefer `uv` over pip:
+`setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, and install this package in editable mode. Prefer `uv` over pip:
 
 ```bash
 uv run harness doctor
@@ -68,6 +74,7 @@ repositories:
 | `tags` | yes | Labels used to clone or compose workspaces (`harness clone --tag ui`) |
 | `path` | no | Override the sibling folder name |
 | `default_branch` | no | Defaults to `main` |
+| `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
 
 `catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository names. Workspace `tags` pull in every manifest repo with those tags.
 
@@ -146,7 +153,7 @@ Copilot uses the same commands. If you ask it to bootstrap a new project, it sho
 
 Jira Cloud MCP is not available here. Copilot talks to Jira by running `harness`. The **jira-cli** skill (`.github/skills/jira-cli/SKILL.md`) is the on-demand contract for those commands.
 
-Create an API token at [id.atlassian.com](https://id.atlassian.com/manage-profile/security/api-tokens) and set:
+Create an API token using [docs/jira-api-token.md](docs/jira-api-token.md) (or the [Atlassian token page](https://id.atlassian.com/manage-profile/security/api-tokens)) and set:
 
 ```bash
 JIRA_BASE_URL=https://your-domain.atlassian.net
@@ -155,12 +162,14 @@ JIRA_API_TOKEN=...
 ```
 
 ```bash
+uv run harness init
 uv run harness jira schema
 uv run harness jira whoami
 uv run harness jira get PROJ-123
 uv run harness jira context PROJ-123
 uv run harness jira search 'project = PROJ AND status != Done'
 uv run harness prepare PROJ-123
+uv run harness context
 ```
 
 The CLI never prints the raw Jira REST payload. `catalog/stack.yaml` `jira.fields` is an allowlist of keys Copilot sees. Add custom fields with `extra_fields` + `field_aliases`, then list the alias in `fields`.
@@ -186,6 +195,8 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`). Place
 
 | File | Role |
 | --- | --- |
+| `.github/skills/get-started/SKILL.md` | First-run walkthrough (`/get-started`) |
+| `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
@@ -198,12 +209,19 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`). Place
 
 The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
 
+`/get-started` is the human onboarding path. It runs `harness init` and points at the token doc. Copilot must never ask anyone to paste the API token into chat.
+
+`/orient` is for vague prompts against large repos. It runs `harness context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
+
+Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `docs/adr/`). The harness only discovers them. Convention: [docs/knowledge.md](docs/knowledge.md). More ideas: [docs/ideas.md](docs/ideas.md).
+
 Typical loop:
 
-1. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli`
-2. Copilot runs `harness prepare PROJ-123`
-3. You open the recommended `.code-workspace` so every needed repo is a root
-4. Copilot writes a plan, then hands off to Implementer when you are ready
+1. New machine: `/get-started` (or `uv run harness init --interactive` in a terminal)
+2. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli`
+3. Copilot runs `harness prepare PROJ-123`
+4. You open the recommended `.code-workspace` so every needed repo is a root
+5. Copilot writes a plan (using Graphify reports and each repo's instructions when present), then hands off to Implementer when you are ready
 
 To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.
 
