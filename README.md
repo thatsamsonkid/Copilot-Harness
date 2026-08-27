@@ -33,8 +33,10 @@ Then:
 2. Copy `.env.example` to `.env` and set Jira Cloud values.
 3. Clone siblings: `./scripts/clone-repos.sh`
 4. Generate workspaces: `harness workspace generate`
-5. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-6. In Copilot Chat, run **Jira Planner** or `/jira-ticket PROJ-123`
+5. Or create a new feature workspace and pick projects from `repositories.yml`:
+   `harness workspace create`
+6. Open a feature workspace, for example `workspaces/frontend.code-workspace`
+7. In Copilot Chat, run **Jira Planner** or `/jira-ticket PROJ-123`
 
 `setup.sh` installs [uv](https://docs.astral.sh/uv/) if needed, syncs `uv.lock` into `.venv`, and installs this package in editable mode. Prefer `uv` over pip:
 
@@ -73,6 +75,15 @@ harness clone --tag api
 ```
 
 One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `harness workspace generate`.
+
+To add a workspace without editing YAML by hand, run `harness workspace create`. In a terminal it lists every `repositories.yml` project and prompts for an id plus which names, numbers, ranges, or `tag:<tag>` values to include. Non-interactive / Copilot use:
+
+```bash
+harness workspace create checkout --projects frontend,backend
+harness workspace create mobile-api --tag mobile,api --name "Mobile + API"
+```
+
+That writes `catalog/stack.yaml` and `workspaces/<id>.code-workspace`. Use `--force` to replace an existing id, `--dry-run` to preview, or `--no-prompt` when flags must be complete.
 
 Workspace files live in `workspaces/` and always include this harness as the first root so Copilot still sees the CLI and instructions.
 

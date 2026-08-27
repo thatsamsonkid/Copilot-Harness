@@ -14,7 +14,9 @@ from harness.output import render
 from harness.paths import find_harness_root, load_dotenv_files
 from harness.prepare import prepare_issue
 from harness.routing import recommend_workspace
+from harness.prompt import PromptSession
 from harness.workspace import generate_workspaces, list_workspaces, open_workspace
+from harness.workspace_create import create_workspace
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -38,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="harness",
         description=(
             "Clone sibling git repos, query Jira Cloud with basic auth, "
-            "and select a feature VS Code workspace."
+            "and create or select a feature VS Code workspace."
         ),
     )
     parser.add_argument("--version", action="version", version=f"harness {__version__}")
@@ -78,6 +80,65 @@ def build_parser() -> argparse.ArgumentParser:
     workspace_sub = workspace.add_subparsers(dest="workspace_command", required=True)
     workspace_sub.add_parser("list", help="List feature workspaces")
     workspace_sub.add_parser("generate", help="Write .code-workspace files from the catalog")
+    workspace_create = workspace_sub.add_parser(
+        "create",
+        help="Create a feature workspace and pick projects from repositories.yml",
+    )
+    workspace_create.add_argument(
+        "id",
+        nargs="?",
+        help="Workspace slug. Prompted when omitted in a terminal.",
+    )
+    workspace_create.add_argument("--name", help="Display name (defaults to a title-cased id)")
+    workspace_create.add_argument("--description", help="Short description")
+    workspace_create.add_argument(
+        "--projects",
+        "--folders",
+        dest="projects",
+        help="Comma-separated repository names from repositories.yml",
+    )
+    workspace_create.add_argument(
+        "--tag",
+        help="Comma-separated tags; include every matching repositories.yml entry",
+    )
+    workspace_create.add_argument(
+        "--include-harness",
+        dest="include_harness",
+        action="store_true",
+        default=None,
+        help="Add this harness as the first workspace folder (default)",
+    )
+    workspace_create.add_argument(
+        "--no-include-harness",
+        dest="include_harness",
+        action="store_false",
+        help="Do not add this harness as a workspace folder",
+    )
+    workspace_create.add_argument(
+        "--fallback",
+        action="store_true",
+        help="Use this workspace when no other Jira match scores",
+    )
+    workspace_create.add_argument("--match-projects", help="Jira project keys for routing")
+    workspace_create.add_argument("--match-components", help="Jira components for routing")
+    workspace_create.add_argument("--match-labels", help="Jira labels for routing")
+    workspace_create.add_argument("--keywords", help="Summary keywords for routing")
+    workspace_create.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing workspace with the same id",
+    )
+    workspace_create.add_argument(
+        "--no-generate",
+        action="store_true",
+        help="Update catalog/stack.yaml only; do not write the .code-workspace file",
+    )
+    workspace_create.add_argument("--dry-run", action="store_true")
+    workspace_create.add_argument(
+        "--no-prompt",
+        action="store_true",
+        help="Do not prompt; require --id and --projects or --tag",
+    )
     workspace_match = workspace_sub.add_parser("match", help="Recommend a workspace for an issue")
     workspace_match.add_argument("issue")
     workspace_open = workspace_sub.add_parser("open", help="Open a workspace in VS Code")
@@ -199,6 +260,27 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, harness_root: Pa
         return {"workspaces": list_workspaces(catalog, harness_root)}
     if args.workspace_command == "generate":
         return {"workspaces": generate_workspaces(catalog, harness_root)}
+    if args.workspace_command == "create":
+        prompt = PromptSession(interactive=False if args.no_prompt else None)
+        return create_workspace(
+            catalog,
+            harness_root,
+            workspace_id=args.id,
+            name=args.name,
+            description=args.description,
+            folders=_split_ids(args.projects),
+            tags=_split_ids(args.tag),
+            include_harness=args.include_harness,
+            fallback=args.fallback,
+            match_projects=_split_ids(args.match_projects),
+            match_components=_split_ids(args.match_components),
+            match_labels=_split_ids(args.match_labels),
+            match_keywords=_split_ids(args.keywords),
+            force=args.force,
+            generate=not args.no_generate,
+            dry_run=args.dry_run,
+            prompt=prompt,
+        )
     if args.workspace_command == "match":
         issue = _client().get_issue(args.issue, settings=catalog.jira)
         recommended, alternatives = recommend_workspace(catalog, issue)

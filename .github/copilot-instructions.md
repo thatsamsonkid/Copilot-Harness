@@ -28,7 +28,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`).
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/harness` — clone, Jira basic auth, workspace generate/match, prepare.
+- CLI: `src/harness` — clone, Jira basic auth, workspace create/generate/match, prepare.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness.
 - Secrets: `.env` (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`). Never commit tokens or print them.
 
@@ -45,6 +45,7 @@ uv run harness repos
 uv run harness clone --only frontend,backend
 uv run harness clone --tag ui
 uv run harness workspace list
+uv run harness workspace create checkout --projects frontend,backend
 uv run harness workspace generate
 uv run harness doctor
 ```
@@ -55,5 +56,5 @@ If `uv` is missing, run `./scripts/setup.sh`. Do not use pip to install this rep
 
 - Keep clones as siblings (`../<path>`). Do not add git submodules or nest repos here.
 - Prefer the matched workspace repos. Only load extra roots when the ticket clearly needs them.
-- After catalog edits, run `harness workspace generate`.
+- After catalog edits, run `harness workspace generate`. To add a workspace, run `harness workspace create` (prompts for `repositories.yml` projects in a terminal) or pass `--id` and `--projects` / `--tag`.
 - When coding in a sibling repo, follow that repo's conventions. This harness does not override product architecture.

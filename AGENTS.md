@@ -4,6 +4,8 @@ This repo is a **Copilot / VS Code harness**, not the product codebase.
 
 Application repositories are cloned as **siblings** of this folder. The full-app list lives in `repositories.yml`. See also `catalog/stack.yaml` and `.github/copilot-instructions.md`.
 
+To add a feature workspace, run `uv run harness workspace create` and pick projects from `repositories.yml`, or pass `--projects` / `--tag`.
+
 For any Jira key:
 
 ```bash

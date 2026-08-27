@@ -22,6 +22,13 @@
       "problemMatcher": []
     },
     {
+      "label": "Harness: create workspace",
+      "type": "shell",
+      "command": "uv run harness workspace create",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
       "label": "Harness: doctor",
       "type": "shell",
       "command": "uv run harness doctor",
