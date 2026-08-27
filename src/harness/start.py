@@ -102,10 +102,10 @@ def collect_start_plan(
             harness_root,
             only=only,
         )
-    payload["guidance"] = _plan_guidance(payload)
     if save:
         payload["saved"] = write_saved_start_plan(plan_file, payload)
         payload["plan_exists"] = True
+    payload["guidance"] = _plan_guidance(payload)
     return payload
 
 
@@ -400,10 +400,22 @@ def _plan_guidance(payload: dict[str, Any]) -> list[str]:
         "discovery when it is wrong.",
     ]
     workspace = payload.get("workspace")
-    if workspace and payload.get("plan_source") == "saved":
+    saved = payload.get("saved")
+    if saved:
+        lines.append(
+            f"Saved the sequence to {saved.get('path')} ({saved.get('action')}). "
+            "Later starts will use this file instead of rediscovering."
+        )
+    elif workspace and payload.get("plan_source") == "saved":
         lines.append(
             f"Using saved sequence at {payload.get('plan_file')}. "
             "Pass --refresh to rediscover, or edit that file / --save to update it."
+        )
+    elif workspace and payload.get("plan_exists"):
+        lines.append(
+            f"A saved sequence exists at {payload.get('plan_file')}. "
+            "This run rediscovered. Omit --refresh to use the saved file, "
+            "or pass --save to overwrite it."
         )
     elif workspace:
         lines.append(

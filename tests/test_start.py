@@ -217,6 +217,7 @@ def test_start_save_and_reuse_workspace_plan(harness_root: Path, catalog):
     plan_path = Path(first["saved"]["path"])
     assert first["saved"]["action"] == "created"
     assert first["plan_source"] == "discovered"
+    assert any("saved the sequence" in item.lower() for item in first["guidance"])
     assert plan_path.is_file()
     assert plan_path.name == "frontend.start.yml"
     saved = load_saved_start_plan(plan_path)
@@ -276,6 +277,7 @@ def test_start_refresh_ignores_saved_plan(harness_root: Path, catalog):
     backend = refreshed["services"][0]
     assert backend["command"] == "./mvnw spring-boot:run"
     assert backend["port_hint"] == 8090
+    assert any("this run rediscovered" in item.lower() for item in refreshed["guidance"])
 
 
 def test_saved_plan_reports_unplanned_and_stale(harness_root: Path, catalog):
