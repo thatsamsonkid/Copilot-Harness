@@ -15,7 +15,7 @@ Copilot collects the remaining params in chat, then runs the harness CLI. Do **n
    - `uv run harness repos --format json`
    - `uv run harness workspace list --format json`
    If `uv` is missing, run `./scripts/setup.sh`, then retry with `./scripts/harness.sh`.
-2. Show a numbered list of **enabled** `repositories.yml` projects: name, tags, description, cloned or not.
+2. Show a numbered list of **enabled** `repositories.yml` projects: name, tags, description, `path` / `group` when organized, cloned or not.
 3. Also list existing workspace ids so the user does not collide unless they mean to replace one.
 4. Ask for anything still missing, one question at a time:
    - **id** — lowercase slug (`checkout`). Use `${input:id:Workspace id (optional slug)}` when it is a real slug; otherwise ask. Default a suggestion from their wording (`Checkout Flow` → `checkout-flow`).

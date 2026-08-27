@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Clone repositories.yml remotes as siblings of this harness (never inside it).
+# Clone repositories.yml remotes under parent_dir (never inside this harness).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

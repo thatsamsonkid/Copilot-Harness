@@ -9,7 +9,7 @@ import yaml
 
 from harness import HarnessError
 from harness.bootstrap import append_repository, bootstrap_project
-from harness.catalog import Repo, load_catalog
+from harness.catalog import Repo, load_catalog, parse_project_destination
 from harness.cli import main
 from tests.helpers import write_harness_config
 
@@ -113,6 +113,52 @@ def test_bootstrap_fresh_git_and_register(
     added = next(item for item in manifest["repositories"] if item["name"] == "shop-web")
     assert added["url"] == origin
     assert added["tags"] == ["ui", "web"]
+
+
+def test_parse_project_destination_group_and_nested_name():
+    assert parse_project_destination("shop-web", "frontend") == (
+        "shop-web",
+        "frontend/shop-web",
+        "frontend",
+    )
+    assert parse_project_destination("frontend/shop-web") == (
+        "shop-web",
+        "frontend/shop-web",
+        "frontend",
+    )
+    with pytest.raises(HarnessError, match="inside group"):
+        parse_project_destination("backend/api", "frontend")
+
+
+def test_bootstrap_into_group_and_register(
+    harness_root: Path, sample_catalog_data: dict, tmp_path: Path
+):
+    remotes = tmp_path / "remotes"
+    sample_catalog_data["templates"][0]["url"] = str(_bare_repo(remotes / "web-starter.git"))
+    write_harness_config(harness_root, sample_catalog_data)
+    catalog = load_catalog(harness_root)
+
+    payload = bootstrap_project(
+        catalog,
+        harness_root,
+        template_name="web-starter",
+        dest_name="shop-web",
+        group="apps",
+        register=True,
+        remote="git@github.com:acme/shop-web.git",
+        tags=["ui", "web"],
+    )
+    dest = harness_root.parent / "apps" / "shop-web"
+    assert dest.is_dir()
+    assert payload["project"]["name"] == "shop-web"
+    assert payload["project"]["group"] == "apps"
+    assert payload["project"]["relpath"] == "apps/shop-web"
+    assert payload["registered"] is True
+
+    manifest = yaml.safe_load((harness_root / "repositories.yml").read_text())
+    added = next(item for item in manifest["repositories"] if item["name"] == "shop-web")
+    assert added["group"] == "apps"
+    assert "path" not in added
 
 
 def test_bootstrap_refuses_existing_destination(
@@ -256,6 +302,28 @@ def test_cli_templates_and_bootstrap_dry_run(harness_root: Path, capsys, monkeyp
     )
     positional = json.loads(capsys.readouterr().out)
     assert positional["template"]["name"] == "api-starter"
+
+    assert (
+        main(
+            [
+                "--root",
+                str(harness_root),
+                "bootstrap",
+                "--template",
+                "web-starter",
+                "--name",
+                "shop-web",
+                "--group",
+                "apps",
+                "--dry-run",
+            ]
+        )
+        == 0
+    )
+    grouped = json.loads(capsys.readouterr().out)
+    assert grouped["project"]["name"] == "shop-web"
+    assert grouped["project"]["group"] == "apps"
+    assert grouped["project"]["relpath"] == "apps/shop-web"
 
 
 def test_cli_bootstrap_requires_template(harness_root: Path, capsys, monkeypatch):

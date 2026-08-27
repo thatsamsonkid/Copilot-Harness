@@ -53,6 +53,19 @@ def test_format_project_menu_lists_manifest(catalog):
     assert "2. backend" in menu
 
 
+def test_format_project_menu_shows_grouped_path(tmp_path: Path, sample_catalog_data: dict):
+    sample_catalog_data["repos"][0]["name"] = "shop-web"
+    sample_catalog_data["repos"][0]["group"] = "frontend"
+    sample_catalog_data["repos"][0].pop("path", None)
+    sample_catalog_data["workspaces"][0]["folders"] = ["shop-web", "backend"]
+    root = tmp_path / "harness"
+    write_harness_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    menu = format_project_menu(catalog.repos)
+    assert "1. shop-web" in menu
+    assert "path: frontend/shop-web" in menu
+
+
 def test_create_workspace_with_flags(catalog, harness_root: Path):
     payload = create_workspace(
         catalog,

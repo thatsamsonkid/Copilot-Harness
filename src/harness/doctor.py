@@ -115,6 +115,8 @@ def run_doctor(
             {
                 "id": repo.id,
                 "path": str(path),
+                "relpath": repo.path,
+                "group": repo.group,
                 "cloned": cloned,
                 "placeholder": repo.is_placeholder,
             }

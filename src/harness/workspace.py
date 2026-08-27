@@ -81,6 +81,8 @@ def list_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]
                 {
                     "id": repo_id,
                     "path": str(repo_path),
+                    "relpath": catalog.repo(repo_id).path,
+                    "group": catalog.repo(repo_id).group,
                     "cloned": repo_path.exists(),
                 }
             )
