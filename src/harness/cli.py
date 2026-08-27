@@ -72,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     jira_context = jira_sub.add_parser("context", help="Issue plus comments")
     jira_context.add_argument("issue")
     jira_sub.add_parser("whoami", help="Validate Jira credentials")
+    jira_sub.add_parser("schema", help="Show configured Jira output fields")
 
     workspace = sub.add_parser("workspace", help="Feature workspace helpers")
     workspace_sub = workspace.add_subparsers(dest="workspace_command", required=True)
@@ -171,19 +172,23 @@ def dispatch(args: argparse.Namespace) -> Any:
 
 
 def _dispatch_jira(args: argparse.Namespace, catalog: Any) -> Any:
+    settings = catalog.jira
+    if args.jira_command == "schema":
+        return {"jira": settings.schema()}
     client = _client()
-    extra = catalog.jira.extra_fields
     if args.jira_command == "get":
-        return client.get_issue(args.issue, extra_fields=extra)
+        return client.get_issue(args.issue, settings=settings)
     if args.jira_command == "comments":
+        if not settings.wants("comments"):
+            raise HarnessError("Comments are disabled in catalog/stack.yaml jira.fields")
         return {
             "key": parse_issue_key(args.issue),
-            "comments": client.get_comments(args.issue),
+            "comments": client.get_comments(args.issue, max_results=settings.max_comments),
         }
     if args.jira_command == "search":
         return {"jql": args.jql, "issues": client.search(args.jql, max_results=args.max_results)}
     if args.jira_command == "context":
-        return client.get_context(args.issue, extra_fields=extra)
+        return client.get_context(args.issue, settings=settings)
     if args.jira_command == "whoami":
         return client.myself()
     raise HarnessError(f"Unknown jira command: {args.jira_command}")
@@ -195,7 +200,7 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, harness_root: Pa
     if args.workspace_command == "generate":
         return {"workspaces": generate_workspaces(catalog, harness_root)}
     if args.workspace_command == "match":
-        issue = _client().get_issue(args.issue, extra_fields=catalog.jira.extra_fields)
+        issue = _client().get_issue(args.issue, settings=catalog.jira)
         recommended, alternatives = recommend_workspace(catalog, issue)
         return {
             "issue": {

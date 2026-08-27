@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 
 from harness import HarnessError
+from harness.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
 from harness.paths import REPOS_RELATIVE, STACK_RELATIVE
 
 
@@ -68,12 +69,6 @@ class Workspace:
     include_harness: bool = True
     fallback: bool = False
     match: WorkspaceMatch = field(default_factory=WorkspaceMatch)
-
-
-@dataclass(frozen=True)
-class JiraSettings:
-    extra_fields: list[str] = field(default_factory=list)
-    field_aliases: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -299,6 +294,14 @@ def load_stack(
     aliases = jira_raw.get("field_aliases") or {}
     if not isinstance(aliases, dict):
         raise HarnessError("jira.field_aliases must be a mapping")
+    configured_fields = _as_list(jira_raw.get("fields"))
+    jira = JiraSettings(
+        fields=configured_fields or list(DEFAULT_OUTPUT_FIELDS),
+        extra_fields=_as_list(jira_raw.get("extra_fields")),
+        field_aliases={str(key): str(value) for key, value in aliases.items()},
+        include_comments=bool(jira_raw.get("include_comments", True)),
+        max_comments=int(jira_raw.get("max_comments") or 15),
+    )
 
     fallbacks = [workspace.id for workspace in workspaces if workspace.fallback]
     if len(fallbacks) > 1:
@@ -306,10 +309,7 @@ def load_stack(
             "Only one workspace can be fallback=true; found: " + ", ".join(fallbacks)
         )
 
-    return workspaces, JiraSettings(
-        extra_fields=_as_list(jira_raw.get("extra_fields")),
-        field_aliases={str(key): str(value) for key, value in aliases.items()},
-    )
+    return workspaces, jira
 
 
 def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
@@ -352,8 +352,5 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
             }
             for workspace in catalog.workspaces
         ],
-        "jira": {
-            "extra_fields": catalog.jira.extra_fields,
-            "field_aliases": catalog.jira.field_aliases,
-        },
+        "jira": catalog.jira.schema(),
     }

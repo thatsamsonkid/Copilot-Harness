@@ -36,7 +36,7 @@ Then:
 5. Open a feature workspace, for example `workspaces/frontend.code-workspace`
 6. In Copilot Chat, run **Jira Planner** or `/jira-ticket PROJ-123`
 
-`setup.sh` installs [uv](https://docs.astral.sh/uv/) if needed, syncs the lockfile into `.venv`, and installs this package in editable mode. Prefer `uv` over pip:
+`setup.sh` installs [uv](https://docs.astral.sh/uv/) if needed, syncs `uv.lock` into `.venv`, and installs this package in editable mode. Prefer `uv` over pip:
 
 ```bash
 uv run harness doctor
@@ -89,14 +89,19 @@ JIRA_API_TOKEN=...
 ```
 
 ```bash
-harness jira whoami
-harness jira get PROJ-123
-harness jira context PROJ-123
-harness jira search 'project = PROJ AND status != Done'
-harness prepare PROJ-123
+uv run harness jira schema
+uv run harness jira whoami
+uv run harness jira get PROJ-123
+uv run harness jira context PROJ-123
+uv run harness jira search 'project = PROJ AND status != Done'
+uv run harness prepare PROJ-123
 ```
 
-`prepare` is the Copilot entry point: fetch the issue and comments, score feature workspaces, list required sibling repos, and print the `code` command that opens the matching workspace.
+The CLI never prints the raw Jira REST payload. `catalog/stack.yaml` `jira.fields` is an allowlist of keys Copilot sees. Add custom fields with `extra_fields` + `field_aliases`, then list the alias in `fields`.
+
+The API token stays in `.env`. The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
+
+`prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, and print the `code` command that opens the matching workspace.
 
 Stdout is JSON by default (`--format markdown` or `text` if you want a human view). Errors are JSON on stderr.
 

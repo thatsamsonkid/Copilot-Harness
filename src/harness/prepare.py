@@ -19,7 +19,7 @@ def prepare_issue(
     clone_missing: bool = False,
     generate: bool = True,
 ) -> dict[str, Any]:
-    issue = client.get_context(key, extra_fields=catalog.jira.extra_fields)
+    issue = client.get_context(key, settings=catalog.jira)
     recommended, alternatives = recommend_workspace(catalog, issue)
     if generate:
         generate_workspaces(catalog, harness_root)

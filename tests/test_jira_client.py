@@ -7,6 +7,7 @@ import pytest
 from harness import HarnessError
 from harness.http import HttpResponse
 from harness.jira_client import JiraClient, parse_issue_key
+from harness.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
 
 
 class FakeHttp:
@@ -86,14 +87,25 @@ def test_get_issue_normalizes_adf_and_links():
         {("GET", "https://acme.atlassian.net/rest/api/3/issue/WEB-42"): _json(issue)}
     )
     client = JiraClient("https://acme.atlassian.net", "a@b.com", "token", http=http)
-    payload = client.get_issue("https://acme.atlassian.net/browse/WEB-42")
+    settings = JiraSettings(
+        fields=[*DEFAULT_OUTPUT_FIELDS, "story_points"],
+        extra_fields=["customfield_10016"],
+        field_aliases={"customfield_10016": "story_points"},
+        include_comments=False,
+    )
+    payload = client.get_issue(
+        "https://acme.atlassian.net/browse/WEB-42", settings=settings
+    )
     assert payload["key"] == "WEB-42"
     assert payload["url"] == "https://acme.atlassian.net/browse/WEB-42"
     assert payload["description"] == "Broken css"
     assert payload["components"] == ["Frontend"]
     assert payload["parent"]["key"] == "WEB-1"
     assert payload["issuelinks"][0]["key"] == "API-9"
-    assert payload["custom"]["Story Points"] == 3
+    assert payload["story_points"] == 3
+    assert "reporter" not in payload
+    assert "id" not in payload
+    assert "custom" not in payload
 
 
 def test_search_falls_back_to_legacy_endpoint():

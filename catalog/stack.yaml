@@ -3,6 +3,26 @@
 # in `folders`, or pull a set in by `tags`.
 
 jira:
+  # Allowlist of fields the CLI returns to Copilot. Raw Jira payloads are never emitted.
+  include_comments: true
+  max_comments: 15
+  fields:
+    - key
+    - url
+    - summary
+    - description
+    - status
+    - issue_type
+    - priority
+    - project
+    - assignee
+    - labels
+    - components
+    - parent
+    - issuelinks
+    - comments
+  # Optional Jira custom field ids to fetch. Map them to output names below
+  # and add those names to `fields` to expose them.
   extra_fields: []
   field_aliases: {}
 

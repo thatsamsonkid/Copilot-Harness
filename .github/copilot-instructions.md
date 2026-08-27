@@ -6,13 +6,23 @@ This repository is tooling only. Application code lives in **sibling git clones*
 
 When the user gives a Jira key or browse URL:
 
-1. Run `harness prepare <KEY> --format json` from this repo (or with `HARNESS_ROOT` set).
-2. Use the JSON `issue` object as source of truth. If comments are empty and the ticket looks thin, run `harness jira context <KEY>`.
+1. Run `uv run harness prepare <KEY> --format json` from this repo (or with `HARNESS_ROOT` set).
+2. Use that CLI JSON as the only ticket source. It is already field-filtered. Do not ask Jira for more.
 3. Tell the user to open `routing.open_command` so the feature workspace loads the right roots. Do not assume sibling repos are already in the current window.
 4. If `routing.missing_repos` is non-empty, run or recommend `routing.clone_command`. Never `git clone` into this harness folder.
 5. Write a plan covering impacted repos, likely files, risks, and tests. Do not implement until the user asks.
 
 `harness` stdout is JSON by default. Read stdout. Errors are JSON on stderr with a non-zero exit code.
+
+## Jira access (hard rules)
+
+This workspace has **no Jira MCP server**. The API token must never enter the chat or a shell command.
+
+- Only talk to Jira through `uv run harness jira …` or `uv run harness prepare …`.
+- Do **not** curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
+- Do **not** read `.env`, print `env`, or expand `$JIRA_API_TOKEN` / `$JIRA_TOKEN`.
+- Do **not** configure or call an MCP Jira tool.
+- If credentials are missing, tell the user to edit `.env` locally. Never ask them to paste a token into chat.
 
 ## Repo layout
 

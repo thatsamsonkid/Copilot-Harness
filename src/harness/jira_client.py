@@ -9,6 +9,7 @@ from urllib.parse import quote
 from harness import HarnessError
 from harness.adf import adf_to_markdown
 from harness.http import HttpClient, HttpResponse
+from harness.jira_fields import JiraSettings, project_issue
 
 ISSUE_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
 
@@ -66,19 +67,30 @@ class JiraClient:
     def myself(self) -> dict[str, Any]:
         payload = self._json("GET", "/rest/api/3/myself")
         return {
-            "account_id": payload.get("accountId"),
-            "email": payload.get("emailAddress"),
+            "authenticated": True,
             "display_name": payload.get("displayName"),
         }
 
-    def get_issue(self, key: str, extra_fields: list[str] | None = None) -> dict[str, Any]:
+    def get_issue(
+        self,
+        key: str,
+        settings: JiraSettings | None = None,
+        extra_fields: list[str] | None = None,
+    ) -> dict[str, Any]:
+        settings = settings or JiraSettings(extra_fields=extra_fields or [])
         key = parse_issue_key(key)
+        params = {"fields": ",".join(settings.request_field_ids())}
+        if settings.extra_fields:
+            params["expand"] = "names"
         payload = self._json(
             "GET",
             f"/rest/api/3/issue/{quote(key)}",
-            params={"expand": "renderedFields,names,changelog"},
+            params=params,
         )
-        return normalize_issue(payload, extra_fields=extra_fields or [])
+        return project_issue(
+            normalize_issue(payload, settings=settings),
+            settings,
+        )
 
     def get_comments(self, key: str, max_results: int = 50) -> list[dict[str, Any]]:
         key = parse_issue_key(key)
@@ -122,10 +134,17 @@ class JiraClient:
         return [normalize_issue_summary(issue) for issue in issues]
 
     def get_context(
-        self, key: str, extra_fields: list[str] | None = None
+        self,
+        key: str,
+        settings: JiraSettings | None = None,
+        extra_fields: list[str] | None = None,
     ) -> dict[str, Any]:
-        issue = self.get_issue(key, extra_fields=extra_fields)
-        issue["comments"] = self.get_comments(issue["key"])
+        settings = settings or JiraSettings(extra_fields=extra_fields or [])
+        issue = self.get_issue(key, settings=settings)
+        if settings.wants("comments"):
+            issue["comments"] = self.get_comments(
+                issue["key"], max_results=settings.max_comments
+            )
         return issue
 
     def _json(
@@ -166,7 +185,7 @@ class JiraClient:
     def _decode(self, response: HttpResponse, method: str) -> Any:
         if response.status == 401:
             raise HarnessError(
-                "Jira authentication failed. Check JIRA_EMAIL and JIRA_API_TOKEN."
+                "Jira authentication failed. Check credentials in .env; do not print them."
             )
         if response.status == 403:
             raise HarnessError("Jira denied access to this resource.")
@@ -237,7 +256,9 @@ def normalize_comment(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_issue(
-    payload: dict[str, Any], extra_fields: list[str] | None = None
+    payload: dict[str, Any],
+    extra_fields: list[str] | None = None,
+    settings: JiraSettings | None = None,
 ) -> dict[str, Any]:
     fields = payload.get("fields") or {}
     names = payload.get("names") or {}
@@ -282,7 +303,12 @@ def normalize_issue(
             "status": _status(parent_fields.get("status")),
             "issue_type": (parent_fields.get("issuetype") or {}).get("name"),
         }
-    issue["custom"] = _extract_custom_fields(fields, names, extra_fields or [])
+    extract_ids = list(extra_fields or [])
+    aliases: dict[str, str] = {}
+    if settings is not None:
+        extract_ids = list(settings.extra_fields)
+        aliases = settings.field_aliases
+    issue["custom"] = _extract_custom_fields(fields, names, extract_ids, aliases)
     return issue
 
 
@@ -322,23 +348,21 @@ def _normalize_links(links: list[Any]) -> list[dict[str, Any]]:
 
 
 def _extract_custom_fields(
-    fields: dict[str, Any], names: dict[str, Any], extra_fields: list[str]
+    fields: dict[str, Any],
+    names: dict[str, Any],
+    extra_fields: list[str],
+    aliases: dict[str, str] | None = None,
 ) -> dict[str, Any]:
+    aliases = aliases or {}
     wanted = set(extra_fields)
-    interesting_names = {
-        "acceptance criteria",
-        "story points",
-        "sprint",
-        "epic link",
-        "epic name",
-    }
     custom: dict[str, Any] = {}
-    for field_id, value in fields.items():
+    for field_id in wanted:
+        value = fields.get(field_id)
         if value in (None, "", [], {}):
             continue
-        name = names.get(field_id) or field_id
-        if field_id in wanted or name.lower() in interesting_names:
-            custom[str(name)] = _simplify_custom_value(value)
+        name = aliases.get(field_id) or names.get(field_id) or field_id
+        custom[str(name)] = _simplify_custom_value(value)
+        custom[field_id] = custom[str(name)]
     return custom
 
 

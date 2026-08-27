@@ -6,6 +6,15 @@ from pathlib import Path
 from harness.cli import main
 
 
+def test_jira_schema_needs_no_credentials(harness_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(harness_root)
+    monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
+    assert main(["--root", str(harness_root), "jira", "schema"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "summary" in payload["jira"]["fields"]
+    assert payload["jira"]["include_comments"] is True
+
+
 def test_repos_command(harness_root: Path, capsys, monkeypatch):
     monkeypatch.chdir(harness_root)
     assert main(["--root", str(harness_root), "repos"]) == 0
