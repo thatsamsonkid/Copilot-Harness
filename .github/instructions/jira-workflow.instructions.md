@@ -4,9 +4,9 @@ description: How to pull Jira context and choose a feature workspace
 applyTo: "**"
 ---
 
-Jira access is CLI-only. There is no Jira MCP server in this workspace.
+Jira access is CLI-only. There is no Jira MCP server in this workspace. Load `.github/skills/jira-cli/SKILL.md` for commands, flags, and output shapes.
 
-- Run `uv run harness prepare <KEY>` or `uv run harness jira get|context|schema`.
+- Run `uv run harness prepare <KEY> --format json` unless the user asked for a narrower `jira` subcommand.
 - The CLI returns a field allowlist from `catalog/stack.yaml` (`jira.fields`). Treat that JSON as complete. Do not request additional Jira fields.
 - Never curl Atlassian URLs, never read `.env`, never print `JIRA_API_TOKEN`, and never ask the user to paste credentials.
 - If auth fails, tell the user to set values in `.env` themselves.
