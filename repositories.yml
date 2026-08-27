@@ -3,8 +3,9 @@
 # of this harness: <harness-parent>/<path or name>
 #
 # Required per entry: name, url, tags
-# Optional: path, default_branch, description, enabled, graphify
+# Optional: path, default_branch, description, enabled, graphify, knowledge
 # graphify.out defaults to graphify-out inside that sibling clone.
+# knowledge.dirs adds extra note folders when a monorepo does not use docs/features.
 #
 # Replace YOUR_ORG with your GitHub org, then:
 #   ./scripts/clone-repos.sh

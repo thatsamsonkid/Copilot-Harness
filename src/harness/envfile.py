@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
+
+TOKEN_WARN_DAYS = 300
 
 
 def env_file_keys(path: Path) -> dict[str, bool]:
@@ -48,3 +51,29 @@ def upsert_env_file(path: Path, updates: dict[str, str]) -> list[str]:
         written.append(key)
     path.write_text("\n".join(next_lines) + "\n", encoding="utf-8")
     return written
+
+
+def env_file_age(path: Path, *, now: float | None = None, warn_days: int = TOKEN_WARN_DAYS) -> dict:
+    """Age of .env based on mtime. Does not read values or Atlassian expiry."""
+    if not path.exists():
+        return {
+            "present": False,
+            "age_days": None,
+            "stale": False,
+            "warn_days": warn_days,
+            "detail": ".env is missing",
+        }
+    age_days = ((now if now is not None else time.time()) - path.stat().st_mtime) / 86400
+    stale = age_days >= warn_days
+    rounded = round(age_days, 1)
+    return {
+        "present": True,
+        "age_days": rounded,
+        "stale": stale,
+        "warn_days": warn_days,
+        "detail": (
+            f".env is {rounded} days old; Atlassian tokens expire in at most 1 year. Rotate soon."
+            if stale
+            else f".env is {rounded} days old"
+        ),
+    }

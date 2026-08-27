@@ -34,7 +34,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context.
+- CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context, status, branch, handoff.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness.
 - Secrets: `.env` (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`). Never commit tokens or print them.
 
@@ -72,3 +72,20 @@ When the user asks to create, scaffold, or bootstrap a new project:
 - After editing a sibling, run that repo's `tooling.suggested_verify`. Do not skip a failing lint/test command from the product repo.
 - Do not copy product standards into this harness. Do not rebuild a Graphify graph unless the user asked, and never extract an entire monorepo unprompted.
 - Product knowledge (feature notes, ADRs) lives in the sibling repo. Discover it via `harness context` `knowledge`. Do not start a second wiki here.
+
+## Invariants (harness-level only)
+
+These stay few and stable. Everything else lives in the product repo.
+
+- Put the Jira key in each sibling branch name (`uv run harness branch <KEY>`).
+- Open one pull request per sibling repo. Do not squash unrelated repos.
+- Never commit `.env` or print secrets.
+- Treat `prepare` `done_when` as the stop condition.
+- Do not hand-edit `tooling.generated` paths.
+
+## Status, branches, and handoff
+
+- Before planning or pausing, run `uv run harness status --format json`.
+- Assigned work: `uv run harness jira mine --format json`.
+- Pause / next chat: `/handoff` or `uv run harness handoff write --issue <KEY> --note "..."`.
+- Review a diff: `/review` or the **Reviewer** agent. Do not implement while reviewing.

@@ -7,10 +7,12 @@ from typing import Any, Sequence
 
 from harness import HarnessError, __version__
 from harness.bootstrap import bootstrap_project
+from harness.branch import align_branches
 from harness.catalog import catalog_to_dict, load_catalog
 from harness.clone import clone_repos
 from harness.context import collect_context
 from harness.doctor import run_doctor
+from harness.handoff import latest_handoff, list_handoffs, write_handoff
 from harness.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
 from harness.onboard import run_init
 from harness.output import render
@@ -18,9 +20,12 @@ from harness.paths import find_harness_root, load_dotenv_files
 from harness.prepare import prepare_issue
 from harness.prompt import PromptSession
 from harness.routing import recommend_workspace
+from harness.status import collect_status
 from harness.templates import get_template, template_to_dict, templates_payload
 from harness.workspace import generate_workspaces, list_workspaces, open_workspace
 from harness.workspace_create import create_workspace
+
+JIRA_MINE_JQL = "assignee = currentUser() AND resolution = EMPTY ORDER BY updated DESC"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -60,8 +65,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog="harness",
         description=(
             "Clone sibling git repos, bootstrap projects from listed templates, "
-            "query Jira Cloud with basic auth, and create or select a feature "
-            "VS Code workspace."
+            "query Jira Cloud with basic auth, inspect sibling git status, and "
+            "create or select a feature VS Code workspace."
         ),
         parents=[shared],
     )
@@ -94,6 +99,12 @@ def build_parser() -> argparse.ArgumentParser:
         "context", parents=[shared], help="Issue plus comments"
     )
     jira_context.add_argument("issue")
+    jira_mine = jira_sub.add_parser(
+        "mine",
+        parents=[shared],
+        help="List unresolved issues assigned to the current Jira user",
+    )
+    jira_mine.add_argument("--max-results", type=int, default=15)
     jira_sub.add_parser("whoami", parents=[shared], help="Validate Jira credentials")
     jira_sub.add_parser("schema", parents=[shared], help="Show configured Jira output fields")
 
@@ -223,6 +234,41 @@ def build_parser() -> argparse.ArgumentParser:
     )
     context.add_argument("--repo", help="Comma-separated repository names")
 
+    status = sub.add_parser(
+        "status",
+        parents=[shared],
+        help="Read-only git snapshot of sibling clones (branch, dirty, ahead/behind)",
+    )
+    status.add_argument("--repo", help="Comma-separated repository names")
+
+    branch = sub.add_parser(
+        "branch",
+        parents=[shared],
+        help="Suggest or create the same Jira-key branch in matched sibling clones",
+    )
+    branch.add_argument("issue", help="Jira issue key or browse URL")
+    branch.add_argument("--repo", help="Comma-separated repository names")
+    branch.add_argument(
+        "--create",
+        action="store_true",
+        help="Create or checkout the branch in clean clones",
+    )
+    branch.add_argument("--dry-run", action="store_true")
+
+    handoff = sub.add_parser(
+        "handoff",
+        parents=[shared],
+        help="Write or read a session note under handoffs/ (gitignored)",
+    )
+    handoff_sub = handoff.add_subparsers(dest="handoff_command", required=True)
+    handoff_write = handoff_sub.add_parser(
+        "write", parents=[shared], help="Write a session note with the current sibling snapshot"
+    )
+    handoff_write.add_argument("--issue", help="Jira issue key to tag the note")
+    handoff_write.add_argument("--note", help="What the next chat should resume")
+    handoff_sub.add_parser("list", parents=[shared], help="List handoff notes")
+    handoff_sub.add_parser("latest", parents=[shared], help="Show the newest handoff note")
+
     templates = sub.add_parser(
         "templates",
         parents=[shared],
@@ -348,6 +394,23 @@ def dispatch(args: argparse.Namespace) -> Any:
             harness_root,
             only=_split_ids(args.repo),
         )
+    if args.command == "status":
+        return collect_status(
+            catalog,
+            harness_root,
+            only=_split_ids(args.repo),
+        )
+    if args.command == "branch":
+        return align_branches(
+            catalog,
+            harness_root,
+            args.issue,
+            only=_split_ids(args.repo),
+            create=args.create,
+            dry_run=args.dry_run,
+        )
+    if args.command == "handoff":
+        return _dispatch_handoff(args, catalog, harness_root)
     if args.command == "catalog":
         return catalog_to_dict(catalog, harness_root)
     if args.command == "repos":
@@ -385,6 +448,9 @@ def _dispatch_jira(args: argparse.Namespace, catalog: Any) -> Any:
         return client.get_context(args.issue, settings=settings)
     if args.jira_command == "whoami":
         return client.myself()
+    if args.jira_command == "mine":
+        issues = client.search(JIRA_MINE_JQL, max_results=args.max_results)
+        return {"jql": JIRA_MINE_JQL, "issues": issues}
     raise HarnessError(f"Unknown jira command: {args.jira_command}")
 
 
@@ -434,6 +500,23 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, harness_root: Pa
         path = catalog.workspace_file(harness_root, args.id)
         return {"id": args.id, "file": str(path), "exists": path.exists()}
     raise HarnessError(f"Unknown workspace command: {args.workspace_command}")
+
+
+def _dispatch_handoff(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
+    if args.handoff_command == "list":
+        return {"handoffs": list_handoffs(harness_root)}
+    if args.handoff_command == "latest":
+        return latest_handoff(harness_root)
+    if args.handoff_command == "write":
+        issue = parse_issue_key(args.issue) if args.issue else None
+        status = collect_status(catalog, harness_root)
+        return write_handoff(
+            harness_root,
+            issue=issue,
+            note=args.note,
+            status=status,
+        )
+    raise HarnessError(f"Unknown handoff command: {args.handoff_command}")
 
 
 def _dispatch_templates(args: argparse.Namespace, catalog: Any) -> Any:

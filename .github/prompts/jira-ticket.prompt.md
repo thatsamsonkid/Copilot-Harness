@@ -12,7 +12,7 @@ The user will provide a Jira issue key or browse URL as `${input:issue:Jira issu
 3. Use only that CLI JSON. Do not curl Jira, read `.env`, or call MCP.
 4. Summarize the ticket in 5–8 lines: key, type, status, priority, requester intent, and acceptance criteria (including `custom` fields when present).
 5. State the recommended workspace, why it matched, required repos, and whether any clones are missing.
-6. Ask the user to open `routing.open_command` if this window does not already include those roots.
+6. List `done_when` and the suggested branch. Ask the user to open `routing.open_command` if this window does not already include those roots.
 7. Produce a Markdown plan with:
    - Goal
    - Repos and areas of code to inspect

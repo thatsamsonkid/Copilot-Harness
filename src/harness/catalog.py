@@ -53,6 +53,7 @@ class Repo:
     tags: list[str] = field(default_factory=list)
     enabled: bool = True
     graphify: GraphifyConfig = field(default_factory=GraphifyConfig)
+    knowledge_dirs: tuple[str, ...] = ()
 
     @property
     def id(self) -> str:
@@ -263,6 +264,7 @@ def _parse_repo(item: Any) -> Repo:
         tags=tags,
         enabled=bool(item.get("enabled", True)),
         graphify=_parse_graphify(name, item.get("graphify")),
+        knowledge_dirs=_parse_knowledge_dirs(name, item.get("knowledge")),
     )
 
 
@@ -286,6 +288,22 @@ def _parse_graphify(repo_name: str, raw: Any) -> GraphifyConfig:
         )
     _require_relative_dir(f"Repository {repo_name} graphify.out", out)
     return GraphifyConfig(out=out)
+
+
+def _parse_knowledge_dirs(repo_name: str, raw: Any) -> tuple[str, ...]:
+    if raw is None:
+        return ()
+    if isinstance(raw, list):
+        dirs = _as_list(raw)
+    elif isinstance(raw, dict):
+        dirs = _as_list(raw.get("dirs"))
+    else:
+        raise HarnessError(
+            f"Repository {repo_name} knowledge must be a mapping or list of dirs"
+        )
+    for relative in dirs:
+        _require_relative_dir(f"Repository {repo_name} knowledge dir", relative)
+    return tuple(dirs)
 
 
 def _require_relative_dir(label: str, value: str) -> None:
@@ -393,6 +411,7 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                     "out": repo.graphify.out,
                     "enabled": repo.graphify.enabled,
                 },
+                "knowledge_dirs": list(repo.knowledge_dirs),
             }
             for repo in catalog.repos
         ],

@@ -87,3 +87,6 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, harness_root: Pa
     assert frontend["instructions"] == []
     assert frontend["knowledge"]["files"] == []
     assert "Read the issue summary" in payload["next_steps"][0]
+    assert payload["routing"]["suggested_branch"] == "WEB-42"
+    assert any(item["source"] == "harness" for item in payload["done_when"])
+    assert any("WEB-42" in step for step in payload["next_steps"])

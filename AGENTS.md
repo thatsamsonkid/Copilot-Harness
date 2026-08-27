@@ -15,10 +15,11 @@ To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent
 
 First-run setup: `.github/skills/get-started/SKILL.md` (`uv run harness init`).
 Vague or large-repo prompts: `.github/skills/workspace-context/SKILL.md` (`uv run harness context`).
+Sibling git snapshot / pause a session: `uv run harness status` and `.github/skills/handoff/SKILL.md`.
 For any Jira key, follow `.github/skills/jira-cli/SKILL.md`:
 
 ```bash
 uv run harness prepare ISSUE-123 --format json
 ```
 
-Then open `routing.open_command` and plan against those roots. Do not nest git clones inside this repository.
+Then open `routing.open_command` and plan against those roots. Treat `done_when` as the stop condition. Do not nest git clones inside this repository.

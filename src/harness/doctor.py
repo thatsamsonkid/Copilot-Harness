@@ -8,6 +8,7 @@ from typing import Any
 from harness import HarnessError
 from harness.catalog import Catalog
 from harness.context import inspect_repo
+from harness.envfile import env_file_age
 from harness.jira_client import JiraClient, jira_settings_from_env
 from harness.onboard import onboarding_steps
 from harness.uv_check import detect_uv, uv_missing_action
@@ -43,6 +44,17 @@ def run_doctor(
             "code CLI is on PATH"
             if shutil.which("code")
             else "code CLI is not on PATH (open workspaces manually)",
+            ok_when_false=True,
+        )
+    )
+    graphify_cli = shutil.which("graphify")
+    checks.append(
+        _check(
+            "graphify_cli",
+            bool(graphify_cli),
+            f"graphify is on PATH ({graphify_cli})"
+            if graphify_cli
+            else "graphify is not on PATH; still use committed graphify-out/ artifacts",
             ok_when_false=True,
         )
     )
@@ -188,6 +200,16 @@ def run_doctor(
     else:
         checks.append(_check("jira_env", True, "Jira env vars are present"))
 
+    env_age = env_file_age(harness_root / ".env")
+    checks.append(
+        _check(
+            "env_age",
+            not env_age["stale"],
+            env_age["detail"],
+            ok_when_false=True,
+        )
+    )
+
     ok = all(item["ok"] or item.get("advisory") for item in checks)
     steps = onboarding_steps(catalog, harness_root, uv=uv)
     return {
@@ -207,6 +229,8 @@ def run_doctor(
         "workspaces": generated,
         "jira": jira,
         "uv": uv,
+        "graphify_cli": graphify_cli,
+        "env_age": env_age,
         "checks": checks,
         "onboarding": steps,
     }

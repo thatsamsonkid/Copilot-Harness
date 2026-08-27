@@ -56,6 +56,14 @@ def test_parses_graphify_out_and_rejects_parent_escape(
         load_catalog(root)
 
 
+def test_parses_knowledge_dirs(tmp_path: Path, sample_catalog_data: dict):
+    sample_catalog_data["repos"][0]["knowledge"] = {"dirs": ["handbook"]}
+    root = tmp_path / "harness"
+    write_harness_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    assert catalog.repo("frontend").knowledge_dirs == ("handbook",)
+
+
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
     root = tmp_path / "harness"

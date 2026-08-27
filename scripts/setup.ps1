@@ -25,10 +25,5 @@ if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
 }
 
 uv run harness workspace generate
-Write-Host "Setup complete."
-Write-Host "Next:"
-Write-Host "  1. Create a Jira API token (docs/jira-api-token.md) and put email/token in .env"
-Write-Host "     or run: uv run harness init --interactive"
-Write-Host "  2. Edit repositories.yml, then ./scripts/clone-repos.sh"
-Write-Host "  3. In Copilot Chat: /get-started"
-Write-Host "Run the CLI with: uv run harness <command>"
+Write-Host "Setup complete. First-run checklist:"
+uv run harness init --format text

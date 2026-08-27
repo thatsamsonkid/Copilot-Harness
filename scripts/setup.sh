@@ -18,10 +18,5 @@ if [[ ! -f .env && -f .env.example ]]; then
 fi
 
 uv run harness workspace generate
-echo "Setup complete."
-echo "Next:"
-echo "  1. Create a Jira API token (docs/jira-api-token.md) and put email/token in .env"
-echo "     or run: uv run harness init --interactive"
-echo "  2. Edit repositories.yml, then ./scripts/clone-repos.sh"
-echo "  3. In Copilot Chat: /get-started"
-echo "Run the CLI with: uv run harness <command>"
+echo "Setup complete. First-run checklist:"
+uv run harness init --format text || true

@@ -37,3 +37,5 @@ The harness does not own product patterns.
 - Stay in the listed sibling folders. Never nest clones inside the harness.
 - Do not grep a large monorepo as the first move when a graph or instruction file exists.
 - Do not print `.env` or Jira tokens.
+- If `graphify.stale` is true, say so and offer a *scoped* rebuild only after the user agrees.
+- Do not hand-edit `tooling.generated` paths.

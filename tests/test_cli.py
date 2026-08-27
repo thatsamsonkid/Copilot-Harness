@@ -53,6 +53,26 @@ def test_clone_dry_run_and_doctor(harness_root: Path, capsys, monkeypatch):
     assert any(check["name"] == "uv" for check in doctor["checks"])
     assert "onboarding" in doctor
     assert "uv" in doctor
+    assert any(check["name"] == "env_age" for check in doctor["checks"])
+    assert any(check["name"] == "graphify_cli" for check in doctor["checks"])
+    assert "env_age" in doctor
+
+
+def test_jira_mine_uses_current_user_jql(harness_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(harness_root)
+    monkeypatch.setenv("JIRA_BASE_URL", "https://acme.atlassian.net")
+    monkeypatch.setenv("JIRA_EMAIL", "a@b.com")
+    monkeypatch.setenv("JIRA_API_TOKEN", "tok")
+
+    class FakeClient:
+        def search(self, jql, max_results=25):
+            assert "currentUser()" in jql
+            return [{"key": "WEB-1", "summary": "Mine"}]
+
+    monkeypatch.setattr("harness.cli._client", lambda: FakeClient())
+    assert main(["--root", str(harness_root), "jira", "mine"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["issues"][0]["key"] == "WEB-1"
 
 
 def test_error_is_json_on_stderr(harness_root: Path, capsys, monkeypatch):

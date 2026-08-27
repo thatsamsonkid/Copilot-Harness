@@ -1,4 +1,4 @@
-.PHONY: setup test clone templates bootstrap workspaces create-workspace doctor init
+.PHONY: setup test clone templates bootstrap workspaces create-workspace doctor init status handoff
 
 setup:
 	./scripts/setup.sh
@@ -27,3 +27,9 @@ doctor:
 
 init:
 	uv run harness init
+
+status:
+	uv run harness status
+
+handoff:
+	uv run harness handoff latest

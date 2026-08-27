@@ -9,8 +9,8 @@ The harness talks to Jira Cloud with **email + API token** basic auth. Copilot n
 3. Name it something obvious, for example `copilot-harness`.
 4. Set an expiry (Atlassian caps this at one year).
 5. If you are creating a scoped token, choose **Jira** and the least privilege you need:
-   - Ticket planning only: read issue, search, and comment scopes.
-   - Later write actions (assign, transition, comment as you): add the matching write scopes.
+   - **Planning profile (default):** read issue, search, and comment scopes. Enough for `prepare`, `jira get/search/mine`, and `/jira-ticket`.
+   - **Write profile (later):** add comment / transition scopes only after `harness jira comment` exists. Do not mint write scopes "just in case."
 6. Click **Create**, then **Copy**. You cannot view the value again.
 
 If your company uses SSO, you can still create a token for your own Atlassian account. Service-account tokens are an admin concern; this harness is meant for personal tokens.

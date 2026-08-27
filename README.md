@@ -22,14 +22,14 @@ Keeping clones beside the harness avoids nested git trees and keeps this reposit
 
 Put this repo inside a project folder (for example `~/src/Copilot-Harness`), not at the filesystem root. `parent_dir: ..` must resolve to that project folder so siblings land next to the harness.
 
-## Quick start
+## New laptop
 
 ```bash
-# macOS / Linux
-./scripts/setup.sh
-
-# Windows (PowerShell)
-.\scripts\setup.ps1
+./scripts/setup.sh          # Windows: .\scripts\setup.ps1
+# edit .env and repositories.yml
+./scripts/clone-repos.sh
+uv run harness workspace generate
+# Copilot Chat: /get-started
 ```
 
 If `uv` is not installed yet, `/get-started` and `harness init` will say so and point at [docs/install-uv.md](docs/install-uv.md) for the macOS or Windows command.
@@ -75,6 +75,7 @@ repositories:
 | `path` | no | Override the sibling folder name |
 | `default_branch` | no | Defaults to `main` |
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
+| `knowledge` | no | `{ dirs: [handbook] }` extra folders to treat as feature notes |
 
 `catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository names. Workspace `tags` pull in every manifest repo with those tags.
 
@@ -165,18 +166,24 @@ JIRA_API_TOKEN=...
 uv run harness init
 uv run harness jira schema
 uv run harness jira whoami
+uv run harness jira mine
 uv run harness jira get PROJ-123
 uv run harness jira context PROJ-123
 uv run harness jira search 'project = PROJ AND status != Done'
 uv run harness prepare PROJ-123
 uv run harness context
+uv run harness status
+uv run harness branch PROJ-123
+uv run harness handoff write --issue PROJ-123 --note "Resume at the API contract."
 ```
 
 The CLI never prints the raw Jira REST payload. `catalog/stack.yaml` `jira.fields` is an allowlist of keys Copilot sees. Add custom fields with `extra_fields` + `field_aliases`, then list the alias in `fields`.
 
 The API token stays in `.env`. The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 
-`prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, and print the `code` command that opens the matching workspace.
+`prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, print the `code` command that opens the matching workspace, and attach `done_when` (ticket acceptance criteria + each repo's verify commands + harness invariants).
+
+`status` is a read-only git snapshot of every sibling (branch, dirty, ahead/behind, Graphify staleness). `branch PROJ-123` suggests the same Jira-key branch in each clone; `--create` only runs on a clean tree. `handoff` writes a gitignored session note under `handoffs/` so the next chat can resume without re-fetching the world. `jira mine` lists unresolved issues assigned to you.
 
 Stdout is JSON by default (`--format markdown` or `text` if you want a human view). Errors are JSON on stderr.
 
@@ -198,6 +205,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`). Place
 | `.github/skills/get-started/SKILL.md` | First-run walkthrough (`/get-started`) |
 | `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
+| `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
@@ -206,6 +214,9 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`). Place
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |
 | `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
+| `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
+| `.github/prompts/handoff.prompt.md` | `/handoff` |
+| `.github/prompts/review.prompt.md` | `/review` |
 
 The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
 
@@ -218,10 +229,11 @@ Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `doc
 Typical loop:
 
 1. New machine: `/get-started` (or `uv run harness init --interactive` in a terminal)
-2. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli`
-3. Copilot runs `harness prepare PROJ-123`
+2. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli` — or ask `jira mine` for assigned work
+3. Copilot runs `harness prepare PROJ-123` and `harness status`
 4. You open the recommended `.code-workspace` so every needed repo is a root
 5. Copilot writes a plan (using Graphify reports and each repo's instructions when present), then hands off to Implementer when you are ready
+6. Pause with `/handoff`. Review with `/review` against `done_when`.
 
 To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.
 

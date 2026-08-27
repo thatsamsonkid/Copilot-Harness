@@ -8,7 +8,9 @@
   "chat.promptFilesRecommendations": {
     "get-started": "First time here? Set up Jira email and API token.",
     "orient": "Vague task? Map Graphify and repo instructions first.",
-    "jira-ticket": "Plan work from a Jira key."
+    "jira-ticket": "Plan work from a Jira key.",
+    "handoff": "Pause or resume this chat from a session note.",
+    "review": "Review sibling diffs against done_when and repo linters."
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "files.exclude": {

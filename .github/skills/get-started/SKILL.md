@@ -29,7 +29,7 @@ This skill is the first-run contract. Secrets stay in `.env`. Chat only sees `ha
 4. `JIRA_EMAIL` — the Atlassian account email that will own the token.
 5. `JIRA_API_TOKEN` — they create it using `docs/jira-api-token.md` and paste it into `.env` only.
 6. `repositories.yml` — replace `YOUR_ORG` placeholder remotes.
-7. `./scripts/clone-repos.sh` then `uv run harness workspace generate`.
+7. `./scripts/clone-repos.sh` then `uv run harness workspace generate`. `setup.sh` / `setup.ps1` already end by running `harness init`.
 
 ## Hard rules
 

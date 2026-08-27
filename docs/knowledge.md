@@ -13,7 +13,7 @@ A central wiki here would be a third source of truth (code, Jira, harness docs).
 | How the code is shaped | Graphify `graphify-out/` plus `# WHY:` / `# NOTE:` comments | Always; Graphify already indexes these |
 | Ticket intent | Jira, via `harness prepare` | The work item, not the architecture |
 
-The harness only **discovers** those files (`harness context` → `knowledge`). It does not store product facts.
+The harness only **discovers** those files (`harness context` → `knowledge`). It does not store product facts. If a monorepo keeps notes somewhere else, set `knowledge.dirs` on that `repositories.yml` entry.
 
 ## What to write
 
