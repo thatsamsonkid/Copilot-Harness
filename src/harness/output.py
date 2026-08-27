@@ -208,6 +208,17 @@ def _start_text(payload: dict[str, Any]) -> str:
             f"{index}. {item.get('name')} [{item.get('kind')}/{item.get('role')}] "
             f"{item.get('command') or '(no command)'} ({port_label}){blocked}"
         )
+        if item.get("run_via") and item.get("run_via") != "terminal":
+            lines.append(f"   run_via {item['run_via']}")
+        if item.get("copilot_command"):
+            lines.append(f"   copilot {item['copilot_command']}")
+        launch = item.get("launch") or {}
+        if launch.get("configuration"):
+            keys = ",".join(launch.get("env_keys") or [])
+            extra = f" env_keys={keys}" if keys else ""
+            lines.append(
+                f"   launch {launch['configuration']}{extra}"
+            )
         for proxy in item.get("proxies") or []:
             targets = ", ".join(
                 str(target.get("target"))
@@ -236,6 +247,16 @@ def _start_markdown(payload: dict[str, Any]) -> str:
         )
         if item.get("blocked"):
             lines.append(f"   - Blocked: {item['blocked']}")
+        if item.get("run_via") and item.get("run_via") != "terminal":
+            lines.append(f"   - Run via: `{item['run_via']}`")
+        if item.get("copilot_command"):
+            lines.append(f"   - Copilot command: `{item['copilot_command']}`")
+        launch = item.get("launch") or {}
+        if launch.get("configuration") or launch.get("secret_risk"):
+            config = launch.get("configuration") or "launch.json"
+            keys = ", ".join(f"`{key}`" for key in (launch.get("env_keys") or []))
+            detail = f" (env keys: {keys})" if keys else ""
+            lines.append(f"   - Launch `{config}`{detail}")
         for proxy in item.get("proxies") or []:
             targets = ", ".join(
                 f"`{target.get('target')}`"
