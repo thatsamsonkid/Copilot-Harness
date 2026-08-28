@@ -46,6 +46,9 @@ def test_init_lists_missing_jira_keys_without_reading_secrets(
     assert ids["jira_api_token"]["ok"] is False
     assert "docs/jira-api-token.md" in ids["jira_api_token"]["action"]
     assert "jira login" in ids["jira_api_token"]["action"]
+    assert ids["figma_access_token"]["optional"] is True
+    assert ids["figma_access_token"]["ok"] is False
+    assert "figma login" in ids["figma_access_token"]["action"]
     dumped = json.dumps(payload)
     assert "ATLASSIAN-SECRET" not in dumped
 

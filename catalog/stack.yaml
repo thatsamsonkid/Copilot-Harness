@@ -47,6 +47,23 @@ jira:
   extra_fields: []
   field_aliases: {}
 
+# Figma Images API. Copilot gets rendered frame URLs, not the file JSON.
+# Add or remove keys here — do not expand the client to pass raw REST objects through.
+figma:
+  drop_empty: true
+  default_format: png
+  default_scale: 2
+  max_ids: 12
+  fields:
+    - file_key
+    - url
+    - format
+    - scale
+    - images
+    - missing
+  shapes:
+    images: [id, url]
+
 workspaces:
   - id: frontend
     name: Frontend

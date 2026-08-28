@@ -6,6 +6,59 @@ from pathlib import Path
 from coboose.cli import main
 
 
+def test_figma_schema_needs_no_credentials(coboose_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(coboose_root)
+    monkeypatch.delenv("FIGMA_ACCESS_TOKEN", raising=False)
+    assert main(["--root", str(coboose_root), "figma", "schema"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["figma"]["fields"][0] == "file_key"
+    assert payload["figma"]["shapes"]["images"] == ["id", "url"]
+    assert payload["figma"]["default_format"] == "png"
+    assert payload["figma"]["default_scale"] == 2
+    assert payload["figma"]["drop_empty"] is True
+
+
+def test_figma_images_uses_client(coboose_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(coboose_root)
+    monkeypatch.setenv("FIGMA_ACCESS_TOKEN", "figd_test")
+
+    class FakeClient:
+        def get_images(self, file, ids=None, image_format=None, scale=None, settings=None):
+            assert "figma.com" in file
+            assert settings is not None
+            return {
+                "file_key": "AbCdEfGhIjKlMnOpQr",
+                "url": file,
+                "format": "png",
+                "scale": 2,
+                "images": [{"id": "12:34", "url": "https://example/one.png"}],
+            }
+
+    monkeypatch.setattr("coboose.cli._figma_client", lambda _catalog: FakeClient())
+    assert main(
+        [
+            "--root",
+            str(coboose_root),
+            "figma",
+            "images",
+            "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr/Name?node-id=12-34",
+        ]
+    ) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["images"][0]["url"] == "https://example/one.png"
+
+
+def test_missing_figma_env(coboose_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(coboose_root)
+    monkeypatch.delenv("FIGMA_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("FIGMA_TOKEN", raising=False)
+    monkeypatch.delenv("FIGMA_API_TOKEN", raising=False)
+    assert main(["--root", str(coboose_root), "figma", "whoami"]) == 1
+    error = json.loads(capsys.readouterr().err)
+    assert "FIGMA_ACCESS_TOKEN" in error["error"]
+    assert "figma login" in error["error"]
+
+
 def test_jira_schema_needs_no_credentials(coboose_root: Path, capsys, monkeypatch):
     monkeypatch.chdir(coboose_root)
     monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
@@ -54,6 +107,7 @@ def test_clone_dry_run_and_doctor(coboose_root: Path, capsys, monkeypatch):
     assert doctor["sibling_root"] == str(coboose_root.parent.resolve())
     assert any(check["name"] == "jira_env" for check in doctor["checks"])
     assert any(check["name"] == "jira_token_store" for check in doctor["checks"])
+    assert any(check["name"] == "figma_token_store" for check in doctor["checks"])
     assert "keychain" in doctor
     assert "env" in doctor
     assert {row["name"] for row in doctor["env"]["variables"]} >= {

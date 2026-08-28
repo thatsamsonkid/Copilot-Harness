@@ -290,6 +290,8 @@ def _next_commands(
     for variable in missing_secrets:
         if variable.name == "JIRA_API_TOKEN":
             commands.append("uv run coboose jira login")
+        elif variable.name == "FIGMA_ACCESS_TOKEN":
+            commands.append("uv run coboose figma login")
         else:
             commands.append(f"uv run coboose env set {variable.name}")
         if "uv run coboose init --interactive" not in commands:

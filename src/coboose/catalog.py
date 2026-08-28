@@ -8,6 +8,15 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from coboose import CobooseError
+from coboose.figma_fields import (
+    DEFAULT_FORMAT as FIGMA_DEFAULT_FORMAT,
+    DEFAULT_MAX_IDS as FIGMA_DEFAULT_MAX_IDS,
+    DEFAULT_OUTPUT_FIELDS as FIGMA_DEFAULT_OUTPUT_FIELDS,
+    DEFAULT_SCALE as FIGMA_DEFAULT_SCALE,
+    DEFAULT_SHAPES as FIGMA_DEFAULT_SHAPES,
+    ALLOWED_FORMATS as FIGMA_ALLOWED_FORMATS,
+    FigmaSettings,
+)
 from coboose.jira_fields import (
     DEFAULT_OUTPUT_FIELDS,
     DEFAULT_SEARCH_FIELDS,
@@ -51,12 +60,17 @@ _as_list = as_list
 _read_yaml = read_yaml
 
 
-def _as_shapes(value: Any) -> dict[str, list[str]]:
-    shapes = {key: list(items) for key, items in DEFAULT_SHAPES.items()}
+def _as_shapes(
+    value: Any,
+    *,
+    defaults: dict[str, tuple[str, ...] | list[str]],
+    label: str,
+) -> dict[str, list[str]]:
+    shapes = {key: list(items) for key, items in defaults.items()}
     if value is None:
         return shapes
     if not isinstance(value, dict):
-        raise CobooseError("jira.shapes must be a mapping of field name to nested keys")
+        raise CobooseError(f"{label} must be a mapping of field name to nested keys")
     for key, items in value.items():
         shapes[str(key)] = _as_list(items)
     return shapes
@@ -120,6 +134,7 @@ class Catalog:
     repos: list[Repo]
     workspaces: list[Workspace]
     jira: JiraSettings
+    figma: FigmaSettings
     source: Path
     repos_source: Path
     templates: list[Template] = field(default_factory=list)
@@ -230,7 +245,7 @@ def load_catalog(
     env_file = coboose_root / ENV_RELATIVE
     repos, parent_dir = load_repositories(repos_file)
     repo_names = {repo.name for repo in repos}
-    workspaces, jira = load_stack(stack_file, repo_names)
+    workspaces, jira, figma = load_stack(stack_file, repo_names)
     workspaces = [
         *workspaces,
         *load_personal_workspaces(
@@ -254,6 +269,7 @@ def load_catalog(
         repos=repos,
         workspaces=workspaces,
         jira=jira,
+        figma=figma,
         source=stack_file,
         repos_source=repos_file,
         templates=templates,
@@ -475,7 +491,7 @@ def _require_relative_dir(label: str, value: str) -> None:
 
 def load_stack(
     path: Path, repo_names: set[str]
-) -> tuple[list[Workspace], JiraSettings]:
+) -> tuple[list[Workspace], JiraSettings, FigmaSettings]:
     raw = _read_yaml(path)
     if raw is None:
         raw = {}
@@ -541,7 +557,7 @@ def load_stack(
         field_aliases={str(key): str(value) for key, value in aliases.items()},
         include_comments=bool(jira_raw.get("include_comments", True)),
         max_comments=int(jira_raw.get("max_comments") or 15),
-        shapes=_as_shapes(jira_raw.get("shapes")),
+        shapes=_as_shapes(jira_raw.get("shapes"), defaults=DEFAULT_SHAPES, label="jira.shapes"),
         search_fields=(
             _as_list(search_raw) if search_raw is not None else list(DEFAULT_SEARCH_FIELDS)
         ),
@@ -554,7 +570,43 @@ def load_stack(
             "Only one workspace can be fallback=true; found: " + ", ".join(fallbacks)
         )
 
-    return workspaces, jira
+    return workspaces, jira, _load_figma(raw.get("figma"))
+
+
+def _load_figma(raw: Any) -> FigmaSettings:
+    data = raw or {}
+    if not isinstance(data, dict):
+        raise CobooseError("figma settings must be a mapping")
+    image_format = str(data.get("default_format") or FIGMA_DEFAULT_FORMAT).lower()
+    if image_format not in FIGMA_ALLOWED_FORMATS:
+        raise CobooseError(
+            f"figma.default_format must be one of: {', '.join(FIGMA_ALLOWED_FORMATS)}"
+        )
+    try:
+        scale = float(data.get("default_scale") if data.get("default_scale") is not None else FIGMA_DEFAULT_SCALE)
+    except (TypeError, ValueError) as exc:
+        raise CobooseError("figma.default_scale must be a number between 0.01 and 4") from exc
+    if scale < 0.01 or scale > 4:
+        raise CobooseError("figma.default_scale must be a number between 0.01 and 4")
+    try:
+        max_ids = int(data.get("max_ids") if data.get("max_ids") is not None else FIGMA_DEFAULT_MAX_IDS)
+    except (TypeError, ValueError) as exc:
+        raise CobooseError("figma.max_ids must be a positive integer") from exc
+    if max_ids < 1:
+        raise CobooseError("figma.max_ids must be a positive integer")
+    configured_fields = _as_list(data.get("fields"))
+    return FigmaSettings(
+        fields=configured_fields or list(FIGMA_DEFAULT_OUTPUT_FIELDS),
+        shapes=_as_shapes(
+            data.get("shapes"),
+            defaults=FIGMA_DEFAULT_SHAPES,
+            label="figma.shapes",
+        ),
+        default_format=image_format,
+        default_scale=scale,
+        max_ids=max_ids,
+        drop_empty=bool(data.get("drop_empty", True)),
+    )
 
 
 def load_personal_workspaces(
@@ -673,6 +725,7 @@ def catalog_to_dict(catalog: Catalog, coboose_root: Path) -> dict[str, Any]:
             for workspace in catalog.workspaces
         ],
         "jira": catalog.jira.schema(),
+        "figma": catalog.figma.schema(),
         "env_source": str(catalog.env_source) if catalog.env_source else None,
         "env": [
             {

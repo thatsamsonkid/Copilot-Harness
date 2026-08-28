@@ -37,6 +37,8 @@ def to_text(payload: Any) -> str:
         return _start_text(payload)
     if _is_start_run_preview(payload):
         return _start_run_text(payload)
+    if _is_figma_images(payload):
+        return _figma_images_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -65,6 +67,8 @@ def to_markdown(payload: Any) -> str:
         return _start_markdown(payload)
     if _is_start_run_preview(payload):
         return _start_run_markdown(payload)
+    if _is_figma_images(payload):
+        return _figma_images_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -381,6 +385,64 @@ def _start_markdown(payload: dict[str, Any]) -> str:
             lines.append(f"   - {note}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _is_figma_images(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and "file_key" in payload
+        and "images" in payload
+        and "services" not in payload
+        and "issue" not in payload
+    )
+
+
+def _figma_images_text(payload: dict[str, Any]) -> str:
+    lines = [
+        f"Figma {payload.get('file_key')} ({payload.get('format')} @ {payload.get('scale')}x)",
+        f"File: {payload.get('url')}",
+        "",
+    ]
+    images = payload.get("images") or []
+    if not images:
+        lines.append("No rendered image URLs.")
+    for item in images:
+        lines.append(f"- {item.get('id')}: {item.get('url')}")
+    missing = payload.get("missing") or []
+    if missing:
+        lines.append("")
+        lines.append("Missing: " + ", ".join(str(item) for item in missing))
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figma_images_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        f"# Figma `{payload.get('file_key')}`",
+        "",
+        f"- **File:** {payload.get('url')}",
+        f"- **Format:** {payload.get('format')} @ {payload.get('scale')}x",
+        "",
+        "## Images",
+        "",
+    ]
+    images = payload.get("images") or []
+    if not images:
+        lines.append("_No rendered image URLs._")
+    for item in images:
+        lines.append(f"- `{item.get('id')}` — {item.get('url')}")
+    missing = payload.get("missing") or []
+    if missing:
+        lines.extend(
+            [
+                "",
+                "## Missing",
+                "",
+                ", ".join(f"`{item}`" for item in missing),
+            ]
+        )
+    lines.append("")
+    lines.append("Open each image URL in VS Code Simple Browser to look at the frame.")
+    return "\n".join(lines).strip() + "\n"
 
 
 def _is_start_run_preview(payload: Any) -> bool:

@@ -13,6 +13,7 @@ from coboose.clone import clone_repos
 from coboose.context import collect_context
 from coboose.doctor import run_doctor
 from coboose.envspec import find_var, list_env, set_env_value, unset_env_value
+from coboose.figma_client import FigmaClient, figma_token_from_env, figma_var
 from coboose.handoff import latest_handoff, list_handoffs, write_handoff
 from coboose.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
 from coboose.keychain import login_token, logout_token
@@ -71,8 +72,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="coboose",
         description=(
             "Clone product git repos under parent_dir, bootstrap projects from "
-            "listed templates, query Jira Cloud with basic auth, inspect clone "
-            "git status, and create or select a feature VS Code workspace."
+            "listed templates, query Jira Cloud with basic auth, export Figma "
+            "frame images, inspect clone git status, and create or select a "
+            "feature VS Code workspace."
         ),
         parents=[shared],
     )
@@ -137,6 +139,57 @@ def build_parser() -> argparse.ArgumentParser:
         "--clear-env",
         action="store_true",
         help="Also blank JIRA_API_TOKEN in .env",
+    )
+
+    figma = sub.add_parser("figma", parents=[shared], help="Figma REST commands (personal access token)")
+    figma_sub = figma.add_subparsers(dest="figma_command", required=True)
+    figma_images = figma_sub.add_parser(
+        "images",
+        parents=[shared],
+        help="Export rendered frame URLs from the Figma Images API",
+    )
+    figma_images.add_argument("file", help="Figma file key or https://www.figma.com/design/… URL")
+    figma_images.add_argument(
+        "--ids",
+        help="Comma-separated node ids (12:34). Overrides node-id from a URL",
+    )
+    figma_images.add_argument(
+        "--image-format",
+        dest="image_format",
+        choices=("png", "jpg", "svg", "pdf"),
+        help="Image format (default catalog/stack.yaml figma.default_format)",
+    )
+    figma_images.add_argument(
+        "--scale",
+        type=float,
+        help="Scale 0.01–4 (default catalog/stack.yaml figma.default_scale)",
+    )
+    figma_sub.add_parser("whoami", parents=[shared], help="Validate Figma credentials")
+    figma_sub.add_parser("schema", parents=[shared], help="Show configured Figma output fields")
+    figma_login = figma_sub.add_parser(
+        "login",
+        parents=[shared],
+        help="Store the Figma personal access token in macOS Keychain or Windows Credential Manager",
+    )
+    figma_login.add_argument(
+        "--from-env",
+        action="store_true",
+        help="Move FIGMA_ACCESS_TOKEN from .env into the OS keychain, then blank .env",
+    )
+    figma_login.add_argument(
+        "--keep-env",
+        action="store_true",
+        help="Leave FIGMA_ACCESS_TOKEN in .env after storing it in the keychain",
+    )
+    figma_logout = figma_sub.add_parser(
+        "logout",
+        parents=[shared],
+        help="Remove the Figma personal access token from the OS keychain",
+    )
+    figma_logout.add_argument(
+        "--clear-env",
+        action="store_true",
+        help="Also blank FIGMA_ACCESS_TOKEN in .env",
     )
 
     env = sub.add_parser(
@@ -321,9 +374,10 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = sub.add_parser(
         "doctor",
         parents=[shared],
-        help="Check catalog, clones, and Jira configuration",
+        help="Check catalog, clones, Jira, and optional Figma configuration",
     )
     doctor.add_argument("--ping-jira", action="store_true")
+    doctor.add_argument("--ping-figma", action="store_true")
     _add_scope_flags(doctor)
 
     init = sub.add_parser(
@@ -561,6 +615,8 @@ def dispatch(args: argparse.Namespace) -> Any:
         return payload
     if args.command == "jira":
         return _dispatch_jira(args, catalog, coboose_root)
+    if args.command == "figma":
+        return _dispatch_figma(args, catalog, coboose_root)
     if args.command == "env":
         return _dispatch_env(args, catalog, coboose_root)
     if args.command == "workspace":
@@ -579,6 +635,7 @@ def dispatch(args: argparse.Namespace) -> Any:
             catalog,
             coboose_root,
             ping_jira=args.ping_jira,
+            ping_figma=args.ping_figma,
             workspace_id=args.workspace,
             all_repos=bool(getattr(args, "all_repos", False)),
         )
@@ -735,6 +792,34 @@ def _dispatch_jira(args: argparse.Namespace, catalog: Any, coboose_root: Path) -
     raise CobooseError(f"Unknown jira command: {args.jira_command}")
 
 
+def _dispatch_figma(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
+    settings = catalog.figma
+    variable = figma_var(catalog.env_vars)
+    if args.figma_command == "schema":
+        return {"figma": settings.schema()}
+    if args.figma_command == "login":
+        return set_env_value(
+            variable,
+            coboose_root,
+            from_env=args.from_env,
+            clear_env=not args.keep_env,
+        )
+    if args.figma_command == "logout":
+        return unset_env_value(variable, coboose_root, clear_env=args.clear_env)
+    client = _figma_client(catalog)
+    if args.figma_command == "images":
+        return client.get_images(
+            args.file,
+            ids=_split_ids(args.ids),
+            image_format=args.image_format,
+            scale=args.scale,
+            settings=settings,
+        )
+    if args.figma_command == "whoami":
+        return client.myself()
+    raise CobooseError(f"Unknown figma command: {args.figma_command}")
+
+
 def _dispatch_env(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
     if args.env_command == "list":
         scope = resolve_workspace_scope(
@@ -882,6 +967,10 @@ def _dispatch_bootstrap(args: argparse.Namespace, catalog: Any, coboose_root: Pa
 def _client() -> JiraClient:
     base_url, email, token = jira_settings_from_env()
     return JiraClient(base_url, email, token)
+
+
+def _figma_client(catalog: Any) -> FigmaClient:
+    return FigmaClient(figma_token_from_env(catalog.env_vars))
 
 
 def _apply_leading_globals(args: argparse.Namespace, argv: list[str]) -> None:

@@ -82,6 +82,16 @@ DEFAULT_ENV_VARS: tuple[EnvVar, ...] = (
         account="jira-api-token",
         prompt="Atlassian API token",
     ),
+    EnvVar(
+        name="FIGMA_ACCESS_TOKEN",
+        secret=True,
+        required=False,
+        aliases=("FIGMA_TOKEN", "FIGMA_API_TOKEN"),
+        docs="docs/figma-access-token.md",
+        account="figma-access-token",
+        hint="Personal access token with file content read",
+        prompt="Figma personal access token",
+    ),
 )
 
 
@@ -233,6 +243,11 @@ def var_status(
                 "Token is in .env. Prefer `uv run coboose jira login --from-env` "
                 "to move it into macOS Keychain or Windows Credential Manager."
             )
+        elif variable.name == "FIGMA_ACCESS_TOKEN":
+            payload["action"] = (
+                "Token is in .env. Prefer `uv run coboose figma login --from-env` "
+                "to move it into macOS Keychain or Windows Credential Manager."
+            )
     return payload
 
 
@@ -242,6 +257,8 @@ def missing_action(variable: EnvVar) -> str:
         command = (
             "uv run coboose jira login"
             if variable.name == "JIRA_API_TOKEN"
+            else "uv run coboose figma login"
+            if variable.name == "FIGMA_ACCESS_TOKEN"
             else f"uv run coboose env set {variable.name}"
         )
         return (
