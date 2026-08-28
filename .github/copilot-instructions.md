@@ -21,9 +21,10 @@ When the user gives a Jira key or browse URL, load the **jira-cli** skill (`.git
 When the user gives a Figma file/design/proto URL or asks to look at a frame, load the **figma-cli** skill (`.github/skills/figma-cli/SKILL.md`) and follow it.
 
 1. Run `uv run coboose figma images <URL> --format json` from this repo. If cwd is a sibling clone, use `uv run --project "$COBOOSE_ROOT" coboose figma images <URL> --format json`.
-2. Use that CLI JSON as the only Figma source. It is already field-filtered. Do not ask Figma for the file tree.
+2. Use that CLI JSON as the Figma source. Images and comments are field-filtered. `figma nodes` is raw node JSON for a targeted frame only. Do not ask Figma for a whole file tree.
 3. Open each `images[].url` in VS Code Simple Browser so you can see the rendered frame. That image is the visual source of truth.
-4. Do not curl `api.figma.com`, read `.env`, or call a Figma MCP tool.
+4. Optionally run `coboose figma comments <URL>` for designer notes. Run `coboose figma nodes <URL>` only for a small targeted frame (a button or similar). That command returns raw Figma node JSON and will overwhelm context on a page or file. Do not reconstruct layout from the tree.
+5. Do not curl `api.figma.com`, read `.env`, or call a Figma MCP tool.
 
 `coboose` stdout is JSON by default. Read stdout. Errors are JSON on stderr with a non-zero exit code.
 
@@ -53,13 +54,13 @@ This workspace has **no Figma MCP server**. The personal access token must never
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/coboose` — clone, template bootstrap, Jira basic auth, Figma images, workspace create/generate/match, prepare, init, context, status, branch, handoff, start.
+- CLI: `src/coboose` — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, workspace create/generate/match, prepare, init, context, status, branch, handoff, start.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this Coboose repo. Personal/local mixes live in `workspaces/personal/` (gitignored, not in `catalog/stack.yaml`).
 - Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `coboose env set NAME` / `coboose jira login` / `coboose figma login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run coboose <command>` **from this Coboose repo**, or `uv run --project "$COBOOSE_ROOT" coboose <command>` / `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`) from any cwd. Sibling clones are not a uv project; `uv run coboose` fails there with Failed to spawn. Jira command choice, flags, and output shapes live in the jira-cli skill. Figma image exports live in the figma-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start.
+Prefer `uv` for Python. Run the CLI as `uv run coboose <command>` **from this Coboose repo**, or `uv run --project "$COBOOSE_ROOT" coboose <command>` / `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`) from any cwd. Sibling clones are not a uv project; `uv run coboose` fails there with Failed to spawn. Jira command choice, flags, and output shapes live in the jira-cli skill. Figma image, comment, and scoped-node exports live in the figma-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start.
 
 ```bash
 uv run coboose templates

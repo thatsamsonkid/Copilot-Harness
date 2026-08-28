@@ -14,7 +14,8 @@ This is optional. Teams that do not use Figma can leave it unset.
 4. Name it something obvious, for example `coboose`.
 5. Set an expiry.
 6. Grant the least privilege you need:
-   - **Images profile (default):** File content read (`file_content:read`). Enough for `figma images` and `/figma-frame`.
+   - **Images profile (default):** File content read (`file_content:read`). Enough for `figma images`, `figma nodes`, and `/figma-frame`.
+   - **Comments profile:** also grant File comments read (`file_comments:read`) if you want `figma comments`.
    - **Whoami:** Current user profile read (`current_user:read`) if your org requires it for `GET /v1/me`.
 7. Click **Generate token**, then **Copy**. You cannot view the value again.
 

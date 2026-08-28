@@ -166,10 +166,14 @@ def test_loads_jira_projection_from_stack(tmp_path: Path, sample_catalog_data: d
 def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["figma"] = {
         "fields": ["file_key", "images"],
-        "shapes": {"images": ["id", "url"]},
+        "shapes": {"images": ["id", "url"], "comments": ["author", "message"]},
         "default_format": "jpg",
         "default_scale": 1,
         "max_ids": 3,
+        "include_comments": False,
+        "max_comments": 5,
+        "default_depth": 1,
+        "max_depth": 2,
         "drop_empty": False,
     }
     root = tmp_path / "coboose"
@@ -180,8 +184,14 @@ def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: 
     assert catalog.figma.default_scale == 1.0
     assert catalog.figma.max_ids == 3
     assert catalog.figma.shapes["images"] == ["id", "url"]
+    assert catalog.figma.shapes["comments"] == ["author", "message"]
     schema = catalog.figma.schema()
     assert schema["drop_empty"] is False
+    assert schema["include_comments"] is False
+    assert schema["max_comments"] == 5
+    assert schema["default_depth"] == 1
+    assert schema["max_depth"] == 2
+    assert schema["raw_nodes"] is True
 
 
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):

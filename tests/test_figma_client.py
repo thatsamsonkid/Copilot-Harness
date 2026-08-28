@@ -151,3 +151,234 @@ def test_auth_failure_does_not_echo_token():
     with pytest.raises(CobooseError, match="denied") as exc:
         FigmaClient("figd_secret", http=http).myself()
     assert "figd_secret" not in str(exc.value)
+
+
+def test_get_comments_filters_to_node_and_replies():
+    http = FakeHttp(
+        {
+            ("GET", "https://api.figma.com/v1/files/AbCdEfGhIjKlMnOpQr/comments"): _json(
+                {
+                    "comments": [
+                        {
+                            "id": "1",
+                            "message": "Use the brand navy",
+                            "created_at": "2026-01-01T00:00:00Z",
+                            "user": {"handle": "Ada", "email": "hidden@example"},
+                            "client_meta": {"node_id": "12:34"},
+                            "resolved_at": None,
+                        },
+                        {
+                            "id": "2",
+                            "parent_id": "1",
+                            "message": "Already in the token file",
+                            "created_at": "2026-01-02T00:00:00Z",
+                            "user": {"handle": "Grace"},
+                            "client_meta": {},
+                        },
+                        {
+                            "id": "3",
+                            "message": "Other frame",
+                            "created_at": "2026-01-03T00:00:00Z",
+                            "user": {"handle": "Other"},
+                            "client_meta": {"node_id": "56:78"},
+                        },
+                    ]
+                }
+            )
+        }
+    )
+    payload = FigmaClient("figd_test", http=http).get_comments(
+        "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr/Name?node-id=12-34"
+    )
+    assert payload["file_key"] == "AbCdEfGhIjKlMnOpQr"
+    assert [item["message"] for item in payload["comments"]] == [
+        "Use the brand navy",
+        "Already in the token file",
+    ]
+    assert payload["comments"][0] == {
+        "author": "Ada",
+        "created": "2026-01-01T00:00:00Z",
+        "message": "Use the brand navy",
+        "node_id": "12:34",
+        "resolved": False,
+    }
+    assert "email" not in str(payload)
+    assert "hidden@example" not in str(payload)
+
+
+def test_get_comments_can_return_whole_file():
+    http = FakeHttp(
+        {
+            ("GET", "https://api.figma.com/v1/files/AbCdEfGhIjKlMnOpQr/comments"): _json(
+                {
+                    "comments": [
+                        {
+                            "id": "1",
+                            "message": "A",
+                            "created_at": "2026-01-01T00:00:00Z",
+                            "user": {"handle": "Ada"},
+                            "client_meta": {"node_id": "12:34"},
+                        },
+                        {
+                            "id": "2",
+                            "message": "B",
+                            "created_at": "2026-01-02T00:00:00Z",
+                            "user": {"handle": "Grace"},
+                            "client_meta": {"node_id": "56:78"},
+                        },
+                    ]
+                }
+            )
+        }
+    )
+    payload = FigmaClient("figd_test", http=http).get_comments(
+        "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr/Name?node-id=12-34",
+        whole_file=True,
+    )
+    assert [item["message"] for item in payload["comments"]] == ["A", "B"]
+
+
+def test_get_comments_caps_to_newest():
+    http = FakeHttp(
+        {
+            ("GET", "https://api.figma.com/v1/files/AbCdEfGhIjKlMnOpQr/comments"): _json(
+                {
+                    "comments": [
+                        {
+                            "id": "1",
+                            "message": "old",
+                            "created_at": "2026-01-01T00:00:00Z",
+                            "user": {"handle": "Ada"},
+                        },
+                        {
+                            "id": "2",
+                            "message": "new",
+                            "created_at": "2026-01-03T00:00:00Z",
+                            "user": {"handle": "Grace"},
+                        },
+                    ]
+                }
+            )
+        }
+    )
+    payload = FigmaClient("figd_test", http=http).get_comments(
+        "AbCdEfGhIjKlMnOpQr",
+        settings=FigmaSettings(max_comments=1),
+    )
+    assert [item["message"] for item in payload["comments"]] == ["new"]
+
+
+def test_comments_403_mentions_file_comments_scope():
+    http = FakeHttp(
+        {
+            ("GET", "https://api.figma.com/v1/files/AbCdEfGhIjKlMnOpQr/comments"): _json(
+                {"err": "bad"}, status=403
+            )
+        }
+    )
+    with pytest.raises(CobooseError, match="file_comments:read") as exc:
+        FigmaClient("figd_secret", http=http).get_comments("AbCdEfGhIjKlMnOpQr")
+    assert "figd_secret" not in str(exc.value)
+
+
+def test_get_nodes_passes_raw_figma_objects():
+    document = {
+        "id": "12:34",
+        "name": "Primary button",
+        "type": "FRAME",
+        "absoluteBoundingBox": {"x": 0, "y": 0, "width": 160, "height": 40},
+        "fills": [{"type": "SOLID", "color": {"r": 0.1, "g": 0.2, "b": 0.4, "a": 1}}],
+        "children": [
+            {
+                "id": "12:35",
+                "name": "Label",
+                "type": "TEXT",
+                "characters": "Continue",
+                "style": {"fontFamily": "Inter", "fontSize": 14},
+            }
+        ],
+    }
+    raw_entry = {
+        "document": document,
+        "components": {"12:35": {"name": "Label", "key": "comp"}},
+        "styles": {},
+        "schemaVersion": 0,
+    }
+    http = FakeHttp(
+        {
+            ("GET", "https://api.figma.com/v1/files/AbCdEfGhIjKlMnOpQr/nodes"): _json(
+                {"nodes": {"12:34": raw_entry, "56:78": None}}
+            )
+        }
+    )
+    payload = FigmaClient("figd_test", http=http).get_nodes(
+        "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr/Name?node-id=12-34",
+        ids=["12:34", "56:78"],
+    )
+    assert payload["depth"] == 2
+    assert payload["missing"] == ["56:78"]
+    assert payload["nodes"]["12:34"] == raw_entry
+    assert payload["nodes"]["56:78"] is None
+    assert "targeted frame" in payload["note"]
+    assert "absoluteBoundingBox" in payload["nodes"]["12:34"]["document"]
+    assert "ids=12%3A34%2C56%3A78" in http.calls[0][1]
+    assert "depth=2" in http.calls[0][1]
+
+
+def test_get_nodes_requires_node_id_and_caps_depth():
+    client = FigmaClient("figd_test", http=FakeHttp({}))
+    with pytest.raises(CobooseError, match="node id"):
+        client.get_nodes("AbCdEfGhIjKlMnOpQr")
+    with pytest.raises(CobooseError, match="max_depth"):
+        client.get_nodes(
+            "AbCdEfGhIjKlMnOpQr",
+            ids=["1:1"],
+            depth=9,
+            settings=FigmaSettings(max_depth=3),
+        )
+
+
+def test_nodes_and_comments_markdown():
+    from coboose.output import render
+
+    comments = render(
+        {
+            "file_key": "AbCdEfGhIjKlMnOpQr",
+            "url": "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr?node-id=12-34",
+            "comments": [
+                {
+                    "author": "Ada",
+                    "created": "2026-01-01",
+                    "message": "Use navy",
+                    "node_id": "12:34",
+                    "resolved": False,
+                }
+            ],
+        },
+        "markdown",
+    )
+    assert "Use navy" in comments
+    assert "12:34" in comments
+
+    nodes = render(
+        {
+            "file_key": "AbCdEfGhIjKlMnOpQr",
+            "url": "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr?node-id=12-34",
+            "depth": 2,
+            "note": "Raw Figma node JSON. Use only on a small targeted frame.",
+            "nodes": {
+                "12:34": {
+                    "document": {
+                        "id": "12:34",
+                        "name": "Button",
+                        "absoluteBoundingBox": {"width": 160, "height": 40},
+                    }
+                }
+            },
+            "missing": [],
+        },
+        "markdown",
+    )
+    assert "Button" in nodes
+    assert "absoluteBoundingBox" in nodes
+    assert "targeted frame" in nodes

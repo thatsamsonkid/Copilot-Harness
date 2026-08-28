@@ -34,4 +34,4 @@ For a Figma file or frame URL, follow `.github/skills/figma-cli/SKILL.md`:
 uv run coboose figma images 'https://www.figma.com/design/…' --format json
 ```
 
-Open each returned `images[].url` in VS Code Simple Browser. Do not curl Figma or reconstruct the layout from JSON.
+Open each returned `images[].url` in VS Code Simple Browser. Optionally run `figma comments` for designer notes, or `figma nodes` for a small targeted frame only (raw JSON; a page will overwhelm context). Do not curl Figma or reconstruct the layout from JSON.

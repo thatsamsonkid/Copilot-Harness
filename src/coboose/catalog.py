@@ -9,7 +9,11 @@ import yaml
 
 from coboose import CobooseError
 from coboose.figma_fields import (
+    DEFAULT_COMMENT_FIELDS as FIGMA_DEFAULT_COMMENT_FIELDS,
+    DEFAULT_DEPTH as FIGMA_DEFAULT_DEPTH,
     DEFAULT_FORMAT as FIGMA_DEFAULT_FORMAT,
+    DEFAULT_MAX_COMMENTS as FIGMA_DEFAULT_MAX_COMMENTS,
+    DEFAULT_MAX_DEPTH as FIGMA_DEFAULT_MAX_DEPTH,
     DEFAULT_MAX_IDS as FIGMA_DEFAULT_MAX_IDS,
     DEFAULT_OUTPUT_FIELDS as FIGMA_DEFAULT_OUTPUT_FIELDS,
     DEFAULT_SCALE as FIGMA_DEFAULT_SCALE,
@@ -58,6 +62,18 @@ def read_yaml(path: Path) -> Any:
 
 _as_list = as_list
 _read_yaml = read_yaml
+
+
+def _positive_int(value: Any, default: int, label: str) -> int:
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise CobooseError(f"{label} must be a positive integer") from exc
+    if parsed < 1:
+        raise CobooseError(f"{label} must be a positive integer")
+    return parsed
 
 
 def _as_shapes(
@@ -588,15 +604,21 @@ def _load_figma(raw: Any) -> FigmaSettings:
         raise CobooseError("figma.default_scale must be a number between 0.01 and 4") from exc
     if scale < 0.01 or scale > 4:
         raise CobooseError("figma.default_scale must be a number between 0.01 and 4")
-    try:
-        max_ids = int(data.get("max_ids") if data.get("max_ids") is not None else FIGMA_DEFAULT_MAX_IDS)
-    except (TypeError, ValueError) as exc:
-        raise CobooseError("figma.max_ids must be a positive integer") from exc
-    if max_ids < 1:
-        raise CobooseError("figma.max_ids must be a positive integer")
+    max_ids = _positive_int(data.get("max_ids"), FIGMA_DEFAULT_MAX_IDS, "figma.max_ids")
+    max_comments = _positive_int(
+        data.get("max_comments"), FIGMA_DEFAULT_MAX_COMMENTS, "figma.max_comments"
+    )
+    default_depth = _positive_int(
+        data.get("default_depth"), FIGMA_DEFAULT_DEPTH, "figma.default_depth"
+    )
+    max_depth = _positive_int(data.get("max_depth"), FIGMA_DEFAULT_MAX_DEPTH, "figma.max_depth")
+    if default_depth > max_depth:
+        raise CobooseError("figma.default_depth cannot be greater than figma.max_depth")
     configured_fields = _as_list(data.get("fields"))
+    configured_comment_fields = _as_list(data.get("comment_fields"))
     return FigmaSettings(
         fields=configured_fields or list(FIGMA_DEFAULT_OUTPUT_FIELDS),
+        comment_fields=configured_comment_fields or list(FIGMA_DEFAULT_COMMENT_FIELDS),
         shapes=_as_shapes(
             data.get("shapes"),
             defaults=FIGMA_DEFAULT_SHAPES,
@@ -605,6 +627,10 @@ def _load_figma(raw: Any) -> FigmaSettings:
         default_format=image_format,
         default_scale=scale,
         max_ids=max_ids,
+        include_comments=bool(data.get("include_comments", True)),
+        max_comments=max_comments,
+        default_depth=default_depth,
+        max_depth=max_depth,
         drop_empty=bool(data.get("drop_empty", True)),
     )
 

@@ -39,6 +39,10 @@ def to_text(payload: Any) -> str:
         return _start_run_text(payload)
     if _is_figma_images(payload):
         return _figma_images_text(payload)
+    if _is_figma_comments(payload):
+        return _figma_comments_text(payload)
+    if _is_figma_nodes(payload):
+        return _figma_nodes_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -69,6 +73,10 @@ def to_markdown(payload: Any) -> str:
         return _start_run_markdown(payload)
     if _is_figma_images(payload):
         return _figma_images_markdown(payload)
+    if _is_figma_comments(payload):
+        return _figma_comments_markdown(payload)
+    if _is_figma_nodes(payload):
+        return _figma_nodes_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -397,6 +405,27 @@ def _is_figma_images(payload: Any) -> bool:
     )
 
 
+def _is_figma_comments(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and "file_key" in payload
+        and "comments" in payload
+        and "images" not in payload
+        and "nodes" not in payload
+        and "issue" not in payload
+    )
+
+
+def _is_figma_nodes(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and "file_key" in payload
+        and "nodes" in payload
+        and "images" not in payload
+        and "issue" not in payload
+    )
+
+
 def _figma_images_text(payload: dict[str, Any]) -> str:
     lines = [
         f"Figma {payload.get('file_key')} ({payload.get('format')} @ {payload.get('scale')}x)",
@@ -442,6 +471,100 @@ def _figma_images_markdown(payload: dict[str, Any]) -> str:
         )
     lines.append("")
     lines.append("Open each image URL in VS Code Simple Browser to look at the frame.")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figma_comments_text(payload: dict[str, Any]) -> str:
+    lines = [
+        f"Figma comments {payload.get('file_key')}",
+        f"File: {payload.get('url')}",
+        "",
+    ]
+    comments = payload.get("comments") or []
+    if not comments:
+        lines.append("No comments.")
+    for comment in comments:
+        node = f" on {comment.get('node_id')}" if comment.get("node_id") else ""
+        resolved = " (resolved)" if comment.get("resolved") else ""
+        lines.append(
+            f"- {comment.get('author') or 'unknown'} ({comment.get('created')})"
+            f"{node}{resolved}: {comment.get('message') or ''}"
+        )
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figma_comments_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        f"# Figma comments `{payload.get('file_key')}`",
+        "",
+        f"- **File:** {payload.get('url')}",
+        "",
+        "## Comments",
+        "",
+    ]
+    comments = payload.get("comments") or []
+    if not comments:
+        lines.append("_No comments._")
+    for comment in comments:
+        heading = comment.get("author") or "unknown"
+        created = comment.get("created")
+        if created:
+            heading = f"{heading} ({created})"
+        extras = []
+        if comment.get("node_id"):
+            extras.append(f"node `{comment['node_id']}`")
+        if comment.get("resolved"):
+            extras.append("resolved")
+        lines.append(f"### {heading}")
+        lines.append("")
+        if extras:
+            lines.append("- " + ", ".join(extras))
+            lines.append("")
+        lines.append(comment.get("message") or "")
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figma_nodes_text(payload: dict[str, Any]) -> str:
+    lines = [
+        f"Figma nodes {payload.get('file_key')} (depth {payload.get('depth')})",
+        f"File: {payload.get('url')}",
+        "",
+        payload.get("note")
+        or "Raw Figma node JSON. Use only on a small targeted frame.",
+        "",
+        json.dumps(payload.get("nodes") or {}, indent=2, ensure_ascii=False),
+    ]
+    missing = payload.get("missing") or []
+    if missing:
+        lines.extend(["", "Missing: " + ", ".join(str(item) for item in missing)])
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figma_nodes_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        f"# Figma nodes `{payload.get('file_key')}`",
+        "",
+        f"- **File:** {payload.get('url')}",
+        f"- **Depth:** {payload.get('depth')}",
+        "",
+        payload.get("note")
+        or "Raw Figma node JSON. Use only on a small targeted frame so the tree does not overwhelm Copilot context.",
+        "",
+        "```json",
+        json.dumps(payload.get("nodes") or {}, indent=2, ensure_ascii=False),
+        "```",
+    ]
+    missing = payload.get("missing") or []
+    if missing:
+        lines.extend(
+            [
+                "",
+                "## Missing",
+                "",
+                ", ".join(f"`{item}`" for item in missing),
+            ]
+        )
     return "\n".join(lines).strip() + "\n"
 
 

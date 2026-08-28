@@ -11,7 +11,9 @@ from coboose.figma_fields import (
     ALLOWED_FORMATS,
     DEFAULT_FORMAT,
     DEFAULT_SCALE,
+    NODES_NOTE,
     FigmaSettings,
+    project_comments,
     project_images,
 )
 from coboose.http import HttpClient, HttpResponse
@@ -136,17 +138,7 @@ class FigmaClient:
         settings: FigmaSettings | None = None,
     ) -> dict[str, Any]:
         settings = settings or FigmaSettings()
-        target = parse_figma_target(file, extra_ids=ids)
-        if not target.node_ids:
-            raise CobooseError(
-                "A Figma node id is required. Paste a frame URL that includes "
-                "`node-id`, or pass `--ids 12:34`."
-            )
-        if len(target.node_ids) > settings.max_ids:
-            raise CobooseError(
-                f"Refusing to export {len(target.node_ids)} nodes "
-                f"(max is {settings.max_ids} in catalog/stack.yaml figma.max_ids)."
-            )
+        target = _require_node_ids(file, ids, settings, action="export")
         chosen_format = (image_format or settings.default_format or DEFAULT_FORMAT).lower()
         if chosen_format not in ALLOWED_FORMATS:
             raise CobooseError(
@@ -199,6 +191,93 @@ class FigmaClient:
             settings,
         )
 
+    def get_comments(
+        self,
+        file: str,
+        *,
+        ids: Iterable[str] | None = None,
+        whole_file: bool = False,
+        settings: FigmaSettings | None = None,
+    ) -> dict[str, Any]:
+        settings = settings or FigmaSettings()
+        if not settings.wants_comments():
+            raise CobooseError(
+                "Figma comments are disabled in catalog/stack.yaml "
+                "(figma.include_comments / figma.comment_fields)."
+            )
+        target = parse_figma_target(file, extra_ids=ids)
+        payload = self._json("GET", f"/v1/files/{quote(target.file_key)}/comments")
+        if isinstance(payload, dict) and payload.get("err"):
+            raise CobooseError(f"Figma comments failed: {payload['err']}")
+
+        raw = payload.get("comments") if isinstance(payload, dict) else None
+        if not isinstance(raw, list):
+            raise CobooseError("Figma returned a comments payload without a comments list.")
+
+        comments = [normalize_comment(item) for item in raw if isinstance(item, dict)]
+        if target.node_ids and not whole_file:
+            comments = _comments_for_nodes(comments, target.node_ids)
+        comments = _newest_comments(comments, settings.max_comments)
+        return project_comments(
+            {
+                "file_key": target.file_key,
+                "url": target.url,
+                "comments": [
+                    project(item, settings.comment_item_projection()) for item in comments
+                ],
+            },
+            settings,
+        )
+
+    def get_nodes(
+        self,
+        file: str,
+        *,
+        ids: Iterable[str] | None = None,
+        depth: int | None = None,
+        settings: FigmaSettings | None = None,
+    ) -> dict[str, Any]:
+        settings = settings or FigmaSettings()
+        target = _require_node_ids(file, ids, settings, action="inspect")
+        chosen_depth = settings.default_depth if depth is None else int(depth)
+        if chosen_depth < 1 or chosen_depth > settings.max_depth:
+            raise CobooseError(
+                f"Figma node depth must be between 1 and {settings.max_depth} "
+                "(catalog/stack.yaml figma.max_depth)."
+            )
+
+        payload = self._json(
+            "GET",
+            f"/v1/files/{quote(target.file_key)}/nodes",
+            params={
+                "ids": ",".join(target.node_ids),
+                "depth": str(chosen_depth),
+            },
+        )
+        if isinstance(payload, dict) and payload.get("err"):
+            raise CobooseError(f"Figma nodes failed: {payload['err']}")
+
+        raw_nodes = payload.get("nodes") if isinstance(payload, dict) else None
+        if not isinstance(raw_nodes, dict):
+            raise CobooseError("Figma returned a nodes payload without a nodes map.")
+
+        missing: list[str] = []
+        for node_id in target.node_ids:
+            entry = raw_nodes.get(node_id)
+            if entry is None:
+                entry = raw_nodes.get(node_id.replace(":", "-"))
+            if not isinstance(entry, dict):
+                missing.append(node_id)
+
+        return {
+            "file_key": target.file_key,
+            "url": target.url,
+            "depth": chosen_depth,
+            "note": NODES_NOTE,
+            "nodes": raw_nodes,
+            "missing": missing,
+        }
+
     def _json(
         self,
         method: str,
@@ -206,7 +285,7 @@ class FigmaClient:
         *,
         params: dict[str, str] | None = None,
     ) -> Any:
-        return self._decode(self._request(method, path, params=params), method)
+        return self._decode(self._request(method, path, params=params), method, path=path)
 
     def _request(
         self,
@@ -231,13 +310,18 @@ class FigmaClient:
             timeout=self._timeout,
         )
 
-    def _decode(self, response: HttpResponse, method: str) -> Any:
+    def _decode(self, response: HttpResponse, method: str, path: str = "") -> Any:
         if response.status == 401:
             raise CobooseError(
                 "Figma authentication failed. Check the token in the OS keychain "
                 "(`coboose figma login`) or .env; do not print them."
             )
         if response.status == 403:
+            if "/comments" in path:
+                raise CobooseError(
+                    "Figma denied access to comments. Confirm the token includes "
+                    f"file_comments:read ({FIGMA_DOC})."
+                )
             raise CobooseError(
                 "Figma denied access to this file. Confirm the token can read "
                 f"file content ({FIGMA_DOC})."
@@ -288,3 +372,76 @@ def _format_scale(value: float) -> str:
     if float(value).is_integer():
         return str(int(value))
     return str(value)
+
+
+def _require_node_ids(
+    file: str,
+    ids: Iterable[str] | None,
+    settings: FigmaSettings,
+    *,
+    action: str,
+) -> FigmaTarget:
+    target = parse_figma_target(file, extra_ids=ids)
+    if not target.node_ids:
+        raise CobooseError(
+            "A Figma node id is required. Paste a frame URL that includes "
+            "`node-id`, or pass `--ids 12:34`."
+        )
+    if len(target.node_ids) > settings.max_ids:
+        raise CobooseError(
+            f"Refusing to {action} {len(target.node_ids)} nodes "
+            f"(max is {settings.max_ids} in catalog/stack.yaml figma.max_ids)."
+        )
+    return target
+
+
+def normalize_comment(payload: dict[str, Any]) -> dict[str, Any]:
+    meta = payload.get("client_meta") if isinstance(payload.get("client_meta"), dict) else {}
+    user = payload.get("user") if isinstance(payload.get("user"), dict) else {}
+    return {
+        "id": payload.get("id"),
+        "parent_id": payload.get("parent_id"),
+        "author": user.get("handle") or user.get("email") or user.get("id"),
+        "created": payload.get("created_at") or payload.get("createdAt"),
+        "message": payload.get("message") or "",
+        "node_id": _comment_node_id(meta),
+        "resolved": bool(payload.get("resolved_at") or payload.get("resolvedAt")),
+    }
+
+
+def _comment_node_id(meta: dict[str, Any]) -> str | None:
+    raw = meta.get("node_id") or meta.get("nodeId")
+    if raw is None:
+        return None
+    return str(raw).replace("-", ":", 1) if ":" not in str(raw) else str(raw)
+
+
+def _comments_for_nodes(
+    comments: list[dict[str, Any]],
+    node_ids: Iterable[str],
+) -> list[dict[str, Any]]:
+    wanted = {item.replace("-", ":", 1) if ":" not in item else item for item in node_ids}
+    matched_ids = {
+        str(item.get("id"))
+        for item in comments
+        if item.get("id") is not None and item.get("node_id") in wanted
+    }
+    changed = True
+    while changed:
+        changed = False
+        for item in comments:
+            comment_id = item.get("id")
+            parent_id = item.get("parent_id")
+            if comment_id is None or str(comment_id) in matched_ids:
+                continue
+            if parent_id is not None and str(parent_id) in matched_ids:
+                matched_ids.add(str(comment_id))
+                changed = True
+    return [item for item in comments if item.get("id") is not None and str(item["id"]) in matched_ids]
+
+
+def _newest_comments(comments: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    if limit < 1:
+        return []
+    ordered = sorted(comments, key=lambda item: str(item.get("created") or ""), reverse=True)
+    return list(reversed(ordered[:limit]))

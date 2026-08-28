@@ -13,8 +13,21 @@ def test_figma_schema_needs_no_credentials(coboose_root: Path, capsys, monkeypat
     payload = json.loads(capsys.readouterr().out)
     assert payload["figma"]["fields"][0] == "file_key"
     assert payload["figma"]["shapes"]["images"] == ["id", "url"]
+    assert payload["figma"]["shapes"]["comments"] == [
+        "author",
+        "created",
+        "message",
+        "node_id",
+        "resolved",
+    ]
     assert payload["figma"]["default_format"] == "png"
     assert payload["figma"]["default_scale"] == 2
+    assert payload["figma"]["include_comments"] is True
+    assert payload["figma"]["max_comments"] == 30
+    assert payload["figma"]["default_depth"] == 2
+    assert payload["figma"]["max_depth"] == 3
+    assert payload["figma"]["raw_nodes"] is True
+    assert "targeted frame" in payload["figma"]["nodes_note"]
     assert payload["figma"]["drop_empty"] is True
 
 
@@ -46,6 +59,58 @@ def test_figma_images_uses_client(coboose_root: Path, capsys, monkeypatch):
     ) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["images"][0]["url"] == "https://example/one.png"
+
+
+def test_figma_comments_and_nodes_use_client(coboose_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(coboose_root)
+    monkeypatch.setenv("FIGMA_ACCESS_TOKEN", "figd_test")
+
+    class FakeClient:
+        def get_comments(self, file, ids=None, whole_file=False, settings=None):
+            assert settings is not None
+            assert whole_file is True
+            return {
+                "file_key": "AbCdEfGhIjKlMnOpQr",
+                "url": file,
+                "comments": [{"author": "Ada", "message": "Use navy"}],
+            }
+
+        def get_nodes(self, file, ids=None, depth=None, settings=None):
+            assert depth == 1
+            return {
+                "file_key": "AbCdEfGhIjKlMnOpQr",
+                "url": file,
+                "depth": depth,
+                "nodes": [{"id": "12:34", "name": "Button", "type": "FRAME"}],
+            }
+
+    monkeypatch.setattr("coboose.cli._figma_client", lambda _catalog: FakeClient())
+    assert main(
+        [
+            "--root",
+            str(coboose_root),
+            "figma",
+            "comments",
+            "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr/Name?node-id=12-34",
+            "--file-comments",
+        ]
+    ) == 0
+    comments = json.loads(capsys.readouterr().out)
+    assert comments["comments"][0]["message"] == "Use navy"
+
+    assert main(
+        [
+            "--root",
+            str(coboose_root),
+            "figma",
+            "nodes",
+            "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr/Name?node-id=12-34",
+            "--depth",
+            "1",
+        ]
+    ) == 0
+    nodes = json.loads(capsys.readouterr().out)
+    assert nodes["nodes"][0]["name"] == "Button"
 
 
 def test_missing_figma_env(coboose_root: Path, capsys, monkeypatch):
