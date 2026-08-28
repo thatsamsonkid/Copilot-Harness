@@ -39,6 +39,10 @@ def to_text(payload: Any) -> str:
         return _start_run_text(payload)
     if _is_figma_images(payload):
         return _figma_images_text(payload)
+    if _is_figma_comments(payload):
+        return _figma_comments_text(payload)
+    if _is_figma_nodes(payload):
+        return _figma_nodes_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -69,6 +73,10 @@ def to_markdown(payload: Any) -> str:
         return _start_run_markdown(payload)
     if _is_figma_images(payload):
         return _figma_images_markdown(payload)
+    if _is_figma_comments(payload):
+        return _figma_comments_markdown(payload)
+    if _is_figma_nodes(payload):
+        return _figma_nodes_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -397,6 +405,27 @@ def _is_figma_images(payload: Any) -> bool:
     )
 
 
+def _is_figma_comments(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and "file_key" in payload
+        and "comments" in payload
+        and "images" not in payload
+        and "nodes" not in payload
+        and "issue" not in payload
+    )
+
+
+def _is_figma_nodes(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and "file_key" in payload
+        and "nodes" in payload
+        and "images" not in payload
+        and "issue" not in payload
+    )
+
+
 def _figma_images_text(payload: dict[str, Any]) -> str:
     lines = [
         f"Figma {payload.get('file_key')} ({payload.get('format')} @ {payload.get('scale')}x)",
@@ -443,6 +472,166 @@ def _figma_images_markdown(payload: dict[str, Any]) -> str:
     lines.append("")
     lines.append("Open each image URL in VS Code Simple Browser to look at the frame.")
     return "\n".join(lines).strip() + "\n"
+
+
+def _figma_comments_text(payload: dict[str, Any]) -> str:
+    lines = [
+        f"Figma comments {payload.get('file_key')}",
+        f"File: {payload.get('url')}",
+        "",
+    ]
+    comments = payload.get("comments") or []
+    if not comments:
+        lines.append("No comments.")
+    for comment in comments:
+        node = f" on {comment.get('node_id')}" if comment.get("node_id") else ""
+        resolved = " (resolved)" if comment.get("resolved") else ""
+        lines.append(
+            f"- {comment.get('author') or 'unknown'} ({comment.get('created')})"
+            f"{node}{resolved}: {comment.get('message') or ''}"
+        )
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figma_comments_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        f"# Figma comments `{payload.get('file_key')}`",
+        "",
+        f"- **File:** {payload.get('url')}",
+        "",
+        "## Comments",
+        "",
+    ]
+    comments = payload.get("comments") or []
+    if not comments:
+        lines.append("_No comments._")
+    for comment in comments:
+        heading = comment.get("author") or "unknown"
+        created = comment.get("created")
+        if created:
+            heading = f"{heading} ({created})"
+        extras = []
+        if comment.get("node_id"):
+            extras.append(f"node `{comment['node_id']}`")
+        if comment.get("resolved"):
+            extras.append("resolved")
+        lines.append(f"### {heading}")
+        lines.append("")
+        if extras:
+            lines.append("- " + ", ".join(extras))
+            lines.append("")
+        lines.append(comment.get("message") or "")
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figma_nodes_text(payload: dict[str, Any]) -> str:
+    lines = [
+        f"Figma nodes {payload.get('file_key')} (depth {payload.get('depth')})",
+        f"File: {payload.get('url')}",
+        "",
+    ]
+    nodes = payload.get("nodes") or []
+    if not nodes:
+        lines.append("No nodes.")
+    for node in nodes:
+        lines.extend(_figma_node_lines(node, indent=""))
+    missing = payload.get("missing") or []
+    if missing:
+        lines.append("")
+        lines.append("Missing: " + ", ".join(str(item) for item in missing))
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figma_nodes_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        f"# Figma nodes `{payload.get('file_key')}`",
+        "",
+        f"- **File:** {payload.get('url')}",
+        f"- **Depth:** {payload.get('depth')}",
+        "",
+        "## Nodes",
+        "",
+    ]
+    nodes = payload.get("nodes") or []
+    if not nodes:
+        lines.append("_No nodes._")
+    for node in nodes:
+        lines.extend(_figma_node_markdown(node, heading=3))
+    missing = payload.get("missing") or []
+    if missing:
+        lines.extend(
+            [
+                "",
+                "## Missing",
+                "",
+                ", ".join(f"`{item}`" for item in missing),
+            ]
+        )
+    lines.append("")
+    lines.append(
+        "The rendered image is still the visual source of truth. "
+        "Use these tokens; do not reconstruct the layout from JSON."
+    )
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figma_node_lines(node: dict[str, Any], indent: str) -> list[str]:
+    label = f"{node.get('name') or 'unnamed'} ({node.get('type') or '?'} {node.get('id')})"
+    details = _figma_node_details(node)
+    lines = [f"{indent}- {label}"]
+    if details:
+        lines.append(f"{indent}  {details}")
+    for child in node.get("children") or []:
+        lines.extend(_figma_node_lines(child, indent + "  "))
+    return lines
+
+
+def _figma_node_markdown(node: dict[str, Any], heading: int) -> list[str]:
+    marks = "#" * min(heading, 6)
+    title = node.get("name") or "unnamed"
+    lines = [
+        f"{marks} `{node.get('id')}` {title} ({node.get('type') or '?'})",
+        "",
+    ]
+    details = _figma_node_details(node)
+    if details:
+        lines.append(details)
+        lines.append("")
+    for child in node.get("children") or []:
+        lines.extend(_figma_node_markdown(child, heading + 1))
+    return lines
+
+
+def _figma_node_details(node: dict[str, Any]) -> str:
+    parts: list[str] = []
+    size = node.get("size") or {}
+    if size.get("width") is not None and size.get("height") is not None:
+        parts.append(f"{size['width']}×{size['height']}")
+    fills = node.get("fills") or []
+    hexes = [item.get("hex") for item in fills if isinstance(item, dict) and item.get("hex")]
+    if hexes:
+        parts.append("fills " + ", ".join(str(item) for item in hexes))
+    typography = node.get("typography") or {}
+    if typography.get("font") or typography.get("size"):
+        font = typography.get("font") or "font"
+        size_value = typography.get("size")
+        weight = typography.get("weight")
+        type_bits = [str(font)]
+        if size_value is not None:
+            type_bits.append(str(size_value))
+        if weight is not None:
+            type_bits.append(str(weight))
+        parts.append(" ".join(type_bits))
+    layout = node.get("layout") or {}
+    if layout.get("mode"):
+        gap = f" gap {layout['gap']}" if layout.get("gap") is not None else ""
+        parts.append(f"{layout['mode']}{gap}")
+    if node.get("characters"):
+        parts.append(f'"{node["characters"]}"')
+    if node.get("truncated"):
+        parts.append(f"+{node['truncated']} more")
+    return "; ".join(parts)
 
 
 def _is_start_run_preview(payload: Any) -> bool:

@@ -226,7 +226,7 @@ The CLI never prints a raw vendor REST payload. `catalog/stack.yaml` `jira.field
 
 ## Figma CLI (personal access token)
 
-Figma MCP is not available here. Copilot talks to Figma by running `coboose`. The **figma-cli** skill (`.github/skills/figma-cli/SKILL.md`) is the on-demand contract. The Images API is the first slice: rendered frame URLs, not the file JSON.
+Figma MCP is not available here. Copilot talks to Figma by running `coboose`. The **figma-cli** skill (`.github/skills/figma-cli/SKILL.md`) is the on-demand contract. Start with the Images API: rendered frame URLs. Comments and scoped node styling are optional clips — never the raw file JSON.
 
 Create a personal access token using [docs/figma-access-token.md](docs/figma-access-token.md). Store it in the OS keychain:
 
@@ -235,11 +235,13 @@ uv run coboose figma login
 uv run coboose figma whoami
 uv run coboose figma schema
 uv run coboose figma images 'https://www.figma.com/design/FILEKEY/Name?node-id=12-34'
+uv run coboose figma comments 'https://www.figma.com/design/FILEKEY/Name?node-id=12-34'
+uv run coboose figma nodes 'https://www.figma.com/design/FILEKEY/Name?node-id=12-34'
 ```
 
 `figma login` writes to macOS Keychain or Windows Credential Manager. `figma login --from-env` moves a token that is already in `.env`. This token is optional; `init` / `doctor` stay green without it.
 
-`catalog/stack.yaml` `figma.fields` is the Copilot allowlist (`file_key`, `url`, `format`, `scale`, `images`, `missing`). Copilot should open each `images[].url` in VS Code Simple Browser to look at the frame. Do not curl `api.figma.com`.
+`catalog/stack.yaml` `figma.fields` is the images allowlist (`file_key`, `url`, `format`, `scale`, `images`, `missing`). `figma.comment_fields` and `figma.node_fields` clip the other two commands. Copilot should open each `images[].url` in VS Code Simple Browser to look at the frame. Use `figma nodes` only for a small specific frame. Do not curl `api.figma.com`.
 
 The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 
@@ -272,7 +274,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
 | `.github/skills/workspace-start/SKILL.md` | Local stack plan + sequential start (`/start-workspace`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
-| `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images CLI contract (`/figma-frame`) |
+| `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images / comments / nodes CLI contract (`/figma-frame`) |
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |

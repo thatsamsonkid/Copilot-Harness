@@ -35,6 +35,8 @@ def test_skill_body_is_the_cli_contract():
     lowered = body.lower()
     for token in (
         "uv run coboose figma images",
+        "figma comments",
+        "figma nodes",
         "figma whoami",
         "figma schema",
         "figma login",
@@ -44,5 +46,6 @@ def test_skill_body_is_the_cli_contract():
         "never curl",
         "failed to spawn",
         "--project",
+        "visual source of truth",
     ):
         assert token in lowered

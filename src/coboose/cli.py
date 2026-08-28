@@ -164,6 +164,36 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         help="Scale 0.01–4 (default catalog/stack.yaml figma.default_scale)",
     )
+    figma_comments = figma_sub.add_parser(
+        "comments",
+        parents=[shared],
+        help="Fetch clipped file comments (optional node filter from the URL)",
+    )
+    figma_comments.add_argument("file", help="Figma file key or https://www.figma.com/design/… URL")
+    figma_comments.add_argument(
+        "--ids",
+        help="Comma-separated node ids. Overrides node-id from a URL",
+    )
+    figma_comments.add_argument(
+        "--file-comments",
+        action="store_true",
+        help="Return comments for the whole file even when a node-id is present",
+    )
+    figma_nodes = figma_sub.add_parser(
+        "nodes",
+        parents=[shared],
+        help="Fetch clipped node styling for specific frames (not the whole file)",
+    )
+    figma_nodes.add_argument("file", help="Figma file key or https://www.figma.com/design/… URL")
+    figma_nodes.add_argument(
+        "--ids",
+        help="Comma-separated node ids (12:34). Overrides node-id from a URL",
+    )
+    figma_nodes.add_argument(
+        "--depth",
+        type=int,
+        help="Tree depth 1–max (default catalog/stack.yaml figma.default_depth)",
+    )
     figma_sub.add_parser("whoami", parents=[shared], help="Validate Figma credentials")
     figma_sub.add_parser("schema", parents=[shared], help="Show configured Figma output fields")
     figma_login = figma_sub.add_parser(
@@ -813,6 +843,20 @@ def _dispatch_figma(args: argparse.Namespace, catalog: Any, coboose_root: Path) 
             ids=_split_ids(args.ids),
             image_format=args.image_format,
             scale=args.scale,
+            settings=settings,
+        )
+    if args.figma_command == "comments":
+        return client.get_comments(
+            args.file,
+            ids=_split_ids(args.ids),
+            whole_file=bool(args.file_comments),
+            settings=settings,
+        )
+    if args.figma_command == "nodes":
+        return client.get_nodes(
+            args.file,
+            ids=_split_ids(args.ids),
+            depth=args.depth,
             settings=settings,
         )
     if args.figma_command == "whoami":
