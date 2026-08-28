@@ -21,9 +21,9 @@ When the user gives a Jira key or browse URL, load the **jira-cli** skill (`.git
 When the user gives a Figma file/design/proto URL or asks to look at a frame, load the **figma-cli** skill (`.github/skills/figma-cli/SKILL.md`) and follow it.
 
 1. Run `uv run coboose figma images <URL> --format json` from this repo. If cwd is a sibling clone, use `uv run --project "$COBOOSE_ROOT" coboose figma images <URL> --format json`.
-2. Use that CLI JSON as the Figma source. It is already field-filtered. Do not ask Figma for the whole file tree.
+2. Use that CLI JSON as the Figma source. Images and comments are field-filtered. `figma nodes` is raw node JSON for a targeted frame only. Do not ask Figma for a whole file tree.
 3. Open each `images[].url` in VS Code Simple Browser so you can see the rendered frame. That image is the visual source of truth.
-4. Optionally run `coboose figma comments <URL>` for designer notes. Run `coboose figma nodes <URL>` only for a small specific frame when you need exact tokens. Do not reconstruct layout from node JSON.
+4. Optionally run `coboose figma comments <URL>` for designer notes. Run `coboose figma nodes <URL>` only for a small targeted frame (a button or similar). That command returns raw Figma node JSON and will overwhelm context on a page or file. Do not reconstruct layout from the tree.
 5. Do not curl `api.figma.com`, read `.env`, or call a Figma MCP tool.
 
 `coboose` stdout is JSON by default. Read stdout. Errors are JSON on stderr with a non-zero exit code.

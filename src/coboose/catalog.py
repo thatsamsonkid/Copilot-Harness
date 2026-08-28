@@ -12,11 +12,9 @@ from coboose.figma_fields import (
     DEFAULT_COMMENT_FIELDS as FIGMA_DEFAULT_COMMENT_FIELDS,
     DEFAULT_DEPTH as FIGMA_DEFAULT_DEPTH,
     DEFAULT_FORMAT as FIGMA_DEFAULT_FORMAT,
-    DEFAULT_MAX_CHILDREN as FIGMA_DEFAULT_MAX_CHILDREN,
     DEFAULT_MAX_COMMENTS as FIGMA_DEFAULT_MAX_COMMENTS,
     DEFAULT_MAX_DEPTH as FIGMA_DEFAULT_MAX_DEPTH,
     DEFAULT_MAX_IDS as FIGMA_DEFAULT_MAX_IDS,
-    DEFAULT_NODE_FIELDS as FIGMA_DEFAULT_NODE_FIELDS,
     DEFAULT_OUTPUT_FIELDS as FIGMA_DEFAULT_OUTPUT_FIELDS,
     DEFAULT_SCALE as FIGMA_DEFAULT_SCALE,
     DEFAULT_SHAPES as FIGMA_DEFAULT_SHAPES,
@@ -614,18 +612,13 @@ def _load_figma(raw: Any) -> FigmaSettings:
         data.get("default_depth"), FIGMA_DEFAULT_DEPTH, "figma.default_depth"
     )
     max_depth = _positive_int(data.get("max_depth"), FIGMA_DEFAULT_MAX_DEPTH, "figma.max_depth")
-    max_children = _positive_int(
-        data.get("max_children"), FIGMA_DEFAULT_MAX_CHILDREN, "figma.max_children"
-    )
     if default_depth > max_depth:
         raise CobooseError("figma.default_depth cannot be greater than figma.max_depth")
     configured_fields = _as_list(data.get("fields"))
     configured_comment_fields = _as_list(data.get("comment_fields"))
-    configured_node_fields = _as_list(data.get("node_fields"))
     return FigmaSettings(
         fields=configured_fields or list(FIGMA_DEFAULT_OUTPUT_FIELDS),
         comment_fields=configured_comment_fields or list(FIGMA_DEFAULT_COMMENT_FIELDS),
-        node_fields=configured_node_fields or list(FIGMA_DEFAULT_NODE_FIELDS),
         shapes=_as_shapes(
             data.get("shapes"),
             defaults=FIGMA_DEFAULT_SHAPES,
@@ -638,7 +631,6 @@ def _load_figma(raw: Any) -> FigmaSettings:
         max_comments=max_comments,
         default_depth=default_depth,
         max_depth=max_depth,
-        max_children=max_children,
         drop_empty=bool(data.get("drop_empty", True)),
     )
 

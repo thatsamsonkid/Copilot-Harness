@@ -530,16 +530,14 @@ def _figma_nodes_text(payload: dict[str, Any]) -> str:
         f"Figma nodes {payload.get('file_key')} (depth {payload.get('depth')})",
         f"File: {payload.get('url')}",
         "",
+        payload.get("note")
+        or "Raw Figma node JSON. Use only on a small targeted frame.",
+        "",
+        json.dumps(payload.get("nodes") or {}, indent=2, ensure_ascii=False),
     ]
-    nodes = payload.get("nodes") or []
-    if not nodes:
-        lines.append("No nodes.")
-    for node in nodes:
-        lines.extend(_figma_node_lines(node, indent=""))
     missing = payload.get("missing") or []
     if missing:
-        lines.append("")
-        lines.append("Missing: " + ", ".join(str(item) for item in missing))
+        lines.extend(["", "Missing: " + ", ".join(str(item) for item in missing)])
     return "\n".join(lines).strip() + "\n"
 
 
@@ -550,14 +548,13 @@ def _figma_nodes_markdown(payload: dict[str, Any]) -> str:
         f"- **File:** {payload.get('url')}",
         f"- **Depth:** {payload.get('depth')}",
         "",
-        "## Nodes",
+        payload.get("note")
+        or "Raw Figma node JSON. Use only on a small targeted frame so the tree does not overwhelm Copilot context.",
         "",
+        "```json",
+        json.dumps(payload.get("nodes") or {}, indent=2, ensure_ascii=False),
+        "```",
     ]
-    nodes = payload.get("nodes") or []
-    if not nodes:
-        lines.append("_No nodes._")
-    for node in nodes:
-        lines.extend(_figma_node_markdown(node, heading=3))
     missing = payload.get("missing") or []
     if missing:
         lines.extend(
@@ -568,70 +565,7 @@ def _figma_nodes_markdown(payload: dict[str, Any]) -> str:
                 ", ".join(f"`{item}`" for item in missing),
             ]
         )
-    lines.append("")
-    lines.append(
-        "The rendered image is still the visual source of truth. "
-        "Use these tokens; do not reconstruct the layout from JSON."
-    )
     return "\n".join(lines).strip() + "\n"
-
-
-def _figma_node_lines(node: dict[str, Any], indent: str) -> list[str]:
-    label = f"{node.get('name') or 'unnamed'} ({node.get('type') or '?'} {node.get('id')})"
-    details = _figma_node_details(node)
-    lines = [f"{indent}- {label}"]
-    if details:
-        lines.append(f"{indent}  {details}")
-    for child in node.get("children") or []:
-        lines.extend(_figma_node_lines(child, indent + "  "))
-    return lines
-
-
-def _figma_node_markdown(node: dict[str, Any], heading: int) -> list[str]:
-    marks = "#" * min(heading, 6)
-    title = node.get("name") or "unnamed"
-    lines = [
-        f"{marks} `{node.get('id')}` {title} ({node.get('type') or '?'})",
-        "",
-    ]
-    details = _figma_node_details(node)
-    if details:
-        lines.append(details)
-        lines.append("")
-    for child in node.get("children") or []:
-        lines.extend(_figma_node_markdown(child, heading + 1))
-    return lines
-
-
-def _figma_node_details(node: dict[str, Any]) -> str:
-    parts: list[str] = []
-    size = node.get("size") or {}
-    if size.get("width") is not None and size.get("height") is not None:
-        parts.append(f"{size['width']}×{size['height']}")
-    fills = node.get("fills") or []
-    hexes = [item.get("hex") for item in fills if isinstance(item, dict) and item.get("hex")]
-    if hexes:
-        parts.append("fills " + ", ".join(str(item) for item in hexes))
-    typography = node.get("typography") or {}
-    if typography.get("font") or typography.get("size"):
-        font = typography.get("font") or "font"
-        size_value = typography.get("size")
-        weight = typography.get("weight")
-        type_bits = [str(font)]
-        if size_value is not None:
-            type_bits.append(str(size_value))
-        if weight is not None:
-            type_bits.append(str(weight))
-        parts.append(" ".join(type_bits))
-    layout = node.get("layout") or {}
-    if layout.get("mode"):
-        gap = f" gap {layout['gap']}" if layout.get("gap") is not None else ""
-        parts.append(f"{layout['mode']}{gap}")
-    if node.get("characters"):
-        parts.append(f'"{node["characters"]}"')
-    if node.get("truncated"):
-        parts.append(f"+{node['truncated']} more")
-    return "; ".join(parts)
 
 
 def _is_start_run_preview(payload: Any) -> bool:

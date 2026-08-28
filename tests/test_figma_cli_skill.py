@@ -47,5 +47,7 @@ def test_skill_body_is_the_cli_contract():
         "failed to spawn",
         "--project",
         "visual source of truth",
+        "targeted frame",
+        "raw",
     ):
         assert token in lowered

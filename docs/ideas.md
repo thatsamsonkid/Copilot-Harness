@@ -108,6 +108,6 @@ These are separate from the themes above but fit the same coboose:
 - **CI awareness** — `gh pr checks` per sibling before anyone says “ship it.” GitHub MCP is fine; Jira MCP is not.
 - **MCP allowlist in instructions** — say explicitly: GitHub MCP okay, Jira MCP never. Stops a well-meaning teammate from installing Atlassian MCP “to help.”
 - **Assignment board in chat** — `/mine` prompt that runs `jira mine` then `prepare` on the chosen key. Thin wrapper; only add if people keep forgetting the command.
-- **Figma comments / scoped nodes** — shipped as `figma comments` and `figma nodes`. Images stay the visual source of truth; nodes are a depth-capped styling clip for a pasted frame, not the whole file. Variable names / tokens stay a later clip if designers actually write them.
+- **Figma comments / targeted raw nodes** — shipped as `figma comments` (allowlisted) and `figma nodes` (raw Figma node map, depth-capped, targeted frames only). Images stay the visual source of truth. Variable names / tokens stay a later clip if designers actually write them.
 
 When you have the next batch of ideas, we can add them here and promote one slice at a time.

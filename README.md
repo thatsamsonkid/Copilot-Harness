@@ -222,11 +222,11 @@ uv run coboose start env --repo backend
 uv run coboose start env --repo backend --shell
 ```
 
-The CLI never prints a raw vendor REST payload. `catalog/stack.yaml` `jira.fields` is the Copilot allowlist; `jira.shapes` clips nested objects (project, parent, comments, links) and `jira.search_fields` is the leaner search/mine list. Empty values are dropped by default. Add a custom field with `extra_fields` + `field_aliases`, then list the alias in `fields`. The same `fields` / `shapes` projector (`coboose.projection`) is what later integrations should reuse — change the YAML, not the client.
+The CLI does not print a raw vendor REST payload, except `figma nodes` (targeted frames only). `catalog/stack.yaml` `jira.fields` is the Copilot allowlist; `jira.shapes` clips nested objects (project, parent, comments, links) and `jira.search_fields` is the leaner search/mine list. Empty values are dropped by default. Add a custom field with `extra_fields` + `field_aliases`, then list the alias in `fields`. The same `fields` / `shapes` projector (`coboose.projection`) is what later integrations should reuse — change the YAML, not the client.
 
 ## Figma CLI (personal access token)
 
-Figma MCP is not available here. Copilot talks to Figma by running `coboose`. The **figma-cli** skill (`.github/skills/figma-cli/SKILL.md`) is the on-demand contract. Start with the Images API: rendered frame URLs. Comments and scoped node styling are optional clips — never the raw file JSON.
+Figma MCP is not available here. Copilot talks to Figma by running `coboose`. The **figma-cli** skill (`.github/skills/figma-cli/SKILL.md`) is the on-demand contract. Start with the Images API: rendered frame URLs. Comments stay an allowlisted clip. `figma nodes` returns the raw Figma node map for a **small targeted frame** only — a page or file tree will overwhelm Copilot context.
 
 Create a personal access token using [docs/figma-access-token.md](docs/figma-access-token.md). Store it in the OS keychain:
 
@@ -241,7 +241,7 @@ uv run coboose figma nodes 'https://www.figma.com/design/FILEKEY/Name?node-id=12
 
 `figma login` writes to macOS Keychain or Windows Credential Manager. `figma login --from-env` moves a token that is already in `.env`. This token is optional; `init` / `doctor` stay green without it.
 
-`catalog/stack.yaml` `figma.fields` is the images allowlist (`file_key`, `url`, `format`, `scale`, `images`, `missing`). `figma.comment_fields` and `figma.node_fields` clip the other two commands. Copilot should open each `images[].url` in VS Code Simple Browser to look at the frame. Use `figma nodes` only for a small specific frame. Do not curl `api.figma.com`.
+`catalog/stack.yaml` `figma.fields` is the images allowlist (`file_key`, `url`, `format`, `scale`, `images`, `missing`). `figma.comment_fields` clips comments. `figma nodes` is not allowlisted: it passes the raw node objects through, so keep it on a tight frame. Copilot should open each `images[].url` in VS Code Simple Browser to look at the frame. Do not curl `api.figma.com`.
 
 The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 

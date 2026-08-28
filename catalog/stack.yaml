@@ -47,9 +47,9 @@ jira:
   extra_fields: []
   field_aliases: {}
 
-# Figma Images API plus optional comments / scoped nodes.
-# Copilot gets rendered frame URLs first, never the raw file JSON.
-# Add or remove keys here — do not expand the client to pass raw REST objects through.
+# Figma Images API plus optional comments / targeted raw nodes.
+# Images and comments stay allowlisted. `figma nodes` passes the raw node
+# map through — only use it on a small targeted frame.
 figma:
   drop_empty: true
   default_format: png
@@ -59,7 +59,6 @@ figma:
   max_comments: 30
   default_depth: 2
   max_depth: 3
-  max_children: 40
   fields:
     - file_key
     - url
@@ -71,23 +70,9 @@ figma:
     - file_key
     - url
     - comments
-  node_fields:
-    - file_key
-    - url
-    - depth
-    - nodes
-    - missing
   shapes:
     images: [id, url]
     comments: [author, created, message, node_id, resolved]
-    nodes: [id, name, type, size, fills, strokes, typography, layout, corner_radius, opacity, characters, truncated, children]
-    children: [id, name, type, size, fills, strokes, typography, layout, corner_radius, opacity, characters, truncated, children]
-    size: [width, height]
-    fills: [type, hex, stops]
-    strokes: [type, hex, stops]
-    typography: [font, size, weight, line_height, align]
-    layout: [mode, padding, gap]
-    padding: [top, right, bottom, left]
 
 workspaces:
   - id: frontend

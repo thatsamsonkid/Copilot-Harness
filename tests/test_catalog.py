@@ -174,7 +174,6 @@ def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: 
         "max_comments": 5,
         "default_depth": 1,
         "max_depth": 2,
-        "max_children": 8,
         "drop_empty": False,
     }
     root = tmp_path / "coboose"
@@ -192,7 +191,7 @@ def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: 
     assert schema["max_comments"] == 5
     assert schema["default_depth"] == 1
     assert schema["max_depth"] == 2
-    assert schema["max_children"] == 8
+    assert schema["raw_nodes"] is True
 
 
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):

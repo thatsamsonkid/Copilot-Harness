@@ -22,41 +22,9 @@ DEFAULT_COMMENT_FIELDS = [
     "comments",
 ]
 
-DEFAULT_NODE_FIELDS = [
-    "file_key",
-    "url",
-    "depth",
-    "nodes",
-    "missing",
-]
-
-DEFAULT_NODE_SHAPE = (
-    "id",
-    "name",
-    "type",
-    "size",
-    "fills",
-    "strokes",
-    "typography",
-    "layout",
-    "corner_radius",
-    "opacity",
-    "characters",
-    "truncated",
-    "children",
-)
-
 DEFAULT_SHAPES: dict[str, tuple[str, ...]] = {
     "images": ("id", "url"),
     "comments": ("author", "created", "message", "node_id", "resolved"),
-    "nodes": DEFAULT_NODE_SHAPE,
-    "children": DEFAULT_NODE_SHAPE,
-    "size": ("width", "height"),
-    "fills": ("type", "hex", "stops"),
-    "strokes": ("type", "hex", "stops"),
-    "typography": ("font", "size", "weight", "line_height", "align"),
-    "layout": ("mode", "padding", "gap"),
-    "padding": ("top", "right", "bottom", "left"),
 }
 
 DEFAULT_FORMAT = "png"
@@ -65,8 +33,11 @@ DEFAULT_MAX_IDS = 12
 DEFAULT_MAX_COMMENTS = 30
 DEFAULT_DEPTH = 2
 DEFAULT_MAX_DEPTH = 3
-DEFAULT_MAX_CHILDREN = 40
 ALLOWED_FORMATS = ("png", "jpg", "svg", "pdf")
+NODES_NOTE = (
+    "Raw Figma node JSON. Use only on a small targeted frame so the tree "
+    "does not overwhelm Copilot context."
+)
 
 
 def _copy_shapes(source: dict[str, tuple[str, ...] | list[str]] | None = None) -> dict[str, list[str]]:
@@ -78,7 +49,6 @@ def _copy_shapes(source: dict[str, tuple[str, ...] | list[str]] | None = None) -
 class FigmaSettings:
     fields: list[str] = field(default_factory=lambda: list(DEFAULT_OUTPUT_FIELDS))
     comment_fields: list[str] = field(default_factory=lambda: list(DEFAULT_COMMENT_FIELDS))
-    node_fields: list[str] = field(default_factory=lambda: list(DEFAULT_NODE_FIELDS))
     shapes: dict[str, list[str]] = field(default_factory=_copy_shapes)
     default_format: str = DEFAULT_FORMAT
     default_scale: float = DEFAULT_SCALE
@@ -87,7 +57,6 @@ class FigmaSettings:
     max_comments: int = DEFAULT_MAX_COMMENTS
     default_depth: int = DEFAULT_DEPTH
     max_depth: int = DEFAULT_MAX_DEPTH
-    max_children: int = DEFAULT_MAX_CHILDREN
     drop_empty: bool = True
 
     def output_fields(self) -> list[str]:
@@ -106,14 +75,6 @@ class FigmaSettings:
             names.append("comments")
         if not self.include_comments:
             names = [name for name in names if name != "comments"]
-        return names
-
-    def node_output_fields(self) -> list[str]:
-        names = list(self.node_fields or DEFAULT_NODE_FIELDS)
-        if "file_key" not in names:
-            names.insert(0, "file_key")
-        if "nodes" not in names:
-            names.append("nodes")
         return names
 
     def wants(self, name: str) -> bool:
@@ -141,26 +102,6 @@ class FigmaSettings:
     def comment_item_projection(self) -> ProjectionSpec:
         return self.comments_projection().nested("comments", DEFAULT_SHAPES["comments"])
 
-    def nodes_projection(self) -> ProjectionSpec:
-        return ProjectionSpec(
-            name="figma.nodes",
-            fields=tuple(self.node_output_fields()),
-            shapes={key: tuple(value) for key, value in self.shapes.items()},
-            drop_empty=self.drop_empty,
-        )
-
-    def node_item_projection(self) -> ProjectionSpec:
-        node_keys = tuple(self.shapes.get("nodes") or DEFAULT_SHAPES["nodes"])
-        shapes = {key: tuple(value) for key, value in self.shapes.items()}
-        if "children" not in shapes:
-            shapes["children"] = node_keys
-        return ProjectionSpec(
-            name="figma.nodes.item",
-            fields=node_keys,
-            shapes=shapes,
-            drop_empty=self.drop_empty,
-        )
-
     def image_item_projection(self) -> ProjectionSpec:
         return self.images_projection().nested("images", DEFAULT_SHAPES["images"])
 
@@ -168,7 +109,6 @@ class FigmaSettings:
         return {
             "fields": self.output_fields(),
             "comment_fields": self.comment_output_fields(),
-            "node_fields": self.node_output_fields(),
             "shapes": {key: list(value) for key, value in self.shapes.items()},
             "default_format": self.default_format,
             "default_scale": self.default_scale,
@@ -177,7 +117,8 @@ class FigmaSettings:
             "max_comments": self.max_comments,
             "default_depth": self.default_depth,
             "max_depth": self.max_depth,
-            "max_children": self.max_children,
+            "raw_nodes": True,
+            "nodes_note": NODES_NOTE,
             "drop_empty": self.drop_empty,
         }
 
@@ -194,11 +135,4 @@ def project_comments(payload: dict[str, Any], settings: FigmaSettings) -> dict[s
     projected = project(payload, settings.comments_projection())
     if settings.wants_comments() and "comments" not in projected:
         projected["comments"] = []
-    return projected
-
-
-def project_nodes(payload: dict[str, Any], settings: FigmaSettings) -> dict[str, Any]:
-    projected = project(payload, settings.nodes_projection())
-    if "nodes" not in projected:
-        projected["nodes"] = []
     return projected

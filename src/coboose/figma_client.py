@@ -11,10 +11,10 @@ from coboose.figma_fields import (
     ALLOWED_FORMATS,
     DEFAULT_FORMAT,
     DEFAULT_SCALE,
+    NODES_NOTE,
     FigmaSettings,
     project_comments,
     project_images,
-    project_nodes,
 )
 from coboose.http import HttpClient, HttpResponse
 from coboose.projection import project
@@ -261,27 +261,22 @@ class FigmaClient:
         if not isinstance(raw_nodes, dict):
             raise CobooseError("Figma returned a nodes payload without a nodes map.")
 
-        nodes: list[dict[str, Any]] = []
         missing: list[str] = []
-        item_spec = settings.node_item_projection()
         for node_id in target.node_ids:
-            entry = raw_nodes.get(node_id) or raw_nodes.get(node_id.replace(":", "-"))
-            document = entry.get("document") if isinstance(entry, dict) else None
-            if not isinstance(document, dict):
+            entry = raw_nodes.get(node_id)
+            if entry is None:
+                entry = raw_nodes.get(node_id.replace(":", "-"))
+            if not isinstance(entry, dict):
                 missing.append(node_id)
-                continue
-            nodes.append(project(normalize_node(document, chosen_depth, settings), item_spec))
 
-        return project_nodes(
-            {
-                "file_key": target.file_key,
-                "url": target.url,
-                "depth": chosen_depth,
-                "nodes": nodes,
-                "missing": missing,
-            },
-            settings,
-        )
+        return {
+            "file_key": target.file_key,
+            "url": target.url,
+            "depth": chosen_depth,
+            "note": NODES_NOTE,
+            "nodes": raw_nodes,
+            "missing": missing,
+        }
 
     def _json(
         self,
@@ -414,32 +409,6 @@ def normalize_comment(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def normalize_node(document: dict[str, Any], depth: int, settings: FigmaSettings) -> dict[str, Any]:
-    node: dict[str, Any] = {
-        "id": document.get("id"),
-        "name": document.get("name"),
-        "type": document.get("type"),
-        "size": _normalize_size(document.get("absoluteBoundingBox")),
-        "fills": _normalize_paints(document.get("fills")),
-        "strokes": _normalize_paints(document.get("strokes")),
-        "typography": _normalize_typography(document.get("style")),
-        "layout": _normalize_layout(document),
-        "corner_radius": document.get("cornerRadius"),
-        "opacity": document.get("opacity"),
-        "characters": document.get("characters"),
-    }
-    raw_children = [item for item in (document.get("children") or []) if isinstance(item, dict)]
-    if depth > 1 and raw_children:
-        limit = max(settings.max_children, 0)
-        node["children"] = [
-            normalize_node(child, depth - 1, settings) for child in raw_children[:limit]
-        ]
-        leftover = len(raw_children) - limit
-        if leftover > 0:
-            node["truncated"] = leftover
-    return node
-
-
 def _comment_node_id(meta: dict[str, Any]) -> str | None:
     raw = meta.get("node_id") or meta.get("nodeId")
     if raw is None:
@@ -476,90 +445,3 @@ def _newest_comments(comments: list[dict[str, Any]], limit: int) -> list[dict[st
         return []
     ordered = sorted(comments, key=lambda item: str(item.get("created") or ""), reverse=True)
     return list(reversed(ordered[:limit]))
-
-
-def _normalize_size(box: Any) -> dict[str, Any] | None:
-    if not isinstance(box, dict):
-        return None
-    width = box.get("width")
-    height = box.get("height")
-    if width is None and height is None:
-        return None
-    return {"width": width, "height": height}
-
-
-def _normalize_paints(paints: Any) -> list[dict[str, Any]]:
-    result: list[dict[str, Any]] = []
-    if not isinstance(paints, list):
-        return result
-    for paint in paints:
-        if not isinstance(paint, dict) or paint.get("visible") is False:
-            continue
-        kind = paint.get("type")
-        item: dict[str, Any] = {"type": kind}
-        color = paint.get("color")
-        if kind == "SOLID" and isinstance(color, dict):
-            item["hex"] = _rgba_to_hex(color, paint.get("opacity"))
-        stops = []
-        for stop in paint.get("gradientStops") or []:
-            if not isinstance(stop, dict) or not isinstance(stop.get("color"), dict):
-                continue
-            stop_color = stop["color"]
-            stops.append(_rgba_to_hex(stop_color, stop_color.get("a")))
-        if stops:
-            item["stops"] = stops
-        result.append(item)
-    return result
-
-
-def _normalize_typography(style: Any) -> dict[str, Any] | None:
-    if not isinstance(style, dict):
-        return None
-    typography = {
-        "font": style.get("fontFamily"),
-        "size": style.get("fontSize"),
-        "weight": style.get("fontWeight"),
-        "line_height": style.get("lineHeightPx")
-        if style.get("lineHeightPx") is not None
-        else style.get("lineHeightPercent"),
-        "align": style.get("textAlignHorizontal"),
-    }
-    if all(value is None for value in typography.values()):
-        return None
-    return typography
-
-
-def _normalize_layout(document: dict[str, Any]) -> dict[str, Any] | None:
-    mode = document.get("layoutMode")
-    if not mode or mode == "NONE":
-        return None
-    padding = {
-        "top": document.get("paddingTop"),
-        "right": document.get("paddingRight"),
-        "bottom": document.get("paddingBottom"),
-        "left": document.get("paddingLeft"),
-    }
-    if all(value is None for value in padding.values()):
-        padding_value: dict[str, Any] | None = None
-    else:
-        padding_value = padding
-    return {
-        "mode": mode,
-        "padding": padding_value,
-        "gap": document.get("itemSpacing"),
-    }
-
-
-def _rgba_to_hex(color: dict[str, Any], opacity: Any = None) -> str:
-    red = int(round(float(color.get("r") or 0) * 255))
-    green = int(round(float(color.get("g") or 0) * 255))
-    blue = int(round(float(color.get("b") or 0) * 255))
-    alpha = color.get("a")
-    if opacity is not None:
-        alpha = (1.0 if alpha is None else float(alpha)) * float(opacity)
-    red = max(0, min(red, 255))
-    green = max(0, min(green, 255))
-    blue = max(0, min(blue, 255))
-    if alpha is None or float(alpha) >= 0.999:
-        return f"#{red:02x}{green:02x}{blue:02x}"
-    return f"#{red:02x}{green:02x}{blue:02x}{int(round(float(alpha) * 255)):02x}"

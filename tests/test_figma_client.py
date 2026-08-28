@@ -281,89 +281,46 @@ def test_comments_403_mentions_file_comments_scope():
     assert "figd_secret" not in str(exc.value)
 
 
-def test_get_nodes_clips_styling_and_children():
+def test_get_nodes_passes_raw_figma_objects():
+    document = {
+        "id": "12:34",
+        "name": "Primary button",
+        "type": "FRAME",
+        "absoluteBoundingBox": {"x": 0, "y": 0, "width": 160, "height": 40},
+        "fills": [{"type": "SOLID", "color": {"r": 0.1, "g": 0.2, "b": 0.4, "a": 1}}],
+        "children": [
+            {
+                "id": "12:35",
+                "name": "Label",
+                "type": "TEXT",
+                "characters": "Continue",
+                "style": {"fontFamily": "Inter", "fontSize": 14},
+            }
+        ],
+    }
+    raw_entry = {
+        "document": document,
+        "components": {"12:35": {"name": "Label", "key": "comp"}},
+        "styles": {},
+        "schemaVersion": 0,
+    }
     http = FakeHttp(
         {
             ("GET", "https://api.figma.com/v1/files/AbCdEfGhIjKlMnOpQr/nodes"): _json(
-                {
-                    "nodes": {
-                        "12:34": {
-                            "document": {
-                                "id": "12:34",
-                                "name": "Primary button",
-                                "type": "FRAME",
-                                "absoluteBoundingBox": {"x": 0, "y": 0, "width": 160, "height": 40},
-                                "fills": [
-                                    {
-                                        "type": "SOLID",
-                                        "color": {"r": 0.1, "g": 0.2, "b": 0.4, "a": 1},
-                                    }
-                                ],
-                                "layoutMode": "HORIZONTAL",
-                                "itemSpacing": 8,
-                                "paddingTop": 8,
-                                "paddingRight": 16,
-                                "paddingBottom": 8,
-                                "paddingLeft": 16,
-                                "cornerRadius": 8,
-                                "children": [
-                                    {
-                                        "id": "12:35",
-                                        "name": "Label",
-                                        "type": "TEXT",
-                                        "characters": "Continue",
-                                        "style": {
-                                            "fontFamily": "Inter",
-                                            "fontSize": 14,
-                                            "fontWeight": 600,
-                                            "lineHeightPx": 20,
-                                            "textAlignHorizontal": "CENTER",
-                                        },
-                                    },
-                                    {
-                                        "id": "12:36",
-                                        "name": "Icon",
-                                        "type": "VECTOR",
-                                    },
-                                ],
-                            }
-                        },
-                        "56:78": None,
-                    }
-                }
+                {"nodes": {"12:34": raw_entry, "56:78": None}}
             )
         }
     )
-    client = FigmaClient("figd_test", http=http)
-    payload = client.get_nodes(
+    payload = FigmaClient("figd_test", http=http).get_nodes(
         "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr/Name?node-id=12-34",
         ids=["12:34", "56:78"],
-        settings=FigmaSettings(max_children=1),
     )
     assert payload["depth"] == 2
     assert payload["missing"] == ["56:78"]
-    node = payload["nodes"][0]
-    assert node["id"] == "12:34"
-    assert node["name"] == "Primary button"
-    assert node["size"] == {"width": 160, "height": 40}
-    assert node["fills"] == [{"type": "SOLID", "hex": "#1a3366"}]
-    assert node["layout"]["mode"] == "HORIZONTAL"
-    assert node["layout"]["gap"] == 8
-    assert node["layout"]["padding"] == {"top": 8, "right": 16, "bottom": 8, "left": 16}
-    assert node["corner_radius"] == 8
-    assert node["truncated"] == 1
-    assert len(node["children"]) == 1
-    child = node["children"][0]
-    assert child["characters"] == "Continue"
-    assert child["typography"] == {
-        "font": "Inter",
-        "size": 14,
-        "weight": 600,
-        "line_height": 20,
-        "align": "CENTER",
-    }
-    assert "document" not in str(payload)
-    assert "absoluteBoundingBox" not in str(payload)
+    assert payload["nodes"]["12:34"] == raw_entry
+    assert payload["nodes"]["56:78"] is None
+    assert "targeted frame" in payload["note"]
+    assert "absoluteBoundingBox" in payload["nodes"]["12:34"]["document"]
     assert "ids=12%3A34%2C56%3A78" in http.calls[0][1]
     assert "depth=2" in http.calls[0][1]
 
@@ -408,19 +365,20 @@ def test_nodes_and_comments_markdown():
             "file_key": "AbCdEfGhIjKlMnOpQr",
             "url": "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr?node-id=12-34",
             "depth": 2,
-            "nodes": [
-                {
-                    "id": "12:34",
-                    "name": "Button",
-                    "type": "FRAME",
-                    "size": {"width": 160, "height": 40},
-                    "fills": [{"type": "SOLID", "hex": "#1a3366"}],
+            "note": "Raw Figma node JSON. Use only on a small targeted frame.",
+            "nodes": {
+                "12:34": {
+                    "document": {
+                        "id": "12:34",
+                        "name": "Button",
+                        "absoluteBoundingBox": {"width": 160, "height": 40},
+                    }
                 }
-            ],
+            },
             "missing": [],
         },
         "markdown",
     )
     assert "Button" in nodes
-    assert "#1a3366" in nodes
-    assert "visual source of truth" in nodes
+    assert "absoluteBoundingBox" in nodes
+    assert "targeted frame" in nodes

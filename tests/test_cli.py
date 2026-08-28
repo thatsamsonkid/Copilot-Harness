@@ -26,6 +26,8 @@ def test_figma_schema_needs_no_credentials(coboose_root: Path, capsys, monkeypat
     assert payload["figma"]["max_comments"] == 30
     assert payload["figma"]["default_depth"] == 2
     assert payload["figma"]["max_depth"] == 3
+    assert payload["figma"]["raw_nodes"] is True
+    assert "targeted frame" in payload["figma"]["nodes_note"]
     assert payload["figma"]["drop_empty"] is True
 
 

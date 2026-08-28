@@ -182,7 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
     figma_nodes = figma_sub.add_parser(
         "nodes",
         parents=[shared],
-        help="Fetch clipped node styling for specific frames (not the whole file)",
+        help="Fetch raw Figma node JSON for a small targeted frame (not a page or file)",
     )
     figma_nodes.add_argument("file", help="Figma file key or https://www.figma.com/design/… URL")
     figma_nodes.add_argument(
