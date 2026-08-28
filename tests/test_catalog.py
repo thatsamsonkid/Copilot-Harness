@@ -165,8 +165,7 @@ def test_loads_jira_projection_from_stack(tmp_path: Path, sample_catalog_data: d
 
 def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["figma"] = {
-        "fields": ["file_key", "images"],
-        "shapes": {"images": ["id", "url"]},
+        "fields": ["file_key", "err", "images", "status"],
         "default_format": "jpg",
         "default_scale": 1,
         "max_ids": 3,
@@ -175,11 +174,11 @@ def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: 
     root = tmp_path / "coboose"
     write_coboose_config(root, sample_catalog_data)
     catalog = load_catalog(root)
-    assert catalog.figma.output_fields() == ["file_key", "images"]
+    assert catalog.figma.output_fields() == ["file_key", "err", "images", "status"]
     assert catalog.figma.default_format == "jpg"
     assert catalog.figma.default_scale == 1.0
     assert catalog.figma.max_ids == 3
-    assert catalog.figma.shapes["images"] == ["id", "url"]
+    assert "images" not in catalog.figma.shapes
     schema = catalog.figma.schema()
     assert schema["drop_empty"] is False
 

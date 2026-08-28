@@ -48,7 +48,7 @@ def test_parse_figma_target_from_url_and_key():
         parse_figma_target("not a figma link")
 
 
-def test_get_images_projects_urls_and_drops_failed_nodes():
+def test_get_images_keeps_official_map_including_nulls():
     http = FakeHttp(
         {
             ("GET", "https://api.figma.com/v1/images/AbCdEfGhIjKlMnOpQr"): _json(
@@ -69,12 +69,12 @@ def test_get_images_projects_urls_and_drops_failed_nodes():
         settings=FigmaSettings(),
     )
     assert payload["file_key"] == "AbCdEfGhIjKlMnOpQr"
-    assert payload["format"] == "png"
-    assert payload["scale"] == 2.0
-    assert payload["images"] == [
-        {"id": "12:34", "url": "https://figma-alpha-api.s3.example/one.png"}
-    ]
-    assert payload["missing"] == ["56:78"]
+    assert "err" not in payload
+    assert "status" not in payload
+    assert payload["images"] == {
+        "12:34": "https://figma-alpha-api.s3.example/one.png",
+        "56:78": None,
+    }
     assert http.calls[0][1].startswith(
         "https://api.figma.com/v1/images/AbCdEfGhIjKlMnOpQr?"
     )
@@ -132,10 +132,10 @@ def test_images_markdown_lists_urls():
     payload = {
         "file_key": "AbCdEfGhIjKlMnOpQr",
         "url": "https://www.figma.com/design/AbCdEfGhIjKlMnOpQr?node-id=12-34",
-        "format": "png",
-        "scale": 2,
-        "images": [{"id": "12:34", "url": "https://example/one.png"}],
-        "missing": ["56:78"],
+        "images": {
+            "12:34": "https://example/one.png",
+            "56:78": None,
+        },
     }
     markdown = render(payload, "markdown")
     assert "https://example/one.png" in markdown
