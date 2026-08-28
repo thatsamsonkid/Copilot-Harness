@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from harness.jira_client import JiraClient
-from harness.prepare import prepare_issue
+from coboose.jira_client import JiraClient
+from coboose.prepare import prepare_issue
 from tests.helpers import FakeHttp, json_response as _json
 
 
@@ -38,7 +38,7 @@ def _issue_payload() -> dict:
     }
 
 
-def test_prepare_recommends_frontend_and_lists_missing(catalog, harness_root: Path):
+def test_prepare_recommends_frontend_and_lists_missing(catalog, coboose_root: Path):
     http = FakeHttp(
         {
             ("GET", "https://acme.atlassian.net/rest/api/3/issue/WEB-42"): _json(
@@ -70,7 +70,7 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, harness_root: Pa
         }
     )
     client = JiraClient("https://acme.atlassian.net", "a@b.com", "token", http=http)
-    payload = prepare_issue(catalog, harness_root, client, "WEB-42")
+    payload = prepare_issue(catalog, coboose_root, client, "WEB-42")
     assert payload["issue"]["key"] == "WEB-42"
     assert payload["issue"]["comments"][0]["body"] == "Please ship"
     assert payload["routing"]["workspace_id"] == "frontend"
@@ -81,12 +81,12 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, harness_root: Pa
     assert payload["routing"]["open_command"].endswith(
         "workspaces/frontend.code-workspace"
     )
-    assert (harness_root / "workspaces" / "frontend.code-workspace").exists()
+    assert (coboose_root / "workspaces" / "frontend.code-workspace").exists()
     frontend = next(repo for repo in payload["routing"]["repos"] if repo["id"] == "frontend")
     assert frontend["graphify"]["present"] is False
     assert frontend["instructions"] == []
     assert frontend["knowledge"]["files"] == []
     assert "Read the issue summary" in payload["next_steps"][0]
     assert payload["routing"]["suggested_branch"] == "WEB-42"
-    assert any(item["source"] == "harness" for item in payload["done_when"])
+    assert any(item["source"] == "coboose" for item in payload["done_when"])
     assert any("WEB-42" in step for step in payload["next_steps"])

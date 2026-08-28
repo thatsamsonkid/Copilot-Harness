@@ -15,3 +15,7 @@ build/
 .uv/
 handoffs/*.md
 !handoffs/.gitkeep
+
+# Local-only workspaces from `coboose workspace create --personal`
+workspaces/personal/*
+!workspaces/personal/README.md

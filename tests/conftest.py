@@ -4,7 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from tests.helpers import load_test_catalog, write_harness_config
+from coboose.keychain import MemoryStore, reset_store, set_store
+from tests.helpers import load_test_catalog, write_coboose_config
+
+
+@pytest.fixture(autouse=True)
+def isolated_keychain():
+    store = MemoryStore()
+    set_store(store, backend="in-memory (tests)", available=True)
+    yield store
+    reset_store()
 
 
 @pytest.fixture
@@ -77,12 +86,12 @@ def sample_catalog_data() -> dict:
 
 
 @pytest.fixture
-def harness_root(tmp_path: Path, sample_catalog_data: dict) -> Path:
-    root = tmp_path / "parent" / "Copilot-Harness"
-    write_harness_config(root, sample_catalog_data)
+def coboose_root(tmp_path: Path, sample_catalog_data: dict) -> Path:
+    root = tmp_path / "parent" / "Coboose"
+    write_coboose_config(root, sample_catalog_data)
     return root
 
 
 @pytest.fixture
-def catalog(harness_root: Path):
-    return load_test_catalog(harness_root)
+def catalog(coboose_root: Path):
+    return load_test_catalog(coboose_root)

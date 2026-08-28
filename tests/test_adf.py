@@ -1,4 +1,4 @@
-from harness.adf import adf_to_markdown
+from coboose.adf import adf_to_markdown
 
 
 def test_paragraph_marks_and_link():
@@ -55,7 +55,7 @@ def test_lists_code_and_heading():
             {
                 "type": "codeBlock",
                 "attrs": {"language": "bash"},
-                "content": [{"type": "text", "text": "harness prepare ABC-1"}],
+                "content": [{"type": "text", "text": "coboose prepare ABC-1"}],
             },
         ],
     }
@@ -63,7 +63,7 @@ def test_lists_code_and_heading():
     assert text.startswith("## Steps")
     assert "1. Clone" in text
     assert "2. Plan" in text
-    assert "```bash\nharness prepare ABC-1\n```" in text
+    assert "```bash\ncoboose prepare ABC-1\n```" in text
 
 
 def test_table_and_empty():

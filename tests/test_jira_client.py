@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from harness import HarnessError
-from harness.http import HttpResponse
-from harness.jira_client import JiraClient, parse_issue_key
-from harness.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
+from coboose import CobooseError
+from coboose.http import HttpResponse
+from coboose.jira_client import JiraClient, parse_issue_key
+from coboose.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
 
 
 class FakeHttp:
@@ -30,7 +30,7 @@ def _json(payload, status=200) -> HttpResponse:
 def test_parse_issue_key_from_url_and_plain():
     assert parse_issue_key("WEB-42") == "WEB-42"
     assert parse_issue_key("https://acme.atlassian.net/browse/WEB-42") == "WEB-42"
-    with pytest.raises(HarnessError):
+    with pytest.raises(CobooseError):
         parse_issue_key("not-a-ticket")
 
 
@@ -140,7 +140,7 @@ def test_search_falls_back_to_legacy_endpoint():
     assert issues[0]["summary"] == "Add endpoint"
 
 
-def test_auth_error():
+def test_auth_error_mentions_keychain_or_env():
     http = FakeHttp(
         {
             ("GET", "https://acme.atlassian.net/rest/api/3/myself"): HttpResponse(
@@ -149,5 +149,7 @@ def test_auth_error():
         }
     )
     client = JiraClient("https://acme.atlassian.net", "a@b.com", "bad", http=http)
-    with pytest.raises(HarnessError, match="authentication"):
+    with pytest.raises(CobooseError, match="authentication") as exc:
         client.myself()
+    assert "keychain" in exc.value.message.lower()
+    assert ".env" in exc.value.message

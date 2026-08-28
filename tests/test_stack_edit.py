@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import yaml
 
-from harness import HarnessError
-from harness.catalog import Workspace, WorkspaceMatch
-from harness.stack_edit import format_workspace_yaml, upsert_workspace_text
+from coboose import CobooseError
+from coboose.catalog import Workspace, WorkspaceMatch
+from coboose.stack_edit import format_workspace_yaml, upsert_workspace_text
 import pytest
 
 
@@ -15,7 +15,7 @@ def _workspace(**kwargs) -> Workspace:
         "description": "Cart and checkout",
         "folders": ["frontend", "backend"],
         "tags": [],
-        "include_harness": True,
+        "include_coboose": True,
         "fallback": False,
         "match": WorkspaceMatch(keywords=["cart"]),
     }
@@ -71,7 +71,7 @@ def test_replace_existing_workspace():
         "    name: Backend\n"
         "    folders: [backend]\n"
     )
-    with pytest.raises(HarnessError, match="already exists"):
+    with pytest.raises(CobooseError, match="already exists"):
         upsert_workspace_text(original, _workspace())
     updated = upsert_workspace_text(original, _workspace(), replace=True)
     data = yaml.safe_load(updated)

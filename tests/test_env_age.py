@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from harness.envfile import TOKEN_WARN_DAYS, env_file_age
+from coboose.envfile import TOKEN_WARN_DAYS, env_file_age
 
 
 def test_env_age_warns_after_ten_months(tmp_path: Path):

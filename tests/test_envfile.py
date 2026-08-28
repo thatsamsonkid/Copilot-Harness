@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from harness.envfile import env_file_keys, upsert_env_file
+from coboose.envfile import env_file_keys, load_env_file, upsert_env_file
 
 
 def test_upsert_preserves_comments_and_other_keys(tmp_path: Path):
@@ -27,3 +27,15 @@ def test_empty_assignment_is_not_present(tmp_path: Path):
     path = tmp_path / ".env"
     path.write_text("JIRA_API_TOKEN=\n", encoding="utf-8")
     assert env_file_keys(path)["JIRA_API_TOKEN"] is False
+
+
+def test_load_env_file_supports_export_and_quotes(tmp_path: Path):
+    path = tmp_path / ".env"
+    path.write_text(
+        "export DB_PASSWORD=s3cret\nAPI_TOKEN=\"tok 'x'\"\n# skip\nNOPE\n",
+        encoding="utf-8",
+    )
+    values = load_env_file(path)
+    assert values["DB_PASSWORD"] == "s3cret"
+    assert values["API_TOKEN"] == "tok 'x'"
+    assert "NOPE" not in values

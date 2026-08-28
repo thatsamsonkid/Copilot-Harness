@@ -23,4 +23,4 @@ Only if you chose among real alternatives. Otherwise delete this section and wri
 - Command or test:
 - What "done" looks like:
 
-Keep this file in the **product repo** (`docs/features/<slug>.md`). Graphify will pick it up on the next extract. Do not copy it into the harness.
+Keep this file in the **product repo** (`docs/features/<slug>.md`). Graphify will pick it up on the next extract. Do not copy it into the coboose.

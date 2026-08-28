@@ -1,10 +1,10 @@
 # Install uv
 
-This harness uses [uv](https://docs.astral.sh/uv/) to run the CLI (`uv run harness …`). Do not install the package with pip.
+This coboose uses [uv](https://docs.astral.sh/uv/) to run the CLI (`uv run coboose …`). Do not install the package with pip.
 
 Official installer docs: [docs.astral.sh/uv/getting-started/installation](https://docs.astral.sh/uv/getting-started/installation/).
 
-`/get-started` and `harness init` check whether `uv` is on your PATH and point you here if it is missing.
+`/get-started` and `coboose init` check whether `uv` is on your PATH and point you here if it is missing.
 
 ## macOS
 
@@ -72,8 +72,10 @@ Then:
 
 ```bash
 uv --version
-uv run harness init
-uv run harness doctor
+uv run coboose init
+uv run coboose doctor
 ```
+
+Those `uv run coboose` commands must run from this repo. If the shell is already in a sibling clone, use `uv run --project <path-to-this-repo> coboose …` or `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`).
 
 If `uv` is still not found, the installer put the binary in `~/.local/bin` (macOS/Linux) or `%USERPROFILE%\.local\bin` (Windows). Open a new terminal, or add that directory to PATH, then retry.

@@ -24,6 +24,15 @@ if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
     Write-Host "Created .env from .env.example — fill in Jira values."
 }
 
-uv run harness workspace generate
+uv run coboose workspace generate
 Write-Host "Setup complete. First-run checklist:"
-uv run harness init --format text
+uv run coboose init --format text
+Write-Host "Next:"
+Write-Host "  1. Create a Jira API token (docs/jira-api-token.md), set email/URL in .env,"
+Write-Host "     then run: uv run coboose jira login"
+Write-Host "     (or: uv run coboose init --interactive)"
+Write-Host "  2. Edit repositories.yml, then ./scripts/clone-repos.sh"
+Write-Host "  3. In Copilot Chat: /get-started"
+Write-Host "Run the CLI with: uv run coboose <command>"
+Write-Host "From a sibling clone: uv run --project `"$Root`" coboose <command>"
+Write-Host "  or: $Root\scripts\coboose.ps1 <command>"

@@ -6,8 +6,8 @@ from typing import Any
 
 import yaml
 
-from harness.catalog import load_catalog
-from harness.http import HttpResponse
+from coboose.catalog import load_catalog
+from coboose.http import HttpResponse
 
 
 def write_yaml(path: Path, data: Any) -> Path:
@@ -16,7 +16,7 @@ def write_yaml(path: Path, data: Any) -> Path:
     return path
 
 
-def write_harness_config(root: Path, data: dict) -> Path:
+def write_coboose_config(root: Path, data: dict) -> Path:
     """Write repositories.yml + catalog/stack.yaml from the combined test fixture."""
     repo_items = data.get("repositories") or data.get("repos") or []
     repositories = []
@@ -37,6 +37,8 @@ def write_harness_config(root: Path, data: dict) -> Path:
             repositories[-1]["graphify"] = item["graphify"]
         if item.get("knowledge") is not None:
             repositories[-1]["knowledge"] = item["knowledge"]
+        if item.get("start") is not None:
+            repositories[-1]["start"] = item["start"]
         if repositories[-1]["path"] is None:
             repositories[-1].pop("path")
         if repositories[-1]["group"] is None:
@@ -54,6 +56,11 @@ def write_harness_config(root: Path, data: dict) -> Path:
     write_yaml(root / "catalog" / "stack.yaml", stack)
     if "templates" in data:
         write_yaml(root / "templates.yml", {"templates": data["templates"]})
+    if "variables" in data or "env" in data:
+        write_yaml(
+            root / "catalog" / "env.yaml",
+            {"variables": data.get("variables") or data.get("env")},
+        )
     return root
 
 

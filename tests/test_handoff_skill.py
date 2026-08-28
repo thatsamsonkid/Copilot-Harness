@@ -21,14 +21,14 @@ def test_skill_name_matches_directory():
     assert meta["name"] == SKILL.parent.name
 
 
-def test_skill_keeps_notes_in_harness():
+def test_skill_keeps_notes_in_coboose():
     meta, body = _frontmatter_and_body()
     description = meta["description"].lower()
     for token in ("handoff", "status", ".env"):
         assert token in description
     lowered = body.lower()
     for token in (
-        "uv run harness status",
+        "uv run coboose status",
         "handoff write",
         "handoff latest",
         "gitignored",
