@@ -10,17 +10,21 @@ from typing import Any
 
 from harness import HarnessError
 from harness.catalog import Catalog
-from harness.envfile import env_file_keys, upsert_env_file
+from harness.envfile import env_file_keys
+from harness.envspec import (
+    list_env,
+    set_env_value,
+    var_is_present,
+    var_source,
+    var_status,
+)
 from harness.jira_client import JiraClient, jira_settings_from_env
 from harness.keychain import (
     SOURCE_ENV,
     SOURCE_KEYCHAIN,
     SOURCE_MISSING,
     backend_display_name,
-    keychain_available,
     keychain_status,
-    missing_token_action,
-    set_stored_token,
     storage_guides,
     token_source,
 )
@@ -52,6 +56,7 @@ def run_init(
     if interactive:
         updates, stored_token = _fill_env_interactive(
             env_path,
+            catalog.env_vars,
             prompt_fn=prompt_fn or input,
             secret_fn=secret_fn or (lambda message: getpass(message)),
         )
@@ -89,8 +94,13 @@ def run_init(
         "jira": jira,
         "keychain": keychain_status().as_dict(),
         "keychain_guide": storage_guides(),
+        "env": list_env(
+            catalog.env_vars,
+            harness_root,
+            source=catalog.env_source,
+        ),
         "steps": steps,
-        "next_commands": _next_commands(steps, uv=uv),
+        "next_commands": _next_commands(steps, uv=uv, variables=catalog.env_vars),
     }
 
 
@@ -119,31 +129,16 @@ def onboarding_steps(
             action="Copy .env.example to .env, then edit it locally. Never paste the token into chat.",
         )
     ]
-    for key, hint in (
-        ("JIRA_BASE_URL", "https://your-domain.atlassian.net"),
-        ("JIRA_EMAIL", "the Atlassian account email that owns the API token"),
-        ("JIRA_API_TOKEN", f"an Atlassian API token from {TOKEN_URL}"),
-    ):
-        present = _env_key_present(key, file_keys)
-        action = (
-            None
-            if present
-            else f"Set {key} in .env to {hint}. Do not paste secrets into Copilot chat."
-        )
-        if key == "JIRA_API_TOKEN" and not present:
-            action = missing_token_action()
-        elif key == "JIRA_API_TOKEN" and token_source() == SOURCE_ENV:
-            action = (
-                "Token is in .env. Prefer `uv run harness jira login --from-env` "
-                "to move it into macOS Keychain or Windows Credential Manager."
-            )
+    for variable in catalog.env_vars:
+        present = var_is_present(variable, file_keys)
+        status = var_status(variable, file_keys)
         steps.append(
             _step(
-                key.lower(),
+                variable.name.lower(),
                 present,
-                _token_detail(present) if key == "JIRA_API_TOKEN"
-                else (f"{key} is set" if present else f"{key} is missing"),
-                action=action,
+                _var_detail(variable, file_keys, present),
+                action=status.get("action"),
+                optional=not variable.required,
             )
         )
 
@@ -193,6 +188,7 @@ def onboarding_steps(
 
 def _fill_env_interactive(
     env_path: Path,
+    variables: list[Any],
     *,
     prompt_fn: Callable[[str], str],
     secret_fn: Callable[[str], str],
@@ -204,69 +200,44 @@ def _fill_env_interactive(
         )
     file_keys = env_file_keys(env_path)
     updates: dict[str, str] = {}
-    prompts = {
-        "JIRA_BASE_URL": "Atlassian site URL (https://your-domain.atlassian.net): ",
-        "JIRA_EMAIL": "Atlassian email: ",
-    }
-    for key, message in prompts.items():
-        if _env_key_present(key, file_keys):
-            continue
-        value = prompt_fn(message).strip()
-        if value:
-            updates[key] = value
     stored_token = token_source()
-    if not _env_key_present("JIRA_API_TOKEN", file_keys):
-        store_name = backend_display_name()
-        if keychain_available():
-            prompt = f"Atlassian API token (stored in {store_name}; input hidden): "
-        else:
-            prompt = (
-                "Atlassian API token (OS keychain unavailable; "
-                "will save to .env; input hidden): "
-            )
-        token = secret_fn(prompt).strip()
-        if token:
-            if keychain_available():
-                set_stored_token(token)
-                stored_token = SOURCE_KEYCHAIN
-            else:
-                updates["JIRA_API_TOKEN"] = token
-                stored_token = SOURCE_ENV
-    upsert_env_file(env_path, updates)
+    for variable in variables:
+        if not variable.required or var_is_present(variable, file_keys):
+            if variable.name == "JIRA_API_TOKEN":
+                stored_token = var_source(variable, file_keys)
+            continue
+        payload = set_env_value(
+            variable,
+            env_path.parent,
+            prompt_fn=prompt_fn,
+            secret_fn=secret_fn,
+            stdin_isatty=True,
+        )
+        for key in payload.get("wrote_keys") or []:
+            value = os.environ.get(key)
+            if value:
+                updates[key] = value
+        file_keys = env_file_keys(env_path)
+        if variable.name == "JIRA_API_TOKEN":
+            stored_token = str(payload.get("source") or SOURCE_MISSING)
     return updates, stored_token
 
 
-def _env_key_present(key: str, file_keys: dict[str, bool]) -> bool:
-    if key == "JIRA_EMAIL":
-        return bool(
-            os.environ.get("JIRA_EMAIL")
-            or os.environ.get("JIRA_USERNAME")
-            or file_keys.get("JIRA_EMAIL")
-            or file_keys.get("JIRA_USERNAME")
-        )
-    if key == "JIRA_API_TOKEN":
-        return token_source() != SOURCE_MISSING or bool(
-            file_keys.get("JIRA_API_TOKEN") or file_keys.get("JIRA_TOKEN")
-        )
-    return bool(os.environ.get(key) or file_keys.get(key))
-
-
-def _token_detail(present: bool) -> str:
-    source = token_source()
+def _var_detail(variable: Any, file_keys: dict[str, bool], present: bool) -> str:
+    source = var_source(variable, file_keys)
     if source == SOURCE_KEYCHAIN:
-        return f"JIRA_API_TOKEN is in {backend_display_name()}"
+        return f"{variable.name} is in {backend_display_name()}"
     if source == SOURCE_ENV:
-        return "JIRA_API_TOKEN is set in the environment or .env"
+        return f"{variable.name} is set in the environment or .env"
     if present:
-        return "JIRA_API_TOKEN is set"
-    return "JIRA_API_TOKEN is missing"
+        return f"{variable.name} is set"
+    return f"{variable.name} is missing"
 
 
 def _jira_env_present() -> bool:
-    return all(
-        _env_key_present(key, {})
-        for key in JIRA_KEYS
-    )
+    from harness.envspec import default_env_vars
+
+    return all(var_is_present(variable, {}) for variable in default_env_vars())
 
 
 def _step(
@@ -298,7 +269,10 @@ def _set_step(steps: list[dict[str, Any]], id: str, ok: bool, detail: str) -> No
 
 
 def _next_commands(
-    steps: list[dict[str, Any]], *, uv: dict[str, Any] | None = None
+    steps: list[dict[str, Any]],
+    *,
+    uv: dict[str, Any] | None = None,
+    variables: list[Any] | None = None,
 ) -> list[str]:
     ids = {step["id"] for step in steps if not step["ok"] and not step.get("optional")}
     commands: list[str] = []
@@ -306,15 +280,22 @@ def _next_commands(
         info = uv or detect_uv()
         commands.append(uv_missing_action(info))
         commands.append(f"Then open a new terminal and run {info['setup_script']}")
-    if ids.intersection({"env_file", "jira_base_url", "jira_email"}):
-        commands.append("Edit .env locally. Token docs: docs/jira-api-token.md")
+    by_id = {variable.name.lower(): variable for variable in (variables or [])}
+    missing_vars = [by_id[step_id] for step_id in ids if step_id in by_id]
+    missing_plain = [variable for variable in missing_vars if not variable.secret]
+    missing_secrets = [variable for variable in missing_vars if variable.secret]
+    if "env_file" in ids or missing_plain:
+        commands.append("Edit .env locally. See catalog/env.yaml")
         commands.append("uv run harness init --interactive")
-    if "jira_api_token" in ids:
-        commands.append("uv run harness jira login")
+    for variable in missing_secrets:
+        if variable.name == "JIRA_API_TOKEN":
+            commands.append("uv run harness jira login")
+        else:
+            commands.append(f"uv run harness env set {variable.name}")
         if "uv run harness init --interactive" not in commands:
             commands.append("uv run harness init --interactive")
-        commands.append("uv run harness doctor --ping-jira")
-    elif ids.intersection({"env_file", "jira_base_url", "jira_email"}):
+    if missing_secrets or missing_plain or "env_file" in ids:
+        commands.append("uv run harness env list")
         commands.append("uv run harness doctor --ping-jira")
     if "repositories" in ids:
         commands.append("Edit repositories.yml and replace YOUR_ORG")

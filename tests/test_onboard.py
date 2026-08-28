@@ -36,6 +36,8 @@ def test_init_lists_missing_jira_keys_without_reading_secrets(
     assert payload["token_docs"] == "docs/jira-api-token.md"
     assert payload["keychain_guide"]["macos"]["store"] == "macOS Keychain"
     assert payload["keychain_guide"]["windows"]["store"] == "Windows Credential Manager"
+    assert payload["env"]["variables"][0]["name"] == "JIRA_BASE_URL"
+    assert all("value" not in row for row in payload["env"]["variables"])
     assert payload["uv_docs"] == "docs/install-uv.md"
     assert "macos" in payload["uv"]["install"]
     assert "windows" in payload["uv"]["install"]

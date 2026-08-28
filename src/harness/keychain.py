@@ -106,9 +106,9 @@ def env_token() -> str:
     ).strip()
 
 
-def get_stored_token() -> str | None:
+def get_stored_secret(account: str) -> str | None:
     try:
-        value = _store().get_password(SERVICE, ACCOUNT)
+        value = _store().get_password(SERVICE, account)
     except Exception:  # noqa: BLE001 - missing backends must not crash lookup
         return None
     if not value:
@@ -116,33 +116,47 @@ def get_stored_token() -> str | None:
     return value.strip() or None
 
 
-def set_stored_token(token: str) -> None:
-    cleaned = (token or "").strip()
+def set_stored_secret(account: str, value: str) -> None:
+    cleaned = (value or "").strip()
     if not cleaned:
-        raise HarnessError("A non-empty API token is required")
+        raise HarnessError("A non-empty secret is required")
+    if not account.strip():
+        raise HarnessError("A keychain account name is required")
     if not keychain_available():
         raise HarnessError(_unavailable_message())
     try:
-        _store().set_password(SERVICE, ACCOUNT, cleaned)
+        _store().set_password(SERVICE, account, cleaned)
     except HarnessError:
         raise
     except Exception as exc:  # noqa: BLE001 - surface a safe user message
         raise HarnessError(
-            f"Could not store the API token in {backend_display_name()}: {exc}. "
+            f"Could not store the secret in {backend_display_name()}: {exc}. "
             f"See {TOKEN_DOC}."
         ) from exc
 
 
-def delete_stored_token() -> bool:
-    if get_stored_token() is None:
+def delete_stored_secret(account: str) -> bool:
+    if get_stored_secret(account) is None:
         return False
     try:
-        _store().delete_password(SERVICE, ACCOUNT)
+        _store().delete_password(SERVICE, account)
     except Exception as exc:  # noqa: BLE001 - surface a safe user message
         raise HarnessError(
-            f"Could not remove the API token from {backend_display_name()}: {exc}."
+            f"Could not remove the secret from {backend_display_name()}: {exc}."
         ) from exc
     return True
+
+
+def get_stored_token() -> str | None:
+    return get_stored_secret(ACCOUNT)
+
+
+def set_stored_token(token: str) -> None:
+    set_stored_secret(ACCOUNT, token)
+
+
+def delete_stored_token() -> bool:
+    return delete_stored_secret(ACCOUNT)
 
 
 def resolve_token() -> tuple[str, str]:
@@ -191,15 +205,17 @@ def default_store_name(system: str | None = None) -> str:
     return "Secret Service (GNOME Keyring / KWallet)"
 
 
-def keychain_status() -> KeychainStatus:
+def keychain_status(account: str | None = None) -> KeychainStatus:
     system = platform.system()
     store_name = default_store_name(system)
+    lookup = account or ACCOUNT
     return KeychainStatus(
         available=keychain_available(),
-        present=get_stored_token() is not None,
+        present=get_stored_secret(lookup) is not None,
         backend=backend_display_name(system),
         os_name=_os_label(system),
         store_name=store_name,
+        account=lookup,
     )
 
 
@@ -207,6 +223,7 @@ def storage_guides() -> dict[str, Any]:
     current = platform.system()
     return {
         "preferred_cli": "uv run harness jira login",
+        "env_command": "uv run harness env set NAME",
         "migrate_command": "uv run harness jira login --from-env",
         "service": SERVICE,
         "account": ACCOUNT,

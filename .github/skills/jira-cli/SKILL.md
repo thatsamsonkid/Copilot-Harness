@@ -35,6 +35,7 @@ Accept `PROJ-123` or a browse URL. The CLI extracts the key.
 | What Copilot is allowed to see | `uv run harness jira schema` |
 | Auth check (no token in output) | `uv run harness jira whoami` |
 | Store token in OS keychain | Tell them to run `uv run harness jira login` (or `--from-env`) themselves |
+| Other declared secrets | `uv run harness env list` then `uv run harness env set NAME` in their terminal |
 | Catalog / clones / Jira env | `uv run harness doctor` |
 | Live Jira ping | `uv run harness doctor --ping-jira` |
 | First-run / missing token | `uv run harness init` (see the get-started skill) |

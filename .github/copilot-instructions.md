@@ -36,7 +36,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
 - CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness.
-- Secrets: site URL and email in `.env`; API token in the OS keychain via `harness jira login` (`.env` is a fallback). Never commit tokens or print them.
+- Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `harness env set NAME` / `harness jira login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 
 ## Commands
 

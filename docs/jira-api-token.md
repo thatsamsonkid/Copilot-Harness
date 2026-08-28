@@ -34,6 +34,8 @@ JIRA_EMAIL=you@company.com
 
 Leave `JIRA_API_TOKEN` empty. `JIRA_EMAIL` must be the Atlassian account email that owns the token, not a Slack handle.
 
+These three names are rows in `catalog/env.yaml`. Add other env vars and secrets there (not on generated `.code-workspace` files). `uv run harness env list` shows what is missing without printing values.
+
 ## 3. Store the token in the OS keychain
 
 Preferred: run this in **your own terminal** (not Copilot Chat). Input is hidden.

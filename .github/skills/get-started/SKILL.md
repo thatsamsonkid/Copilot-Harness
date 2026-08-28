@@ -15,6 +15,8 @@ This skill is the first-run contract. Site URL and email stay in `.env`. The API
 | First-run checklist | `uv run harness init --format json` |
 | Fill missing values in a local terminal | Tell them to run `uv run harness init --interactive` or `uv run harness jira login` themselves |
 | Recheck catalog, clones, Jira env | `uv run harness doctor` |
+| List declared env/secrets (no values) | `uv run harness env list` |
+| Store a declared secret | Tell them to run `uv run harness env set NAME` themselves |
 | Live Jira ping | `uv run harness doctor --ping-jira` or `uv run harness jira whoami` |
 
 ## Walkthrough order
@@ -28,8 +30,9 @@ This skill is the first-run contract. Site URL and email stay in `.env`. The API
 3. `JIRA_BASE_URL` — `https://your-domain.atlassian.net`.
 4. `JIRA_EMAIL` — the Atlassian account email that will own the token.
 5. `JIRA_API_TOKEN` — they create it using `docs/jira-api-token.md` and store it with `uv run harness jira login` (macOS Keychain or Windows Credential Manager). Use `keychain_guide.macos` or `keychain_guide.windows` from `harness init` for GUI steps. Do not put it in chat. `.env` is only a fallback.
-6. `repositories.yml` — replace `YOUR_ORG` placeholder remotes.
-7. `./scripts/clone-repos.sh` then `uv run harness workspace generate`.
+6. Any other `env.variables` row from `harness init` / `catalog/env.yaml` where `ok` is false. Non-secrets: edit `.env`. Secrets: `uv run harness env set NAME` in their terminal. Do not put values in `.code-workspace` files.
+7. `repositories.yml` — replace `YOUR_ORG` placeholder remotes.
+8. `./scripts/clone-repos.sh` then `uv run harness workspace generate`.
 
 ## Hard rules
 

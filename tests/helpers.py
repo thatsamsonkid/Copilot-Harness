@@ -49,6 +49,11 @@ def write_harness_config(root: Path, data: dict) -> Path:
     write_yaml(root / "catalog" / "stack.yaml", stack)
     if "templates" in data:
         write_yaml(root / "templates.yml", {"templates": data["templates"]})
+    if "variables" in data or "env" in data:
+        write_yaml(
+            root / "catalog" / "env.yaml",
+            {"variables": data.get("variables") or data.get("env")},
+        )
     return root
 
 

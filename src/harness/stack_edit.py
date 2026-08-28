@@ -119,6 +119,8 @@ def format_workspace_yaml(workspace: Workspace) -> str:
         lines.append("    include_harness: false")
     if workspace.fallback:
         lines.append("    fallback: true")
+    if workspace.env:
+        lines.append(f"    env: [{', '.join(workspace.env)}]")
     match = workspace.match
     if any(
         (
@@ -155,6 +157,7 @@ def _format_raw_workspace(item: dict) -> str:
         tags=[str(v) for v in (item.get("tags") or [])],
         include_harness=bool(item.get("include_harness", True)),
         fallback=bool(item.get("fallback", False)),
+        env=[str(v) for v in (item.get("env") or [])],
         match=WorkspaceMatch(
             projects=[str(v) for v in (match_raw.get("projects") or [])],
             components=[str(v) for v in (match_raw.get("components") or [])],

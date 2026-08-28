@@ -35,6 +35,8 @@ def test_skill_keeps_tokens_out_of_chat():
         "never ask the user to paste a token",
         "init --interactive",
         "jira login",
+        "env list",
+        "catalog/env.yaml",
         "keychain",
         "docs/install-uv.md",
         "macos",

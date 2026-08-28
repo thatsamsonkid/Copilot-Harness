@@ -78,6 +78,8 @@ repositories:
 
 `catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository names. Workspace `tags` pull in every manifest repo with those tags.
 
+`catalog/env.yaml` is the env/secrets table. Each row is a name, whether it is a secret, and optional workspace scope. Non-secrets go in `.env`. Secrets go in macOS Keychain or Windows Credential Manager via `harness env set NAME` (or `harness jira login` for the Jira token). Copilot walks missing rows from `harness init` / `harness env list` JSON and never reads values. Do not put this table on generated `workspaces/*.code-workspace` files — `harness workspace generate` rewrites those. To attach extra names to one feature workspace, set `env: [NAME]` on that workspace in `catalog/stack.yaml` (the name must still be declared in `catalog/env.yaml`).
+
 ```bash
 harness repos
 harness templates
@@ -161,6 +163,7 @@ JIRA_EMAIL=you@company.com
 # leave JIRA_API_TOKEN empty
 
 uv run harness jira login
+uv run harness env list
 ```
 
 `jira login` writes to macOS Keychain or Windows Credential Manager. `jira login --from-env` moves a token that is already in `.env`. `.env` remains a fallback for CI or machines without a keychain.

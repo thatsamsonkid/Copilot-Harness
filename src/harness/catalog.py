@@ -8,9 +8,10 @@ import yaml
 
 from harness import HarnessError
 from harness.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
-from harness.paths import REPOS_RELATIVE, STACK_RELATIVE, TEMPLATES_RELATIVE
+from harness.paths import ENV_RELATIVE, REPOS_RELATIVE, STACK_RELATIVE, TEMPLATES_RELATIVE
 
 if TYPE_CHECKING:
+    from harness.envspec import EnvVar
     from harness.templates import Template
 
 
@@ -82,6 +83,7 @@ class Workspace:
     tags: list[str] = field(default_factory=list)
     include_harness: bool = True
     fallback: bool = False
+    env: list[str] = field(default_factory=list)
     match: WorkspaceMatch = field(default_factory=WorkspaceMatch)
 
 
@@ -95,6 +97,13 @@ class Catalog:
     repos_source: Path
     templates: list[Template] = field(default_factory=list)
     templates_source: Path | None = None
+    env_vars: list[EnvVar] = field(default_factory=list)
+    env_source: Path | None = None
+
+    def workspace_env_names(self, workspace: Workspace | str) -> list[str]:
+        if isinstance(workspace, str):
+            workspace = self.workspace(workspace)
+        return list(workspace.env)
 
     def repo(self, repo_id: str) -> Repo:
         for repo in self.repos:
@@ -185,9 +194,19 @@ def load_catalog(
     templates_file = (
         Path(templates_path) if templates_path else harness_root / TEMPLATES_RELATIVE
     )
+    env_file = harness_root / ENV_RELATIVE
     repos, parent_dir = load_repositories(repos_file)
     workspaces, jira = load_stack(stack_file, {repo.name for repo in repos})
     templates = load_templates(templates_file)
+    from harness.envspec import load_env_spec, validate_env_spec
+
+    env_vars, env_source = load_env_spec(env_file)
+    validate_env_spec(
+        env_vars,
+        {workspace.id for workspace in workspaces},
+        {workspace.id: workspace.env for workspace in workspaces},
+        source=env_source,
+    )
     return Catalog(
         parent_dir=parent_dir,
         repos=repos,
@@ -197,6 +216,8 @@ def load_catalog(
         repos_source=repos_file,
         templates=templates,
         templates_source=templates_file,
+        env_vars=env_vars,
+        env_source=env_source,
     )
 
 
@@ -337,6 +358,7 @@ def load_stack(
                 tags=tags,
                 include_harness=bool(item.get("include_harness", True)),
                 fallback=bool(item.get("fallback", False)),
+                env=_as_list(item.get("env")),
                 match=WorkspaceMatch(
                     projects=_as_list(match_raw.get("projects")),
                     components=_as_list(match_raw.get("components")),
@@ -404,6 +426,7 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                 "folders": catalog.workspace_repo_names(workspace),
                 "include_harness": workspace.include_harness,
                 "fallback": workspace.fallback,
+                "env": workspace.env,
                 "file": str(catalog.workspace_file(harness_root, workspace)),
                 "match": {
                     "projects": workspace.match.projects,
@@ -416,6 +439,20 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
             for workspace in catalog.workspaces
         ],
         "jira": catalog.jira.schema(),
+        "env_source": str(catalog.env_source) if catalog.env_source else None,
+        "env": [
+            {
+                "name": variable.name,
+                "secret": variable.secret,
+                "required": variable.required,
+                "aliases": list(variable.aliases),
+                "workspaces": list(variable.workspaces),
+                "docs": variable.docs or None,
+                "hint": variable.hint or None,
+                "store": "keychain" if variable.secret else "env",
+            }
+            for variable in catalog.env_vars
+        ],
         "templates_source": str(catalog.templates_source) if catalog.templates_source else None,
         "templates": [
             {

@@ -8,6 +8,7 @@ from typing import Any
 from harness import HarnessError
 from harness.catalog import Catalog
 from harness.context import inspect_repo
+from harness.envspec import list_env
 from harness.jira_client import JiraClient, jira_settings_from_env
 from harness.keychain import (
     SOURCE_ENV,
@@ -220,6 +221,27 @@ def run_doctor(
     else:
         checks.append(_check("jira_env", True, f"Jira credentials are present ({source})"))
 
+    env_payload = list_env(
+        catalog.env_vars,
+        harness_root,
+        source=catalog.env_source,
+    )
+    for row in env_payload["variables"]:
+        if row["name"] in {"JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"}:
+            continue
+        checks.append(
+            _check(
+                f"env:{row['name']}",
+                bool(row["present"]),
+                (
+                    f"{row['name']} is in {row['source']}"
+                    if row["present"]
+                    else f"{row['name']} is missing"
+                ),
+                ok_when_false=True,
+            )
+        )
+
     ok = all(item["ok"] or item.get("advisory") for item in checks)
     steps = onboarding_steps(catalog, harness_root, uv=uv)
     return {
@@ -241,6 +263,7 @@ def run_doctor(
         "jira_token_source": source,
         "keychain": status.as_dict(),
         "keychain_guide": storage_guides(),
+        "env": env_payload,
         "uv": uv,
         "checks": checks,
         "onboarding": steps,
