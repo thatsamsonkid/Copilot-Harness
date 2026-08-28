@@ -708,16 +708,29 @@ def _dispatch_jira(args: argparse.Namespace, catalog: Any, coboose_root: Path) -
             raise CobooseError("Comments are disabled in catalog/stack.yaml jira.fields")
         return {
             "key": parse_issue_key(args.issue),
-            "comments": client.get_comments(args.issue, max_results=settings.max_comments),
+            "comments": client.get_comments(
+                args.issue,
+                max_results=settings.max_comments,
+                settings=settings,
+            ),
         }
     if args.jira_command == "search":
-        return {"jql": args.jql, "issues": client.search(args.jql, max_results=args.max_results)}
+        return {
+            "jql": args.jql,
+            "issues": client.search(
+                args.jql,
+                max_results=args.max_results,
+                settings=settings,
+            ),
+        }
     if args.jira_command == "context":
         return client.get_context(args.issue, settings=settings)
     if args.jira_command == "whoami":
         return client.myself()
     if args.jira_command == "mine":
-        issues = client.search(JIRA_MINE_JQL, max_results=args.max_results)
+        issues = client.search(
+            JIRA_MINE_JQL, max_results=args.max_results, settings=settings
+        )
         return {"jql": JIRA_MINE_JQL, "issues": issues}
     raise CobooseError(f"Unknown jira command: {args.jira_command}")
 

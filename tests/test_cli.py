@@ -13,6 +13,9 @@ def test_jira_schema_needs_no_credentials(coboose_root: Path, capsys, monkeypatc
     payload = json.loads(capsys.readouterr().out)
     assert "summary" in payload["jira"]["fields"]
     assert payload["jira"]["include_comments"] is True
+    assert payload["jira"]["shapes"]["comments"] == ["author", "created", "body"]
+    assert "summary" in payload["jira"]["search_fields"]
+    assert payload["jira"]["drop_empty"] is True
 
 
 def test_repos_command(coboose_root: Path, capsys, monkeypatch):

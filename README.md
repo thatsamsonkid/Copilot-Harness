@@ -222,7 +222,7 @@ uv run coboose start env --repo backend
 uv run coboose start env --repo backend --shell
 ```
 
-The CLI never prints the raw Jira REST payload. `catalog/stack.yaml` `jira.fields` is an allowlist of keys Copilot sees. Add custom fields with `extra_fields` + `field_aliases`, then list the alias in `fields`.
+The CLI never prints a raw vendor REST payload. `catalog/stack.yaml` `jira.fields` is the Copilot allowlist; `jira.shapes` clips nested objects (project, parent, comments, links) and `jira.search_fields` is the leaner search/mine list. Empty values are dropped by default. Add a custom field with `extra_fields` + `field_aliases`, then list the alias in `fields`. The same `fields` / `shapes` projector (`coboose.projection`) is what later integrations should reuse — change the YAML, not the client.
 
 The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 

@@ -9,7 +9,13 @@ from urllib.parse import quote
 from coboose import CobooseError
 from coboose.adf import adf_to_markdown
 from coboose.http import HttpClient, HttpResponse
-from coboose.jira_fields import JiraSettings, project_issue
+from coboose.jira_fields import (
+    KNOWN_OUTPUT_FIELDS,
+    OutputField,
+    JiraSettings,
+    project_issue,
+)
+from coboose.projection import project
 from coboose.keychain import resolve_token
 
 ISSUE_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
@@ -105,28 +111,34 @@ class JiraClient:
             settings,
         )
 
-    def get_comments(self, key: str, max_results: int = 50) -> list[dict[str, Any]]:
+    def get_comments(
+        self,
+        key: str,
+        max_results: int = 50,
+        settings: JiraSettings | None = None,
+    ) -> list[dict[str, Any]]:
+        settings = settings or JiraSettings()
         key = parse_issue_key(key)
         payload = self._json(
             "GET",
             f"/rest/api/3/issue/{quote(key)}/comment",
             params={"maxResults": str(max_results), "orderBy": "created"},
         )
-        return [normalize_comment(comment) for comment in payload.get("comments") or []]
+        comments = [normalize_comment(comment) for comment in payload.get("comments") or []]
+        return project(comments, settings.comments_projection())
 
-    def search(self, jql: str, max_results: int = 25) -> list[dict[str, Any]]:
+    def search(
+        self,
+        jql: str,
+        max_results: int = 25,
+        settings: JiraSettings | None = None,
+    ) -> list[dict[str, Any]]:
         if not jql.strip():
             raise CobooseError("JQL is required")
-        fields = [
-            "summary",
-            "status",
-            "issuetype",
-            "priority",
-            "assignee",
-            "labels",
-            "components",
-            "project",
-        ]
+        settings = settings or JiraSettings()
+        fields = settings.request_field_ids(list(settings.search_projection().fields))
+        if not fields:
+            fields = ["summary", "status", "issuetype"]
         response = self._request(
             "POST",
             "/rest/api/3/search/jql",
@@ -144,7 +156,8 @@ class JiraClient:
             )
         payload = self._decode(response, "GET" if response.status != 200 else "POST")
         issues = payload.get("issues") or payload.get("values") or []
-        return [normalize_issue_summary(issue) for issue in issues]
+        spec = settings.search_projection()
+        return [project(normalize_issue_summary(issue), spec) for issue in issues]
 
     def get_context(
         self,
@@ -156,7 +169,9 @@ class JiraClient:
         issue = self.get_issue(key, settings=settings)
         if settings.wants("comments"):
             issue["comments"] = self.get_comments(
-                issue["key"], max_results=settings.max_comments
+                issue["key"],
+                max_results=settings.max_comments,
+                settings=settings,
             )
         return issue
 
@@ -284,32 +299,16 @@ def normalize_issue(
         "key": key,
         "id": payload.get("id"),
         "url": f"{_browse_base(payload, fields)}/browse/{key}" if key else None,
-        "summary": fields.get("summary"),
-        "description": adf_to_markdown(fields.get("description")),
-        "status": _status(fields.get("status")),
-        "issue_type": (fields.get("issuetype") or {}).get("name"),
-        "priority": (fields.get("priority") or {}).get("name"),
         "project": {
             "key": project.get("key"),
             "name": project.get("name"),
         },
-        "assignee": _user(fields.get("assignee")),
-        "reporter": _user(fields.get("reporter")),
-        "labels": list(fields.get("labels") or []),
-        "components": [
-            item.get("name")
-            for item in fields.get("components") or []
-            if isinstance(item, dict)
-        ],
-        "fix_versions": [
-            item.get("name")
-            for item in fields.get("fixVersions") or []
-            if isinstance(item, dict)
-        ],
         "parent": None,
         "issuelinks": _normalize_links(fields.get("issuelinks") or []),
         "custom": {},
     }
+    for spec in KNOWN_OUTPUT_FIELDS:
+        issue[spec.name] = _extract_known_field(fields, spec)
     if parent.get("key"):
         issue["parent"] = {
             "key": parent.get("key"),
@@ -324,6 +323,27 @@ def normalize_issue(
         aliases = settings.field_aliases
     issue["custom"] = _extract_custom_fields(fields, names, extract_ids, aliases)
     return issue
+
+
+def _extract_known_field(fields: dict[str, Any], spec: OutputField) -> Any:
+    value = fields.get(spec.api_id) if spec.api_id else None
+    if spec.kind == "adf":
+        return adf_to_markdown(value)
+    if spec.kind == "user":
+        return _user(value)
+    if spec.kind == "status":
+        return _status(value)
+    if spec.kind == "name":
+        return value.get("name") if isinstance(value, dict) else None
+    if spec.kind == "list_name":
+        return [
+            item.get("name")
+            for item in value or []
+            if isinstance(item, dict)
+        ]
+    if spec.name == "labels":
+        return list(value or [])
+    return value
 
 
 def _browse_base(payload: dict[str, Any], fields: dict[str, Any]) -> str:

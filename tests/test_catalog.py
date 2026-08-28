@@ -141,6 +141,28 @@ def test_load_catalog_discovers_personal_workspaces(catalog, coboose_root: Path)
     assert "broken" not in by_id
 
 
+def test_loads_jira_projection_from_stack(tmp_path: Path, sample_catalog_data: dict):
+    sample_catalog_data["jira"] = {
+        "fields": ["key", "summary", "comments"],
+        "search_fields": ["key", "summary"],
+        "shapes": {"comments": ["author", "body"]},
+        "include_comments": True,
+        "drop_empty": False,
+        "extra_fields": ["customfield_10016"],
+        "field_aliases": {"customfield_10016": "story_points"},
+    }
+    root = tmp_path / "coboose"
+    write_coboose_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    assert catalog.jira.output_fields() == ["key", "summary", "comments"]
+    assert catalog.jira.search_fields == ["key", "summary"]
+    assert catalog.jira.shapes["comments"] == ["author", "body"]
+    assert catalog.jira.shapes["project"] == ["key", "name"]
+    assert catalog.jira.drop_empty is False
+    schema = catalog.jira.schema()
+    assert schema["field_aliases"]["customfield_10016"] == "story_points"
+
+
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
     root = tmp_path / "coboose"

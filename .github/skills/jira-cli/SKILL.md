@@ -12,7 +12,7 @@ This workspace talks to Jira Cloud only through the `coboose` CLI. There is no J
 
 - Run `uv run coboose <command>` from the coboose repo (or `./scripts/coboose.sh` / `.\scripts\coboose.ps1`). If you already `cd`'d into a sibling, use `uv run --project "$COBOOSE_ROOT" coboose <command>` — bare `uv run coboose` cannot spawn there. If `uv` is missing, follow `docs/install-uv.md` (macOS/Linux: `./scripts/setup.sh`; Windows: `.\scripts\setup.ps1`).
 - Default `--format` is `json`. Keep JSON. Read stdout. Errors are JSON on stderr with a non-zero exit.
-- Treat CLI JSON as complete. It is already filtered by `catalog/stack.yaml` `jira.fields`. Do not ask Jira for more fields.
+- Treat CLI JSON as complete. It is already filtered by `catalog/stack.yaml` `jira.fields` and `jira.shapes`. Do not ask Jira for more fields.
 - Never curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
 - Never read `.env`, print `env`, or expand `$JIRA_API_TOKEN` / `$JIRA_TOKEN`.
 - Never configure or call a Jira MCP tool.
