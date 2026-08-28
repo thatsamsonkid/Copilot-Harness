@@ -12,7 +12,8 @@ Handoff notes live in this coboose (`handoffs/`), not in product repos. They are
 
 | User intent | Command |
 | --- | --- |
-| Snapshot siblings | `uv run coboose status --format json` |
+| Snapshot siblings | `uv run coboose status --format json` (open workspace only) |
+| Which workspace is open | `uv run coboose workspace current --format json` |
 | Write a note | `uv run coboose handoff write --issue <KEY> --note "<resume in one paragraph>" --format json` |
 | Resume | `uv run coboose handoff latest --format json` |
 | List notes | `uv run coboose handoff list --format json` |
@@ -20,7 +21,7 @@ Handoff notes live in this coboose (`handoffs/`), not in product repos. They are
 
 ## Write
 
-1. Run `coboose status`.
+1. Run `coboose status`. Stay inside `workspace.repos`. Do not list sibling clones that are only on disk.
 2. If a Jira key is in the conversation, include `--issue`.
 3. `--note` is what the next chat should do first. Include branch names, dirty siblings, and open questions. Do not paste ticket descriptions or tokens.
 4. Tell the user the `relative` path. Do not commit the file unless they ask.

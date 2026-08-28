@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from coboose.catalog import Catalog, Repo
 from coboose.gitinfo import last_commit_unix
+from coboose.workspace_detect import resolve_workspace_scope, scoped_repos
 
 INSTRUCTION_FILES = (
     ".github/copilot-instructions.md",
@@ -58,28 +59,48 @@ def collect_context(
     coboose_root: Path,
     *,
     only: list[str] | None = None,
+    workspace_id: str | None = None,
+    all_repos: bool = False,
+    environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
+    scope = resolve_workspace_scope(
+        catalog,
+        coboose_root,
+        workspace_id=workspace_id,
+        all_repos=all_repos,
+        environ=environ,
+    )
     repos = []
-    for repo in catalog.enabled_repos(only=only):
+    for repo in scoped_repos(catalog, scope, only=only):
         repos.append(inspect_repo(catalog, coboose_root, repo))
+    guidance = [
+        "Stay inside workspace.repos. Do not inspect sibling clones that are "
+        "only on disk and not in this feature workspace.",
+        "For vague or low-context prompts, read each cloned repo's graphify.report "
+        "before grepping the tree.",
+        "Before editing a sibling repo, load its instruction files and use its tooling.",
+        "Product knowledge lives in each sibling (docs/features, ADRs, Graphify). "
+        "Do not start a second wiki in the Coboose repo.",
+        "Do not copy product standards into the Coboose repo. Do not rebuild a graph "
+        "unless the user asked.",
+        "If graphify.stale is true, offer a scoped refresh in that repo after the user agrees.",
+        "Do not hand-edit tooling.generated paths.",
+        "To start local apps in this workspace, run `coboose start` "
+        "(see the workspace-start skill). That command prints a plan; "
+        "it does not launch processes. Save the sequence once with "
+        "`coboose start --save` when a workspace is detected.",
+    ]
+    if not scope.detected:
+        guidance.insert(
+            0,
+            scope.detail,
+        )
     return {
         "sibling_root": str(catalog.sibling_root(coboose_root)),
+        "workspace": scope.id,
+        "workspace_scope": scope.as_payload(),
         "repos": repos,
-        "guidance": [
-            "For vague or low-context prompts, read each cloned repo's graphify.report "
-            "before grepping the tree.",
-            "Before editing a sibling repo, load its instruction files and use its tooling.",
-            "Product knowledge lives in each sibling (docs/features, ADRs, Graphify). "
-            "Do not start a second wiki in the Coboose repo.",
-            "Do not copy product standards into the Coboose repo. Do not rebuild a graph "
-            "unless the user asked.",
-            "If graphify.stale is true, offer a scoped refresh in that repo after the user agrees.",
-            "Do not hand-edit tooling.generated paths.",
-            "To start local apps in this workspace, run `coboose start` "
-            "(see the workspace-start skill). That command prints a plan; "
-            "it does not launch processes. Save the sequence once with "
-            "`coboose start --workspace <id> --save`.",
-        ],
+        "guidance": guidance,
     }
 
 

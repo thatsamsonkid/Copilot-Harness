@@ -41,6 +41,8 @@ def test_skill_is_plan_then_sequential_start():
     lowered = body.lower()
     for token in (
         "uv run coboose start",
+        "coboose_workspace",
+        "workspace.repos",
         "never launches",
         "one at a time",
         "one vs code terminal per app",

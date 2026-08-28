@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from coboose import CobooseError
 from coboose.catalog import Catalog
@@ -23,6 +23,7 @@ from coboose.keychain import (
 from coboose.onboard import onboarding_steps
 from coboose.uv_check import detect_uv, uv_missing_action
 from coboose.workspace import generate_workspaces
+from coboose.workspace_detect import resolve_workspace_scope, scoped_repos
 
 
 def run_doctor(
@@ -30,6 +31,9 @@ def run_doctor(
     coboose_root: Path,
     *,
     ping_jira: bool = False,
+    workspace_id: str | None = None,
+    all_repos: bool = False,
+    environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
     uv = detect_uv()
@@ -129,8 +133,23 @@ def run_doctor(
         sibling_root = catalog.sibling_root(coboose_root)
         checks.append(_check("sibling_root", False, str(exc)))
 
+    scope = resolve_workspace_scope(
+        catalog,
+        coboose_root,
+        workspace_id=workspace_id,
+        all_repos=all_repos,
+        environ=environ,
+    )
+    env_payload = list_env(
+        catalog.env_vars,
+        coboose_root,
+        workspace_id=scope.id,
+        extra_names=(catalog.workspace(scope.id).env if scope.id else None),
+        source=catalog.env_source,
+    )
+
     repos = []
-    for repo in catalog.enabled_repos():
+    for repo in scoped_repos(catalog, scope):
         path = catalog.repo_path(coboose_root, repo)
         cloned = path.exists()
         repos.append(
@@ -236,11 +255,6 @@ def run_doctor(
     else:
         checks.append(_check("jira_env", True, f"Jira credentials are present ({source})"))
 
-    env_payload = list_env(
-        catalog.env_vars,
-        coboose_root,
-        source=catalog.env_source,
-    )
     for row in env_payload["variables"]:
         if row["name"] in {"JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"}:
             continue
@@ -273,6 +287,8 @@ def run_doctor(
         "ok": ok,
         "coboose_root": str(coboose_root),
         "sibling_root": str(sibling_root),
+        "workspace": scope.id,
+        "workspace_scope": scope.as_payload(),
         "repos": repos,
         "templates": [
             {

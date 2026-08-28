@@ -7,7 +7,7 @@ import shlex
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 import yaml
 
@@ -16,6 +16,7 @@ from coboose.catalog import Catalog, Repo, as_list
 from coboose.envapply import applied_env_preview, apply_project_env
 from coboose.invoke import invoke_spec
 from coboose.launch import load_launch_runtime, summarize_launch
+from coboose.workspace_detect import resolve_workspace_scope, scoped_repos
 
 RunFn = Callable[[str, Path, dict[str, str]], int]
 
@@ -65,18 +66,28 @@ def collect_start_plan(
     only: list[str] | None = None,
     save: bool = False,
     refresh: bool = False,
+    all_repos: bool = False,
+    environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    if save and not workspace_id:
+    scope = resolve_workspace_scope(
+        catalog,
+        coboose_root,
+        workspace_id=workspace_id,
+        all_repos=all_repos,
+        environ=environ,
+    )
+    if save and not scope.id:
         raise CobooseError(
-            "--save requires --workspace so the plan can sit next to that "
-            "workspace file (workspaces/<id>.start.yml)."
+            "--save needs a workspace id (pass --workspace, or open a "
+            "feature .code-workspace so COBOOSE_WORKSPACE is set)."
         )
     if save and only:
         raise CobooseError(
             "--save writes the full workspace sequence. Do not combine it with --repo."
         )
 
-    repos = _selected_repos(catalog, workspace_id=workspace_id, only=only)
+    workspace_id = scope.id
+    repos = scoped_repos(catalog, scope, only=only)
     services = [inspect_start(catalog, coboose_root, repo) for repo in repos]
     backends = [item["name"] for item in services if item.get("role") == "backend"]
     for item in services:
@@ -92,6 +103,7 @@ def collect_start_plan(
     )
     payload = {
         "workspace": workspace_id,
+        "workspace_scope": scope.as_payload(),
         "sibling_root": str(catalog.sibling_root(coboose_root)),
         "order": [item["name"] for item in services],
         "services": services,
@@ -499,7 +511,8 @@ def _plan_guidance(payload: dict[str, Any]) -> list[str]:
     elif workspace:
         lines.append(
             "This workspace has no saved start sequence yet. When the order "
-            f"looks right, run `coboose start --workspace {workspace} --save` "
+            f"looks right, run `coboose start --save` "
+            f"(or `--workspace {workspace} --save`) "
             "to write workspaces/<id>.start.yml and skip rediscovery next time."
         )
     unplanned = payload.get("unplanned") or []
@@ -555,28 +568,6 @@ def discover_start(repo_path: Path, repo: Repo) -> dict[str, Any]:
         "notes": notes,
         "blocked": None,
     }
-
-
-def _selected_repos(
-    catalog: Catalog,
-    *,
-    workspace_id: str | None,
-    only: list[str] | None,
-) -> list[Repo]:
-    names: list[str] | None = None
-    if workspace_id:
-        names = catalog.workspace_repo_names(workspace_id)
-    if only:
-        wanted = set(only)
-        if names is None:
-            return catalog.enabled_repos(only=only)
-        unknown = wanted.difference(repo.name for repo in catalog.repos)
-        if unknown:
-            raise CobooseError("Unknown repo name(s): " + ", ".join(sorted(unknown)))
-        names = [name for name in names if name in wanted]
-    if names is None:
-        return catalog.enabled_repos()
-    return [catalog.repo(name) for name in names if catalog.repo(name).enabled]
 
 
 def _empty_service(repo: Repo, path: Path) -> dict[str, Any]:

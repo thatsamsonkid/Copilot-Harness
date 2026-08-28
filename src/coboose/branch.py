@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from coboose import CobooseError
 from coboose.catalog import Catalog
 from coboose.gitinfo import inspect_git
 from coboose.jira_client import parse_issue_key
+from coboose.workspace_detect import resolve_workspace_scope, scoped_repos
 
 RunFn = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -25,12 +26,22 @@ def align_branches(
     create: bool = False,
     dry_run: bool = False,
     run: RunFn | None = None,
+    workspace_id: str | None = None,
+    all_repos: bool = False,
+    environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     name = suggested_branch(issue)
     runner = run or _run
+    scope = resolve_workspace_scope(
+        catalog,
+        coboose_root,
+        workspace_id=workspace_id,
+        all_repos=all_repos,
+        environ=environ,
+    )
     repos = []
     blocked = []
-    for repo in catalog.enabled_repos(only=only):
+    for repo in scoped_repos(catalog, scope, only=only):
         path = catalog.repo_path(coboose_root, repo)
         git = inspect_git(path, default_branch=repo.default_branch, run=runner)
         record: dict[str, Any] = {
@@ -76,6 +87,8 @@ def align_branches(
         "branch": name,
         "create": create,
         "dry_run": dry_run,
+        "workspace": scope.id,
+        "workspace_scope": scope.as_payload(),
         "repos": repos,
     }
     if blocked:

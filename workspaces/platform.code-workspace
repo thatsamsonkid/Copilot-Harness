@@ -29,13 +29,19 @@
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
     "chat.useCustomizationsInParentRepositories": true,
     "terminal.integrated.env.linux": {
-      "COBOOSE_ROOT": "${workspaceFolder:coboose}"
+      "COBOOSE_ROOT": "${workspaceFolder:coboose}",
+      "COBOOSE_WORKSPACE": "platform",
+      "COBOOSE_WORKSPACE_FILE": "${workspaceFile}"
     },
     "terminal.integrated.env.osx": {
-      "COBOOSE_ROOT": "${workspaceFolder:coboose}"
+      "COBOOSE_ROOT": "${workspaceFolder:coboose}",
+      "COBOOSE_WORKSPACE": "platform",
+      "COBOOSE_WORKSPACE_FILE": "${workspaceFile}"
     },
     "terminal.integrated.env.windows": {
-      "COBOOSE_ROOT": "${workspaceFolder:coboose}"
+      "COBOOSE_ROOT": "${workspaceFolder:coboose}",
+      "COBOOSE_WORKSPACE": "platform",
+      "COBOOSE_WORKSPACE_FILE": "${workspaceFile}"
     }
   },
   "extensions": {
@@ -43,5 +49,24 @@
       "GitHub.copilot",
       "GitHub.copilot-chat"
     ]
+  },
+  "coboose": {
+    "id": "platform",
+    "name": "Platform",
+    "description": "Cross-cutting work across the full stack",
+    "personal": false,
+    "folders": [
+      "frontend",
+      "backend",
+      "mobile",
+      "infra"
+    ],
+    "tags": [
+      "ui",
+      "api",
+      "mobile",
+      "infra"
+    ],
+    "include_coboose": true
   }
 }

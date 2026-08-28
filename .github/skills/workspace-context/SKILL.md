@@ -13,18 +13,22 @@ Run these from the coboose repo. After `cd` into a sibling, use `uv run --projec
 
 | User intent | Command |
 | --- | --- |
-| All enabled repos | `uv run coboose context --format json` |
+| Open feature workspace | `uv run coboose context --format json` (uses `COBOOSE_WORKSPACE` when a `.code-workspace` is open) |
+| Which workspace is open | `uv run coboose workspace current --format json` |
+| One catalog workspace | `uv run coboose context --workspace frontend --format json` |
 | One or more repos | `uv run coboose context --repo frontend,backend --format json` |
+| Every enabled repo | `uv run coboose context --all --format json` (only if the user asked for the full catalog) |
 | Ticket plus routing | `uv run coboose prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`) |
 | Local stack start plan | `uv run coboose start --format json` (see the workspace-start skill). Saved sequences live in `workspaces/<id>.start.yml`. |
 
 ## Vague or low-context prompts
 
-1. Run `coboose context` (or use `prepare` if a Jira key is present).
-2. For each cloned repo with `graphify.present`, read `graphify.report` (`GRAPH_REPORT.md`) before opening source files. Also skim `knowledge.files` (feature notes and ADRs).
-3. For "how does A relate to B?", run the repo's `graphify.query_command` / `path_command` / `explain_command`.
-4. If no graph exists, do **not** extract a whole monorepo. Say so, inspect instruction files, and ask which package or area to scope. Rebuild only if the user asks, preferably `graphify extract --code-only <path>`.
-5. Ask which repo or Graphify community to use when routing is unclear.
+1. Run `coboose context` (or use `prepare` if a Jira key is present). Stay inside `workspace.repos`. Sibling clones that are only on disk are out of scope.
+2. If `workspace_scope.detected` is false, do not treat every `parent_dir` clone as in scope. Ask which feature workspace to open, or pass `--workspace <id>`.
+3. For each cloned repo with `graphify.present`, read `graphify.report` (`GRAPH_REPORT.md`) before opening source files. Also skim `knowledge.files` (feature notes and ADRs).
+4. For "how does A relate to B?", run the repo's `graphify.query_command` / `path_command` / `explain_command`.
+5. If no graph exists, do **not** extract a whole monorepo. Say so, inspect instruction files, and ask which package or area to scope. Rebuild only if the user asks, preferably `graphify extract --code-only <path>`.
+6. Ask which repo or Graphify community to use when routing is unclear. Do not mention repos outside `workspace.repos`.
 
 ## Standards
 
@@ -38,6 +42,7 @@ The coboose does not own product patterns.
 ## Hard rules
 
 - Stay in the listed clone folders (including grouped paths). Never nest clones inside the coboose.
+- Do not flag, start, or plan repos that are not in the open feature workspace. Pass `--all` only when the user asked for the full catalog.
 - Do not grep a large monorepo as the first move when a graph or instruction file exists.
 - Do not print `.env` or Jira tokens.
 - If `graphify.stale` is true, say so and offer a *scoped* rebuild only after the user agrees.
