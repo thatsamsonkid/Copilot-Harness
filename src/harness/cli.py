@@ -284,8 +284,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help=(
-            "For `start run`, print the redacted command and env keys "
-            "without launching. For `start env --shell`, preview keys only"
+            "For `start run`, print the redacted exec_command, arg counts, "
+            "and env keys without launching. For `start env --shell`, "
+            "preview keys only"
         ),
     )
     start.add_argument(

@@ -64,6 +64,8 @@ def test_skill_is_plan_then_sequential_start():
         "--keep-existing",
         "--prefix",
         "overwritten_keys",
+        "exec_command",
+        "<redacted>",
     ):
         assert token in lowered
 

@@ -31,6 +31,8 @@ def to_text(payload: Any) -> str:
         return _bootstrap_text(payload)
     if isinstance(payload, dict) and "services" in payload and "order" in payload:
         return _start_text(payload)
+    if _is_start_run_preview(payload):
+        return _start_run_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -53,6 +55,8 @@ def to_markdown(payload: Any) -> str:
         return _bootstrap_markdown(payload)
     if isinstance(payload, dict) and "services" in payload and "order" in payload:
         return _start_markdown(payload)
+    if _is_start_run_preview(payload):
+        return _start_run_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -297,6 +301,62 @@ def _start_markdown(payload: dict[str, Any]) -> str:
             lines.append(f"   - {note}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _is_start_run_preview(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and "name" in payload
+        and "command" in payload
+        and "applied_args" in payload
+        and "env_keys" in payload
+        and "services" not in payload
+    )
+
+
+def _start_run_text(payload: dict[str, Any]) -> str:
+    mode = "dry-run" if payload.get("dry_run") else "run"
+    lines = [f"Start {mode} ({payload.get('name')})", ""]
+    if payload.get("launch_configuration"):
+        lines.append(f"Launch: {payload['launch_configuration']}")
+    lines.append(f"cwd: {payload.get('cwd')}")
+    lines.append(f"command: {payload.get('command')}")
+    if payload.get("exec_command"):
+        lines.append(f"exec_command: {payload['exec_command']}")
+    if payload.get("applied_args") or payload.get("arg_count"):
+        lines.append(f"arg_count: {payload.get('arg_count', 0)}")
+    if payload.get("applied_vm_args") or payload.get("vm_arg_count"):
+        lines.append(f"vm_arg_count: {payload.get('vm_arg_count', 0)}")
+    if payload.get("java_tool_options"):
+        lines.append("java_tool_options: applied")
+    keys = payload.get("env_keys") or []
+    if keys:
+        lines.append(f"env_keys: {','.join(keys)}")
+    overwritten = payload.get("overwritten_keys") or []
+    if overwritten:
+        lines.append(f"overwritten: {','.join(overwritten)}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _start_run_markdown(payload: dict[str, Any]) -> str:
+    mode = "dry-run" if payload.get("dry_run") else "run"
+    lines = [f"# Start {mode} (`{payload.get('name')}`)", ""]
+    if payload.get("launch_configuration"):
+        lines.append(f"- **Launch:** `{payload['launch_configuration']}`")
+    lines.append(f"- **cwd:** `{payload.get('cwd')}`")
+    lines.append(f"- **command:** `{payload.get('command')}`")
+    if payload.get("exec_command"):
+        lines.append(f"- **exec_command:** `{payload['exec_command']}`")
+    if payload.get("applied_args") or payload.get("arg_count"):
+        lines.append(f"- **arg_count:** {payload.get('arg_count', 0)}")
+    if payload.get("applied_vm_args") or payload.get("vm_arg_count"):
+        lines.append(f"- **vm_arg_count:** {payload.get('vm_arg_count', 0)}")
+    if payload.get("java_tool_options"):
+        lines.append("- **java_tool_options:** applied")
+    keys = payload.get("env_keys") or []
+    if keys:
+        lines.append("- **env_keys:** " + ", ".join(f"`{key}`" for key in keys))
+    return "\n".join(lines).strip() + "\n"
 
 
 def _bootstrap_text(payload: dict[str, Any]) -> str:

@@ -16,6 +16,8 @@ from harness.start import (
     execute_start_env,
     execute_start_run,
     load_saved_start_plan,
+    redacted_exec_command,
+    start_run_preview,
 )
 from harness.workspace_create import create_workspace
 from tests.helpers import write_harness_config
@@ -473,6 +475,14 @@ def test_start_run_applies_env_without_leaking(harness_root: Path, catalog):
     assert "another-hidden-value" not in dumped
     assert "dont-print-me" not in dumped
     assert payload["command"] == "./mvnw spring-boot:run"
+    assert payload["exec_command"] == (
+        "./mvnw spring-boot:run "
+        "-Dspring-boot.run.arguments=<redacted> "
+        "-Dspring-boot.run.jvmArguments=<redacted>"
+    )
+    assert payload["arg_count"] == 2
+    assert payload["vm_arg_count"] == 1
+    assert payload["java_tool_options"] is False
     assert payload["env_keys"] == ["API_TOKEN", "DB_PASSWORD", "MORE_SECRET"]
     assert payload["marker_keys"] == ["HARNESS_ENV_CONFIGURATION", "HARNESS_ENV_REPO"]
     assert payload["applied_args"] is True
@@ -503,10 +513,78 @@ def test_start_run_dry_run_cli(harness_root: Path, capsys, monkeypatch):
     assert payload["name"] == "backend"
     assert "DB_PASSWORD" in payload["env_keys"]
     assert "s3cret-do-not-print" not in out
+    assert "dont-print-me" not in out
     assert payload.get("env") is None
-    assert payload.get("exec_command") is None
+    assert payload["exec_command"] == (
+        "./mvnw spring-boot:run "
+        "-Dspring-boot.run.arguments=<redacted> "
+        "-Dspring-boot.run.jvmArguments=<redacted>"
+    )
+    assert payload["arg_count"] == 2
+    assert payload["vm_arg_count"] == 1
     assert "overwritten_keys" in payload
     assert "marker_keys" in payload
+    text = render(payload, "text")
+    assert "exec_command:" in text
+    assert "<redacted>" in text
+    assert "s3cret-do-not-print" not in text
+
+
+def test_start_run_preview_marks_java_tool_options():
+    preview = start_run_preview(
+        {
+            "name": "worker",
+            "cwd": "/tmp",
+            "command": "java -jar app.jar",
+            "args": None,
+            "vm_args": "-Xmx512m",
+            "applied_args": False,
+            "applied_vm_args": True,
+            "env_keys": [],
+        }
+    )
+    assert preview["exec_command"] == "java -jar app.jar"
+    assert preview["java_tool_options"] is True
+    assert preview["vm_arg_count"] == 1
+    assert preview["arg_count"] == 0
+
+
+def test_redacted_exec_command_shapes():
+    spring = "./mvnw spring-boot:run"
+    assert redacted_exec_command(spring, None, None) == spring
+    assert redacted_exec_command(
+        spring,
+        "--spring.profiles.active=local --token=secret",
+        "-Xmx512m",
+    ) == (
+        "./mvnw spring-boot:run "
+        "-Dspring-boot.run.arguments=<redacted> "
+        "-Dspring-boot.run.jvmArguments=<redacted>"
+    )
+    assert (
+        redacted_exec_command("./gradlew bootRun", ["--args-one"], None)
+        == "./gradlew bootRun --args=<redacted>"
+    )
+    assert redacted_exec_command("pnpm start", ["--port", "4200"], None) == (
+        "pnpm start <redacted>"
+    )
+    assert redacted_exec_command("pnpm start", None, "-Xmx512m") == "pnpm start"
+
+
+def test_start_run_banner_uses_redacted_exec(harness_root: Path, catalog, capsys):
+    repo = _write_spring(harness_root)
+    _write_java_launch(repo)
+
+    def fake_run(command: str, cwd: Path, env: dict[str, str]) -> int:
+        assert "dont-print-me" in command
+        return 0
+
+    execute_start_run(catalog, harness_root, "backend", run=fake_run)
+    err = capsys.readouterr().err
+    assert "exec_command ./mvnw spring-boot:run" in err
+    assert "-Dspring-boot.run.arguments=<redacted>" in err
+    assert "dont-print-me" not in err
+    assert "s3cret-do-not-print" not in err
 
 
 def test_start_run_keep_existing_and_prefix(harness_root: Path, catalog, monkeypatch):
