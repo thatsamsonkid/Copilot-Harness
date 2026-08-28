@@ -13,7 +13,7 @@ A central wiki here would be a third source of truth (code, Jira, coboose docs).
 | How the code is shaped | Graphify `graphify-out/` plus `# WHY:` / `# NOTE:` comments | Always; Graphify already indexes these |
 | Ticket intent | Jira, via `coboose prepare` | The work item, not the architecture |
 
-The coboose only **discovers** those files (`coboose context` → `knowledge`). It does not store product facts.
+The coboose only **discovers** those files (`coboose context` → `knowledge`). It does not store product facts. If a monorepo keeps notes somewhere else, set `knowledge.dirs` on that `repositories.yml` entry.
 
 ## What to write
 

@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from coboose.branch import suggested_branch
 from coboose.catalog import Catalog
 from coboose.clone import clone_repos
 from coboose.context import inspect_repo
+from coboose.done import build_done_when
 from coboose.jira_client import JiraClient
 from coboose.routing import recommend_workspace
 from coboose.workspace import generate_workspaces, open_command
@@ -76,6 +78,8 @@ def prepare_issue(
         "If a repo has graphify.report, read that before grepping the tree.",
         "Before editing, load that repo's instruction files and knowledge notes; use tooling.suggested_verify after changes.",
         "If the change adds user-visible or non-obvious behavior, update docs/features (or an ADR) in that sibling. Do not file it in the Coboose repo.",
+        f"Use branch name {suggested_branch(issue['key'])} in each touched sibling (`coboose branch {issue['key']}`).",
+        "Treat done_when as the stop condition. Do not declare the ticket done until those items are checked.",
         "Write an implementation plan covering impacted repos, files, risks, and test strategy.",
         "Do not start coding until the plan is agreed, unless the user asks to implement immediately.",
     ]
@@ -104,6 +108,8 @@ def prepare_issue(
                 else None
             ),
             "clone_result": clone_result,
+            "suggested_branch": suggested_branch(issue["key"]),
         },
+        "done_when": build_done_when(issue, repos),
         "next_steps": next_steps,
     }

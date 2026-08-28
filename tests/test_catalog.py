@@ -103,6 +103,14 @@ def test_parses_graphify_out_and_rejects_parent_escape(
         load_catalog(root)
 
 
+def test_parses_knowledge_dirs(tmp_path: Path, sample_catalog_data: dict):
+    sample_catalog_data["repos"][0]["knowledge"] = {"dirs": ["handbook"]}
+    root = tmp_path / "coboose"
+    write_coboose_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    assert catalog.repo("frontend").knowledge_dirs == ("handbook",)
+
+
 def test_load_catalog_discovers_personal_workspaces(catalog, coboose_root: Path):
     from coboose.prompt import PromptSession
     from coboose.workspace_create import create_workspace

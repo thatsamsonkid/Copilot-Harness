@@ -4,8 +4,9 @@
 #   <coboose-parent>/<path or group/name or name>
 #
 # Required per entry: name, url, tags
-# Optional: path, group, default_branch, description, enabled, graphify
+# Optional: path, group, default_branch, description, enabled, graphify, knowledge
 # graphify.out defaults to graphify-out inside that clone.
+# knowledge.dirs adds extra note folders when a monorepo does not use docs/features.
 # Do not add start: here. Discover once, then pin the workspace sequence:
 #   coboose start --workspace frontend --save
 #   → workspaces/frontend.start.yml

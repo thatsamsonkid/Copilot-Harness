@@ -35,6 +35,8 @@ def write_coboose_config(root: Path, data: dict) -> Path:
         )
         if item.get("graphify") is not None:
             repositories[-1]["graphify"] = item["graphify"]
+        if item.get("knowledge") is not None:
+            repositories[-1]["knowledge"] = item["knowledge"]
         if item.get("start") is not None:
             repositories[-1]["start"] = item["start"]
         if repositories[-1]["path"] is None:

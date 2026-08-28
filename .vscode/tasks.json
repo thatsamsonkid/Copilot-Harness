@@ -39,6 +39,18 @@
       "type": "shell",
       "command": "uv run coboose doctor",
       "problemMatcher": []
+    },
+    {
+      "label": "Harness: sibling status",
+      "type": "shell",
+      "command": "uv run harness status --format text",
+      "problemMatcher": []
+    },
+    {
+      "label": "Harness: latest handoff",
+      "type": "shell",
+      "command": "uv run harness handoff latest --format text",
+      "problemMatcher": []
     }
   ]
 }

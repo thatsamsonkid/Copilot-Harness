@@ -18,7 +18,8 @@ if [[ ! -f .env && -f .env.example ]]; then
 fi
 
 uv run coboose workspace generate
-echo "Setup complete."
+echo "Setup complete. First-run checklist:"
+uv run coboose init --format text || true
 echo "Next:"
 echo "  1. Create a Jira API token (docs/jira-api-token.md), set email/URL in .env,"
 echo "     then run: uv run coboose jira login"

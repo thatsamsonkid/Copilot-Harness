@@ -7,12 +7,14 @@ from typing import Any, Sequence
 
 from coboose import CobooseError, __version__
 from coboose.bootstrap import bootstrap_project
+from coboose.branch import align_branches
 from coboose.catalog import catalog_to_dict, load_catalog
 from coboose.clone import clone_repos
 from coboose.context import collect_context
 from coboose.doctor import run_doctor
-from coboose.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
 from coboose.envspec import find_var, list_env, set_env_value, unset_env_value
+from coboose.handoff import latest_handoff, list_handoffs, write_handoff
+from coboose.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
 from coboose.keychain import login_token, logout_token
 from coboose.onboard import run_init
 from coboose.output import render
@@ -21,14 +23,19 @@ from coboose.prepare import prepare_issue
 from coboose.prompt import PromptSession
 from coboose.routing import recommend_workspace
 from coboose.start import collect_start_plan, execute_start_env, execute_start_run
+from coboose.status import collect_status
 from coboose.templates import get_template, template_to_dict, templates_payload
 from coboose.workspace import generate_workspaces, list_workspaces, open_workspace
 from coboose.workspace_create import create_workspace
 
+JIRA_MINE_JQL = "assignee = currentUser() AND resolution = EMPTY ORDER BY updated DESC"
+
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
+    raw = list(argv) if argv is not None else sys.argv[1:]
+    args = parser.parse_args(raw)
+    _apply_leading_globals(args, raw)
     try:
         payload = dispatch(args)
         if payload is not None:
@@ -62,9 +69,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="coboose",
         description=(
-            "Clone product git repos, bootstrap projects from listed templates, "
-            "query Jira Cloud with basic auth, and create or select a feature "
-            "VS Code workspace."
+            "Clone product git repos under parent_dir, bootstrap projects from "
+            "listed templates, query Jira Cloud with basic auth, inspect clone "
+            "git status, and create or select a feature VS Code workspace."
         ),
         parents=[shared],
     )
@@ -97,6 +104,12 @@ def build_parser() -> argparse.ArgumentParser:
         "context", parents=[shared], help="Issue plus comments"
     )
     jira_context.add_argument("issue")
+    jira_mine = jira_sub.add_parser(
+        "mine",
+        parents=[shared],
+        help="List unresolved issues assigned to the current Jira user",
+    )
+    jira_mine.add_argument("--max-results", type=int, default=15)
     jira_sub.add_parser("whoami", parents=[shared], help="Validate Jira credentials")
     jira_sub.add_parser("schema", parents=[shared], help="Show configured Jira output fields")
     jira_login = jira_sub.add_parser(
@@ -313,6 +326,41 @@ def build_parser() -> argparse.ArgumentParser:
     )
     context.add_argument("--repo", help="Comma-separated repository names")
 
+    status = sub.add_parser(
+        "status",
+        parents=[shared],
+        help="Read-only git snapshot of sibling clones (branch, dirty, ahead/behind)",
+    )
+    status.add_argument("--repo", help="Comma-separated repository names")
+
+    branch = sub.add_parser(
+        "branch",
+        parents=[shared],
+        help="Suggest or create the same Jira-key branch in matched sibling clones",
+    )
+    branch.add_argument("issue", help="Jira issue key or browse URL")
+    branch.add_argument("--repo", help="Comma-separated repository names")
+    branch.add_argument(
+        "--create",
+        action="store_true",
+        help="Create or checkout the branch in clean clones",
+    )
+    branch.add_argument("--dry-run", action="store_true")
+
+    handoff = sub.add_parser(
+        "handoff",
+        parents=[shared],
+        help="Write or read a session note under handoffs/ (gitignored)",
+    )
+    handoff_sub = handoff.add_subparsers(dest="handoff_command", required=True)
+    handoff_write = handoff_sub.add_parser(
+        "write", parents=[shared], help="Write a session note with the current sibling snapshot"
+    )
+    handoff_write.add_argument("--issue", help="Jira issue key to tag the note")
+    handoff_write.add_argument("--note", help="What the next chat should resume")
+    handoff_sub.add_parser("list", parents=[shared], help="List handoff notes")
+    handoff_sub.add_parser("latest", parents=[shared], help="Show the newest handoff note")
+
     start = sub.add_parser(
         "start",
         parents=[shared],
@@ -515,6 +563,24 @@ def dispatch(args: argparse.Namespace) -> Any:
             coboose_root,
             only=_split_ids(args.repo),
         )
+    if args.command == "status":
+        return collect_status(
+            catalog,
+            coboose_root,
+            only=_split_ids(args.repo),
+            cwd=Path.cwd(),
+        )
+    if args.command == "branch":
+        return align_branches(
+            catalog,
+            coboose_root,
+            args.issue,
+            only=_split_ids(args.repo),
+            create=args.create,
+            dry_run=args.dry_run,
+        )
+    if args.command == "handoff":
+        return _dispatch_handoff(args, catalog, coboose_root)
     if args.command == "start":
         if args.action == "run":
             if args.shell:
@@ -608,6 +674,9 @@ def _dispatch_jira(args: argparse.Namespace, catalog: Any, coboose_root: Path) -
         return client.get_context(args.issue, settings=settings)
     if args.jira_command == "whoami":
         return client.myself()
+    if args.jira_command == "mine":
+        issues = client.search(JIRA_MINE_JQL, max_results=args.max_results)
+        return {"jql": JIRA_MINE_JQL, "issues": issues}
     raise CobooseError(f"Unknown jira command: {args.jira_command}")
 
 
@@ -685,6 +754,23 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, coboose_root: Pa
     raise CobooseError(f"Unknown workspace command: {args.workspace_command}")
 
 
+def _dispatch_handoff(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
+    if args.handoff_command == "list":
+        return {"handoffs": list_handoffs(coboose_root)}
+    if args.handoff_command == "latest":
+        return latest_handoff(coboose_root)
+    if args.handoff_command == "write":
+        issue = parse_issue_key(args.issue) if args.issue else None
+        status = collect_status(catalog, coboose_root)
+        return write_handoff(
+            coboose_root,
+            issue=issue,
+            note=args.note,
+            status=status,
+        )
+    raise CobooseError(f"Unknown handoff command: {args.handoff_command}")
+
+
 def _dispatch_templates(args: argparse.Namespace, catalog: Any) -> Any:
     source = catalog.templates_source
     if args.name:
@@ -724,6 +810,28 @@ def _dispatch_bootstrap(args: argparse.Namespace, catalog: Any, coboose_root: Pa
 def _client() -> JiraClient:
     base_url, email, token = jira_settings_from_env()
     return JiraClient(base_url, email, token)
+
+
+def _apply_leading_globals(args: argparse.Namespace, argv: list[str]) -> None:
+    """Keep `coboose --root X status` working.
+
+    Shared options are on both the top parser and each subparser. argparse
+    then overwrites dests such as `root` with the subparser default (None)
+    when the flag appears before the subcommand.
+    """
+    command = getattr(args, "command", None)
+    if not command or command not in argv:
+        return
+    leading = argv[: argv.index(command)]
+    if not leading:
+        return
+    parsed, _ = _shared_options().parse_known_args(leading)
+    for key in ("root", "catalog", "repos", "templates"):
+        value = getattr(parsed, key, None)
+        if value is not None and getattr(args, key, None) is None:
+            setattr(args, key, value)
+    if "--format" in leading:
+        args.format = parsed.format
 
 
 def _split_ids(value: str | None) -> list[str] | None:

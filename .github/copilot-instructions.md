@@ -36,7 +36,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/coboose` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context, start.
+- CLI: `src/coboose` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context, status, branch, handoff, start.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this Coboose repo. Personal/local mixes live in `workspaces/personal/` (gitignored, not in `catalog/stack.yaml`).
 - Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `coboose env set NAME` / `coboose jira login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 
@@ -74,3 +74,20 @@ When the user asks to create, scaffold, or bootstrap a new project:
 - After editing a sibling, run that repo's `tooling.suggested_verify`. Do not skip a failing lint/test command from the product repo.
 - Do not copy product standards into this coboose. Do not rebuild a Graphify graph unless the user asked, and never extract an entire monorepo unprompted.
 - Product knowledge (feature notes, ADRs) lives in the sibling repo. Discover it via `coboose context` `knowledge`. Do not start a second wiki here.
+
+## Invariants (coboose-level only)
+
+These stay few and stable. Everything else lives in the product repo.
+
+- Put the Jira key in each sibling branch name (`uv run coboose branch <KEY>`).
+- Open one pull request per sibling repo. Do not squash unrelated repos.
+- Never commit `.env` or print secrets.
+- Treat `prepare` `done_when` as the stop condition.
+- Do not hand-edit `tooling.generated` paths.
+
+## Status, branches, and handoff
+
+- Before planning or pausing, run `uv run coboose status --format json`.
+- Assigned work: `uv run coboose jira mine --format json`.
+- Pause / next chat: `/handoff` or `uv run coboose handoff write --issue <KEY> --note "..."`.
+- Review a diff: `/review` or the **Reviewer** agent. Do not implement while reviewing.

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import time
 from pathlib import Path
 
 from coboose.cli import main
@@ -50,6 +53,8 @@ def test_context_discovers_graphify_and_standards(coboose_root: Path, catalog):
     assert repo["knowledge"]["dirs"][0]["kind"] == "feature"
     assert repo["knowledge"]["files"][0]["name"] == "checkout.md"
     assert repo["knowledge"]["template"] == "templates/feature-note.md"
+    assert repo["tooling"]["generated"]["markers"] == []
+    assert repo["graphify"]["stale"] in (None, False)
 
 
 def test_context_cli_skips_missing_clone(coboose_root: Path, capsys, monkeypatch):
@@ -70,3 +75,44 @@ def test_graphify_can_be_disabled(sample_catalog_data: dict, coboose_root: Path)
     payload = collect_context(catalog, coboose_root, only=["frontend"])
     assert payload["repos"][0]["graphify"]["enabled"] is False
     assert payload["repos"][0]["graphify"]["present"] is False
+
+
+def test_context_discovers_generated_and_custom_knowledge(
+    sample_catalog_data: dict, coboose_root: Path
+):
+    sample_catalog_data["repos"][0]["knowledge"] = {"dirs": ["handbook"]}
+    write_coboose_config(coboose_root, sample_catalog_data)
+    from coboose.catalog import load_catalog
+
+    catalog = load_catalog(coboose_root)
+    repo = _write_sibling(coboose_root, "frontend")
+    (repo / "nx.json").write_text("{}\n", encoding="utf-8")
+    (repo / "src" / "generated").mkdir(parents=True)
+    (repo / "handbook").mkdir()
+    (repo / "handbook" / "payments.md").write_text("# Payments\n", encoding="utf-8")
+    payload = collect_context(catalog, coboose_root, only=["frontend"])
+    generated = payload["repos"][0]["tooling"]["generated"]
+    assert "nx" in generated["markers"]
+    assert "src/generated" in generated["paths"]
+    assert generated["hint"]
+    kinds = {item["kind"] for item in payload["repos"][0]["knowledge"]["dirs"]}
+    assert "custom" in kinds
+    names = {item["name"] for item in payload["repos"][0]["knowledge"]["files"]}
+    assert "payments.md" in names
+
+
+def test_graphify_marks_stale_when_commit_is_newer(coboose_root: Path, catalog):
+    repo = _write_sibling(coboose_root, "frontend")
+    subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "dev@example.com"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "Dev"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "graph"], cwd=repo, check=True, capture_output=True)
+    graph = repo / "graphify-out" / "graph.json"
+    older = time.time() - 3600
+    os.utime(graph, (older, older))
+    (repo / "later.txt").write_text("new\n", encoding="utf-8")
+    subprocess.run(["git", "add", "later.txt"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "later"], cwd=repo, check=True, capture_output=True)
+    payload = collect_context(catalog, coboose_root, only=["frontend"])
+    assert payload["repos"][0]["graphify"]["stale"] is True

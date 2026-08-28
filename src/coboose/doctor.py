@@ -8,6 +8,7 @@ from typing import Any
 from coboose import CobooseError
 from coboose.catalog import Catalog
 from coboose.context import inspect_repo
+from coboose.envfile import env_file_age
 from coboose.envspec import list_env
 from coboose.invoke import invoke_spec
 from coboose.jira_client import JiraClient, jira_settings_from_env
@@ -53,6 +54,17 @@ def run_doctor(
             "code CLI is on PATH"
             if shutil.which("code")
             else "code CLI is not on PATH (open workspaces manually)",
+            ok_when_false=True,
+        )
+    )
+    graphify_cli = shutil.which("graphify")
+    checks.append(
+        _check(
+            "graphify_cli",
+            bool(graphify_cli),
+            f"graphify is on PATH ({graphify_cli})"
+            if graphify_cli
+            else "graphify is not on PATH; still use committed graphify-out/ artifacts",
             ok_when_false=True,
         )
     )
@@ -245,6 +257,16 @@ def run_doctor(
             )
         )
 
+    env_age = env_file_age(coboose_root / ".env")
+    checks.append(
+        _check(
+            "env_age",
+            not env_age["stale"],
+            env_age["detail"],
+            ok_when_false=True,
+        )
+    )
+
     ok = all(item["ok"] or item.get("advisory") for item in checks)
     steps = onboarding_steps(catalog, coboose_root, uv=uv)
     return {
@@ -268,6 +290,8 @@ def run_doctor(
         "keychain_guide": storage_guides(),
         "env": env_payload,
         "uv": uv,
+        "graphify_cli": graphify_cli,
+        "env_age": env_age,
         "invoke": invoke_spec(coboose_root),
         "checks": checks,
         "onboarding": steps,

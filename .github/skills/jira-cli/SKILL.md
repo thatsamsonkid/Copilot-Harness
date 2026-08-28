@@ -32,6 +32,7 @@ Accept `PROJ-123` or a browse URL. The CLI extracts the key.
 | Issue plus comments | `uv run coboose jira context <KEY>` |
 | Comments only | `uv run coboose jira comments <KEY>` |
 | JQL search | `uv run coboose jira search '<jql>'` |
+| My open issues | `uv run coboose jira mine` |
 | What Copilot is allowed to see | `uv run coboose jira schema` |
 | Auth check (no token in output) | `uv run coboose jira whoami` |
 | Store token in OS keychain | Tell them to run `uv run coboose jira login` (or `--from-env`) themselves |
@@ -40,6 +41,9 @@ Accept `PROJ-123` or a browse URL. The CLI extracts the key.
 | Live Jira ping | `uv run coboose doctor --ping-jira` |
 | First-run / missing token | `uv run coboose init` (see the get-started skill) |
 | Graphs + repo instructions | `uv run coboose context` (see the workspace-context skill) |
+| Sibling git snapshot | `uv run coboose status` |
+| Same branch in each sibling | `uv run coboose branch <KEY>` (add `--create` only if they asked) |
+| Pause / resume a chat | `uv run coboose handoff write` / `latest` (see the handoff skill) |
 
 Prefer `prepare` over assembling get + match + clone yourself.
 
@@ -55,6 +59,8 @@ Use these objects only:
 - `routing.missing_repos` / `routing.clone_command`
 - `routing.repos` — inspect only these folders unless the ticket clearly needs more
 - `routing.repos[].graphify` / `instructions` / `tooling` — use these before grepping or inventing verify commands
+- `routing.suggested_branch`
+- `done_when` — stop condition (ticket AC + repo verify + coboose invariants)
 - `next_steps`
 
 If `routing.score` is `0` or reasons are only fallback, ask which workspace to open.
@@ -89,3 +95,5 @@ This skill is the CLI contract, not an implementer.
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
 - Create a feature workspace: Workspace Creator agent or `/new-workspace`
 - Implement an agreed plan: Implementer agent
+- Review a diff: Reviewer agent or `/review`
+- Pause / resume: handoff skill or `/handoff`

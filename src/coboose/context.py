@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from coboose.catalog import Catalog, Repo
+from coboose.gitinfo import last_commit_unix
 
 INSTRUCTION_FILES = (
     ".github/copilot-instructions.md",
@@ -72,6 +73,8 @@ def collect_context(
             "Do not start a second wiki in the Coboose repo.",
             "Do not copy product standards into the Coboose repo. Do not rebuild a graph "
             "unless the user asked.",
+            "If graphify.stale is true, offer a scoped refresh in that repo after the user agrees.",
+            "Do not hand-edit tooling.generated paths.",
             "To start local apps in this workspace, run `coboose start` "
             "(see the workspace-start skill). That command prints a plan; "
             "it does not launch processes. Save the sequence once with "
@@ -96,8 +99,9 @@ def inspect_repo(catalog: Catalog, coboose_root: Path, repo: Repo | str) -> dict
         "tags": repo.tags,
         "graphify": discover_graphify(path, repo) if cloned else _empty_graphify(repo, cloned=False),
         "instructions": discover_instructions(path) if cloned else [],
-        "knowledge": discover_knowledge(path) if cloned else _empty_knowledge(),
+        "knowledge": discover_knowledge(path, extra_dirs=repo.knowledge_dirs) if cloned else _empty_knowledge(),
         "tooling": discover_tooling(path) if cloned else _empty_tooling(),
+        "env_example": discover_env_example(path) if cloned else None,
     }
 
 
@@ -133,6 +137,7 @@ def discover_graphify(repo_path: Path, repo: Repo) -> dict[str, Any]:
             "detail": "graph is available",
         }
     )
+    payload.update(_graphify_freshness(repo_path, graph if graph.is_file() else None))
     return payload
 
 
@@ -156,13 +161,20 @@ def discover_instructions(repo_path: Path) -> list[dict[str, str]]:
     return found
 
 
-def discover_knowledge(repo_path: Path) -> dict[str, Any]:
+def discover_knowledge(
+    repo_path: Path, *, extra_dirs: tuple[str, ...] | list[str] = ()
+) -> dict[str, Any]:
     dirs: list[dict[str, Any]] = []
     files: list[dict[str, str]] = []
-    for relative, kind in KNOWLEDGE_DIRS:
+    seen_roots: set[str] = set()
+    search = list(KNOWLEDGE_DIRS)
+    for relative in extra_dirs:
+        search.append((relative, "custom"))
+    for relative, kind in search:
         root = repo_path / relative
-        if not root.is_dir():
+        if not root.is_dir() or str(root) in seen_roots:
             continue
+        seen_roots.add(str(root))
         matches = sorted(
             path
             for path in root.glob("*.md")
@@ -217,11 +229,13 @@ def discover_tooling(repo_path: Path) -> dict[str, Any]:
     if (repo_path / "eslint.config.mjs").exists() and "eslint" not in markers:
         markers.append("eslint")
     verify = _suggested_verify(package_scripts, make_targets, repo_path)
+    generated = discover_generated(repo_path)
     return {
         "markers": markers,
         "package_scripts": package_scripts,
         "make_targets": make_targets,
         "suggested_verify": verify,
+        "generated": generated,
     }
 
 
@@ -243,6 +257,8 @@ def _empty_graphify(repo: Repo, *, cloned: bool = True) -> dict[str, Any]:
         "query_command": None,
         "path_command": None,
         "explain_command": None,
+        "stale": None,
+        "stale_detail": None,
         "detail": detail,
     }
 
@@ -253,6 +269,7 @@ def _empty_tooling() -> dict[str, Any]:
         "package_scripts": [],
         "make_targets": [],
         "suggested_verify": [],
+        "generated": {"markers": [], "paths": [], "hint": None},
     }
 
 
@@ -265,6 +282,79 @@ def _empty_knowledge() -> dict[str, Any]:
             "Keep feature notes and ADRs in this sibling repo. "
             f"Use the Coboose {FEATURE_NOTE_TEMPLATE} template. "
             "Do not copy product knowledge into the Coboose repo."
+        ),
+    }
+
+
+GENERATED_MARKERS = (
+    ("nx.json", "nx"),
+    ("project.json", "nx"),
+    ("openapitools.json", "openapi"),
+    ("openapi-generator-config.yaml", "openapi"),
+    ("openapi-generator-config.yml", "openapi"),
+    ("graphql-codegen.yml", "graphql-codegen"),
+    ("graphql-codegen.yaml", "graphql-codegen"),
+    ("codegen.yml", "graphql-codegen"),
+    ("codegen.ts", "graphql-codegen"),
+    ("codegen.cjs", "graphql-codegen"),
+)
+
+GENERATED_DIRS = (
+    "generated",
+    "src/generated",
+    "src/gen",
+    "libs/api-client",
+    ".nx",
+)
+
+
+def discover_generated(repo_path: Path) -> dict[str, Any]:
+    markers: list[str] = []
+    for relative, kind in GENERATED_MARKERS:
+        if (repo_path / relative).exists() and kind not in markers:
+            markers.append(kind)
+    paths = [
+        relative
+        for relative in GENERATED_DIRS
+        if (repo_path / relative).exists()
+    ]
+    hint = None
+    if markers or paths:
+        hint = (
+            "Do not hand-edit generated outputs. Regenerate them with the "
+            "repo's codegen / Nx / OpenAPI command."
+        )
+    return {"markers": markers, "paths": paths, "hint": hint}
+
+
+def discover_env_example(repo_path: Path) -> dict[str, Any] | None:
+    for relative in (".env.example", ".env.sample", ".env.template"):
+        path = repo_path / relative
+        if path.is_file():
+            return {
+                "path": str(path),
+                "hint": (
+                    "This sibling has its own env template. Copy it locally "
+                    "in that repo. Never read or print the filled values."
+                ),
+            }
+    return None
+
+
+def _graphify_freshness(repo_path: Path, graph: Path | None) -> dict[str, Any]:
+    if graph is None or not graph.is_file():
+        return {"stale": None, "stale_detail": None}
+    graph_mtime = int(graph.stat().st_mtime)
+    commit_unix = last_commit_unix(repo_path)
+    if commit_unix is None:
+        return {"stale": None, "stale_detail": "no git history to compare"}
+    stale = commit_unix > graph_mtime + 60
+    return {
+        "stale": stale,
+        "stale_detail": (
+            "graph.json is older than the latest commit"
+            if stale
+            else "graph.json is at least as new as the latest commit"
         ),
     }
 

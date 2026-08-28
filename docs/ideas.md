@@ -6,82 +6,83 @@ What we should **not** do: copy product architecture or style guides into this r
 
 ## 1. Easy startup
 
-**In this PR**
+**Shipped**
 
 - `/get-started` walks a human through `.env`, the token doc, `repositories.yml`, and clone/workspace generate.
 - `coboose init` prints that checklist as JSON. `--interactive` collects email/URL/token in a local TTY only.
-- `docs/jira-api-token.md` is the token how-to.
-- `docs/install-uv.md` plus `setup.sh` / `setup.ps1` so `/get-started` can send macOS and Windows users to the right uv install.
+- Setup scripts finish by running `coboose init --format text`.
+- `jira login` stores the API token in macOS Keychain or Windows Credential Manager. `.env` is a fallback.
+- `doctor` warns when `.env` is older than ~10 months (Atlassian tokens die in ≤ 1 year). That age is advisory: tokens in the OS keychain are not dated by the file. Doctor does not read token expiry from Atlassian.
+- Two token profiles in `docs/jira-api-token.md` (planning vs later write).
+- VS Code `chat.promptFilesRecommendations` includes `/get-started`, `/handoff`, `/review`.
+- README "New laptop" is five commands.
 
 **Worth adding next**
 
-- `setup.sh` should finish by running `coboose init` so the first-run checklist is the last thing a person sees.
-- Token expiry in `doctor` (Atlassian tokens die in ≤ 1 year). Warn when `.env` is older than ~10 months; do not try to read the token’s expiry from Atlassian unless we have a safe API for it.
-- Two token profiles in the doc: read-only for planning, write scopes only if we later add `coboose jira comment` / transition.
-- VS Code welcome: keep `/get-started` in `chat.promptFilesRecommendations` so a blank chat offers it.
-- A one-page “new laptop” checklist in the README that is only five commands long. Anything longer and people skip it.
+- Nothing urgent here. A VS Code welcome walkthrough page is optional polish.
 
 ## 2. Large repos and Graphify
 
-Workspaces can include very large repos or monorepos. Graphify already lives *in those repos*. The coboose should discover and point at those graphs, not rebuild the world from here.
+**Shipped**
 
-**In this PR**
-
-- Optional `graphify.out` on each `repositories.yml` entry (default `graphify-out`).
-- `coboose context` reports whether `GRAPH_REPORT.md` / `graph.json` exist, plus query/path/explain commands.
-- `prepare` and `/orient` tell Copilot to read the report before grepping.
-- Always-on instructions: vague prompt → context/graph first, then ask which community/repo.
+- Discover `graphify-out/` per sibling. `context` / `prepare` / `status` report `graphify.stale` by comparing `graph.json` mtime to the latest commit.
+- `doctor` notes when the Graphify CLI is missing and still uses committed artifacts.
+- Instructions: never extract a whole monorepo; offer a scoped rebuild only after the user agrees.
 
 **Worth adding next**
 
-- **Do not** run `graphify extract` on a whole monorepo from the coboose. If a graph is missing, offer a *scoped* rebuild (`graphify extract --code-only path/to/package`) and only after the user agrees.
-- Staleness: compare `graph.json` mtime to `git log -1 --format=%ct` in that sibling. Advisory only.
-- Cross-repo tickets (platform workspace): `graphify merge-graphs` into a coboose-local file such as `graphify-out/workspace-<id>.json`, namespaced per repo. Keep that output gitignored. Use it for “how does frontend talk to billing?” questions; keep per-repo graphs for implementation.
-- After Implementer edits files, remind the user to refresh the *touched* repo’s graph. Do not auto-refresh during the session unless they ask.
-- If Graphify is not installed, `doctor` should say so once, then still use any committed `graphify-out/` artifacts.
-- For Nx/Turborepo monorepos, prefer Graphify communities + `nx show project` / `turbo run` over opening the whole tree.
+- Cross-repo tickets: `graphify merge-graphs` into a gitignored `graphify-out/workspace-<id>.json`, namespaced per repo.
+- After Implementer edits, a one-line reminder is already in the agent. Auto-refresh is still a no.
+- For Nx/Turborepo, prefer Graphify communities + `nx show project` / `turbo run` over opening the whole tree.
 
 ## 3. Standards and patterns
 
-Individual repos already have instructions and tooling. The coboose should make Copilot *find and obey* those, not invent a second style guide.
+**Shipped**
 
-**In this PR**
-
-- `coboose context` lists `.github/copilot-instructions.md`, `AGENTS.md`, path instructions, skills, and suggested verify commands (`make check`, `pnpm lint`, …).
-- Implementer / always-on rules: load those files before editing; run `tooling.suggested_verify` after.
-- Coboose-level rules stay limited to secrets, sibling clones, and Jira-via-CLI.
+- `coboose context` lists instruction files, verify commands, and generated-code markers (Nx, OpenAPI, graphql-codegen).
+- `/review` + Reviewer agent: diff against `done_when`, local linters, generated-code, and coboose invariants.
+- Org-wide invariants in always-on instructions: Jira key in the branch, one PR per sibling, no secrets, obey `done_when`.
 
 **Worth adding next**
 
-- A `/review-standards` prompt that diffs the working tree against the target repo’s linters/formatters only.
-- Discover generated-code markers (Nx, OpenAPI, graphql-codegen) and tell Copilot not to hand-edit those outputs.
-- Org-wide *invariants* only if they are few and stable: Jira key in the branch name, no secrets, one PR per sibling repo. Put those here. Everything else stays in the product repo.
-- A tiny eval folder later: 3–5 golden tickets plus “did the agent read AGENTS.md and run the repo test command?” That is how we enforce behavior without hoping the prompt is enough.
+- Discover more generated-code globs from each repo's own ignore/codegen config instead of a fixed list.
+- A tiny eval folder later: 3–5 golden tickets plus “did the agent read AGENTS.md and run the repo test command?”
 
 ## 4. Product knowledge (not a coboose wiki)
 
-**Yes, write it down. No, do not file it here.**
+**Shipped**
 
-Feature notes and ADRs belong in the product repo that changed (`docs/features/`, `docs/adr/`). Graphify already indexes markdown, ADRs, and `# WHY:` comments. A second knowledge base in this coboose will drift the same way a copied style guide would.
-
-**In this PR**
-
-- `coboose context` / `prepare` list sibling knowledge dirs and files.
-- `templates/feature-note.md` is the short template Copilot copies *into the sibling*.
+- Discover sibling `docs/features`, ADRs, and optional `knowledge.dirs` on a `repositories.yml` entry.
+- Feature-note template copied *into the sibling*. Implementer reminds only on user-visible changes.
 - `docs/knowledge.md` is the convention.
 
 **Worth adding next**
 
-- Implementer reminder only when the diff adds user-visible behavior, not on every lint fix.
 - After a feature note lands, offer a *scoped* Graphify refresh in that repo.
-- Optional `knowledge.dirs` override on a `repositories.yml` entry if a monorepo keeps notes somewhere else.
 - Confluence later, and only for specs that already live there — never as the implementation source of truth.
 
-## 5. Local stack start
+## 5. Day-to-day ticket loop
+
+This is the slice people feel after onboarding: prepare is not enough once work starts.
+
+**Shipped**
+
+- `coboose status` — branch, dirty, ahead/behind, Graphify staleness, “you opened a single folder” hint.
+- `coboose branch PROJ-123` — same Jira-key branch in each sibling; `--create` only on a clean tree.
+- `prepare` `done_when` — ticket acceptance criteria + each repo's verify commands + coboose invariants.
+- `/handoff` + `coboose handoff write/latest` — session notes under `handoffs/` (gitignored).
+- `coboose jira mine` — unresolved issues assigned to the current user.
+
+**Worth adding next**
+
+- `coboose pr PROJ-123` — one draft PR per dirty sibling via `gh`, body from `prepare` JSON + that repo's diff. Still no mega-PR.
+- Secret scan of the sibling diff before commit (`.env`, tokens, private keys). Instructions are not a sandbox.
+
+## 6. Local stack start
 
 Workspaces mix Java, Angular, and other apps. A single `docker-compose`-style "start everything" command fails for the reasons the stack is messy: start commands differ, some ports are only known after boot, and Angular `proxy.conf` files have to point at those live local backends.
 
-**In this PR**
+**Shipped**
 
 - `coboose start` inspects workspace siblings and prints a JSON plan: kind, command, port hint, proxy files, start order. It does **not** launch processes.
 - `/start-workspace` plus the workspace-start skill tell Copilot to start **one app at a time**: backends first, read the live port, rewrite frontend proxies in the working tree, then start UIs.
@@ -97,13 +98,15 @@ Workspaces mix Java, Angular, and other apps. A single `docker-compose`-style "s
 
 ## Other ideas (when you are ready)
 
-These are separate from the three themes but fit the same coboose:
+These are separate from the themes above but fit the same coboose:
 
-- **`/handoff`** — write a session note under `handoffs/` in the coboose (not in product repos) so the next chat can resume without re-fetching the world.
-- **Jira write path** — `coboose jira comment` / transition, still CLI-only, still no token in chat. Wait until read-only onboarding is boringly reliable.
-- **Definition of done** — prepare JSON grows a `done_when` list from the ticket’s acceptance criteria plus each repo’s verify commands.
-- **Branch names** — `coboose branch PROJ-123` creates the same prefix in each matched sibling.
-- **PR body** — a prompt that reads `prepare` JSON and the sibling diff, then opens one PR per repo.
-- **Confluence** — only if ticket descriptions are routinely incomplete and the real spec lives there. Same rule as Jira: CLI or MCP, never raw tokens in chat.
+- **Jira write path** — `coboose jira comment` / transition, still CLI-only, still no token in chat. Wait until read-only onboarding stays boringly reliable.
+- **Worktrees** — `coboose worktree PROJ-123` so Implementer does not dirty a shared checkout that someone else has open.
+- **Personal overlay** — optional gitignored `repositories.local.yml` for extra remotes you do not want to commit.
+- **Sparse / partial clone hints** — for a huge monorepo, `clone` can suggest `git clone --filter=blob:none` / sparse-checkout of the package Graphify named. Do not invent the sparse paths here.
+- **Pinned SHAs** — a `lock` file of sibling commit SHAs so a Cloud Agent / eval run is reproducible. Optional, not for daily work.
+- **CI awareness** — `gh pr checks` per sibling before anyone says “ship it.” GitHub MCP is fine; Jira MCP is not.
+- **MCP allowlist in instructions** — say explicitly: GitHub MCP okay, Jira MCP never. Stops a well-meaning teammate from installing Atlassian MCP “to help.”
+- **Assignment board in chat** — `/mine` prompt that runs `jira mine` then `prepare` on the chosen key. Thin wrapper; only add if people keep forgetting the command.
 
 When you have the next batch of ideas, we can add them here and promote one slice at a time.

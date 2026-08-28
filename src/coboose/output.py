@@ -17,6 +17,10 @@ def to_text(payload: Any) -> str:
         return _issue_text(payload)
     if isinstance(payload, dict) and "issue" in payload and "routing" in payload:
         return _prepare_text(payload)
+    if isinstance(payload, dict) and "dirty_repos" in payload and "repos" in payload:
+        return _status_text(payload)
+    if isinstance(payload, dict) and "steps" in payload and "token_docs" in payload:
+        return _init_text(payload)
     if isinstance(payload, dict) and "templates" in payload and "manifest" in payload:
         return _templates_text(payload)
     if isinstance(payload, dict) and "template" in payload and "manifest" in payload:
@@ -39,6 +43,10 @@ def to_text(payload: Any) -> str:
 def to_markdown(payload: Any) -> str:
     if isinstance(payload, dict) and "issue" in payload and "routing" in payload:
         return _prepare_markdown(payload)
+    if isinstance(payload, dict) and "dirty_repos" in payload and "repos" in payload:
+        return _status_markdown(payload)
+    if isinstance(payload, dict) and "steps" in payload and "token_docs" in payload:
+        return _init_text(payload)
     if isinstance(payload, dict) and "key" in payload and "summary" in payload:
         return _issue_markdown(payload)
     if isinstance(payload, dict) and "templates" in payload and "manifest" in payload:
@@ -114,6 +122,13 @@ def _prepare_text(payload: dict[str, Any]) -> str:
         lines.append(
             "Missing repos: " + ", ".join(item["id"] for item in missing)
         )
+    if routing.get("suggested_branch"):
+        lines.append(f"Branch: {routing['suggested_branch']}")
+    done_when = payload.get("done_when") or []
+    if done_when:
+        lines.append("Done when:")
+        for item in done_when:
+            lines.append(f"- {item.get('text')}")
     return "\n".join(lines).strip() + "\n"
 
 
@@ -139,11 +154,64 @@ def _prepare_markdown(payload: dict[str, Any]) -> str:
     for repo in routing.get("repos") or []:
         state = "cloned" if repo.get("cloned") else "missing"
         lines.append(f"- `{repo['id']}` ({state}) — `{repo['path']}`")
+    if routing.get("suggested_branch"):
+        lines.append(f"- **Branch:** `{routing['suggested_branch']}`")
+    done_when = payload.get("done_when") or []
+    if done_when:
+        lines.extend(["", "### Done when", ""])
+        for item in done_when:
+            lines.append(f"- {item.get('text')}")
     next_steps = payload.get("next_steps") or []
     if next_steps:
         lines.extend(["", "### Next steps", ""])
         for index, step in enumerate(next_steps, start=1):
             lines.append(f"{index}. {step}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _status_text(payload: dict[str, Any]) -> str:
+    lines = ["Sibling status", ""]
+    hint = (payload.get("cwd_hint") or {}).get("detail")
+    if hint:
+        lines.append(hint)
+        lines.append("")
+    for repo in payload.get("repos") or []:
+        name = repo.get("id") or repo.get("name")
+        git = repo.get("git") or {}
+        if not repo.get("cloned"):
+            loc = f" ({repo['relpath']})" if repo.get("relpath") and repo.get("relpath") != name else ""
+            lines.append(f"- {name}{loc}: not cloned")
+            continue
+        flags = []
+        if git.get("dirty"):
+            flags.append("dirty")
+        if git.get("behind"):
+            flags.append(f"behind {git['behind']}")
+        if git.get("ahead"):
+            flags.append(f"ahead {git['ahead']}")
+        if (repo.get("graphify") or {}).get("stale"):
+            flags.append("graph stale")
+        extra = f" ({', '.join(flags)})" if flags else ""
+        loc = f" [{repo['relpath']}]" if repo.get("relpath") and repo.get("relpath") != name else ""
+        lines.append(f"- {name}{loc}: {git.get('branch') or '?'}{extra}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _status_markdown(payload: dict[str, Any]) -> str:
+    return "```text\n" + _status_text(payload) + "```\n"
+
+
+def _init_text(payload: dict[str, Any]) -> str:
+    lines = ["Harness init", ""]
+    for step in payload.get("steps") or []:
+        mark = "x" if step.get("ok") else " "
+        extra = f" — {step.get('action')}" if step.get("action") and not step.get("ok") else ""
+        lines.append(f"- [{mark}] {step.get('detail')}{extra}")
+    commands = payload.get("next_commands") or []
+    if commands:
+        lines.extend(["", "Next:"])
+        for command in commands:
+            lines.append(f"  {command}")
     return "\n".join(lines).strip() + "\n"
 
 

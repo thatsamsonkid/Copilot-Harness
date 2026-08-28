@@ -34,7 +34,7 @@ Run these from the coboose repo. After `cd` into a sibling, `uv run coboose` can
 5. `JIRA_API_TOKEN` — they create it using `docs/jira-api-token.md` and store it with `uv run coboose jira login` (macOS Keychain or Windows Credential Manager). Use `keychain_guide.macos` or `keychain_guide.windows` from `coboose init` for GUI steps. Do not put it in chat. `.env` is only a fallback.
 6. Any other `env.variables` row from `coboose init` / `catalog/env.yaml` where `ok` is false. Non-secrets: edit `.env`. Secrets: `uv run coboose env set NAME` in their terminal. Do not put values in `.code-workspace` files.
 7. `repositories.yml` — replace `YOUR_ORG` placeholder remotes.
-8. `./scripts/clone-repos.sh` then `uv run coboose workspace generate`.
+8. `./scripts/clone-repos.sh` then `uv run coboose workspace generate`. `setup.sh` / `setup.ps1` already end by running `coboose init`.
 
 ## Hard rules
 

@@ -61,8 +61,40 @@ def test_clone_dry_run_and_doctor(coboose_root: Path, capsys, monkeypatch):
     assert any(check["name"] == "uv" for check in doctor["checks"])
     assert "onboarding" in doctor
     assert "uv" in doctor
+    assert any(check["name"] == "env_age" for check in doctor["checks"])
+    assert any(check["name"] == "graphify_cli" for check in doctor["checks"])
+    assert "env_age" in doctor
     assert doctor["invoke"]["cwd"] == str(coboose_root.resolve())
     assert "--project" in doctor["invoke"]["command"]
+
+
+def test_jira_mine_uses_current_user_jql(coboose_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(coboose_root)
+    monkeypatch.setenv("JIRA_BASE_URL", "https://acme.atlassian.net")
+    monkeypatch.setenv("JIRA_EMAIL", "a@b.com")
+    monkeypatch.setenv("JIRA_API_TOKEN", "tok")
+
+    class FakeClient:
+        def search(self, jql, max_results=25):
+            assert "currentUser()" in jql
+            return [{"key": "WEB-1", "summary": "Mine"}]
+
+    monkeypatch.setattr("coboose.cli._client", lambda: FakeClient())
+    assert main(["--root", str(coboose_root), "jira", "mine"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["issues"][0]["key"] == "WEB-1"
+
+
+def test_root_flag_works_before_or_after_subcommand(
+    coboose_root: Path, capsys, monkeypatch
+):
+    monkeypatch.chdir("/")
+    assert main(["--root", str(coboose_root), "repos"]) == 0
+    before = json.loads(capsys.readouterr().out)
+    assert main(["repos", "--root", str(coboose_root)]) == 0
+    after = json.loads(capsys.readouterr().out)
+    assert before["sibling_root"] == after["sibling_root"]
+    assert before["sibling_root"] == str(coboose_root.parent.resolve())
 
 
 def test_error_is_json_on_stderr(coboose_root: Path, capsys, monkeypatch):

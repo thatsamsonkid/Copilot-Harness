@@ -38,14 +38,14 @@ Clones stay **outside** this repository so we never nest git trees here. `group:
 
 Put this repo inside a project folder (for example `~/src/Coboose`), not at the filesystem root. `parent_dir: ..` must resolve to that project folder so clones land next to the coboose.
 
-## Quick start
+## New laptop
 
 ```bash
-# macOS / Linux
-./scripts/setup.sh
-
-# Windows (PowerShell)
-.\scripts\setup.ps1
+./scripts/setup.sh          # Windows: .\scripts\setup.ps1
+# edit .env and repositories.yml
+./scripts/clone-repos.sh
+uv run coboose workspace generate
+# Copilot Chat: /get-started
 ```
 
 If `uv` is not installed yet, `/get-started` and `coboose init` will say so and point at [docs/install-uv.md](docs/install-uv.md) for the macOS or Windows command.
@@ -97,8 +97,9 @@ repositories:
 | `path` | no | Exact destination under `parent_dir`. May be nested (`frontend/shop-web`). Defaults to `name`, or `group/name` when `group` is set |
 | `default_branch` | no | Defaults to `main` |
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
+| `knowledge` | no | `{ dirs: [handbook] }` extra folders to treat as feature notes |
 
-`catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
+`catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
 
 One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this coboose.
 
@@ -205,11 +206,15 @@ uv run coboose env list
 uv run coboose init
 uv run coboose jira schema
 uv run coboose jira whoami
+uv run coboose jira mine
 uv run coboose jira get PROJ-123
 uv run coboose jira context PROJ-123
 uv run coboose jira search 'project = PROJ AND status != Done'
 uv run coboose prepare PROJ-123
 uv run coboose context
+uv run coboose status
+uv run coboose branch PROJ-123
+uv run coboose handoff write --issue PROJ-123 --note "Resume at the API contract."
 uv run coboose start --workspace frontend
 uv run coboose start run --repo backend --dry-run   # keys + redacted exec_command
 uv run coboose start env --repo backend
@@ -220,7 +225,9 @@ The CLI never prints the raw Jira REST payload. `catalog/stack.yaml` `jira.field
 
 The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 
-`prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, and print the `code` command that opens the matching workspace.
+`prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, print the `code` command that opens the matching workspace, and attach `done_when` (ticket acceptance criteria + each repo's verify commands + coboose invariants).
+
+`status` is a read-only git snapshot of every sibling (branch, dirty, ahead/behind, Graphify staleness). `branch PROJ-123` suggests the same Jira-key branch in each clone; `--create` only runs on a clean tree. `handoff` writes a gitignored session note under `handoffs/` so the next chat can resume without re-fetching the world. `jira mine` lists unresolved issues assigned to you.
 
 `coboose start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files, redacted `launch.json` names and env keys). It does not launch processes. After the first good plan, pin it next to the workspace with `coboose start --workspace <id> --save`. That writes `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. When a repo keeps args or secrets in `.vscode/launch.json`, the plan sets `run_via: coboose` and Copilot runs `coboose start run --repo <name>` so those values stay in-process (or the user uses VS Code **Run Without Debugging**). `start run` applies env to the child process only. `coboose start env --repo <name>` lists keys and collisions; `--shell` execs a terminal that already has the values. Application keys are unprefixed by default (same names as VS Code). `--keep-existing` leaves current terminal values alone; `--prefix BACKEND` is opt-in namespacing and will not satisfy an app looking up `DB_PASSWORD`. Do not put `start:` on `repositories.yml` entries — edit the workspace plan when discovery is wrong.
 
@@ -245,6 +252,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
 | `.github/skills/workspace-start/SKILL.md` | Local stack plan + sequential start (`/start-workspace`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
+| `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
@@ -255,6 +263,9 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |
 | `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
+| `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
+| `.github/prompts/handoff.prompt.md` | `/handoff` |
+| `.github/prompts/review.prompt.md` | `/review` |
 
 The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
 
@@ -269,11 +280,12 @@ Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `doc
 Typical loop:
 
 1. New machine: `/get-started` (or `uv run coboose init --interactive` in a terminal)
-2. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli`
-3. Copilot runs `coboose prepare PROJ-123`
+2. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli` — or ask `jira mine` for assigned work
+3. Copilot runs `coboose prepare PROJ-123` and `coboose status`
 4. You open the recommended `.code-workspace` so every needed repo is a root
 5. To run the local apps: `/start-workspace` (or `uv run coboose start --workspace <id>`). Save the sequence once with `--save` so later chats reuse `workspaces/<id>.start.yml`.
 6. Copilot writes a plan (using Graphify reports and each repo's instructions when present), then hands off to Implementer when you are ready
+7. Pause with `/handoff`. Review with `/review` against `done_when`.
 
 To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.
 

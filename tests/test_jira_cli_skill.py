@@ -39,6 +39,7 @@ def test_skill_body_is_the_cli_contract():
         "jira get",
         "jira context",
         "jira search",
+        "jira mine",
         "jira schema",
         "jira whoami",
         "jira login",

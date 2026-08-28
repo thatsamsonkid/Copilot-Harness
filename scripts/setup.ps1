@@ -25,7 +25,8 @@ if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
 }
 
 uv run coboose workspace generate
-Write-Host "Setup complete."
+Write-Host "Setup complete. First-run checklist:"
+uv run coboose init --format text
 Write-Host "Next:"
 Write-Host "  1. Create a Jira API token (docs/jira-api-token.md), set email/URL in .env,"
 Write-Host "     then run: uv run coboose jira login"
