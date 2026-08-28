@@ -78,8 +78,9 @@ def test_jira_mine_uses_current_user_jql(coboose_root: Path, capsys, monkeypatch
     monkeypatch.setenv("JIRA_API_TOKEN", "tok")
 
     class FakeClient:
-        def search(self, jql, max_results=25):
+        def search(self, jql, max_results=25, settings=None):
             assert "currentUser()" in jql
+            assert settings is not None
             return [{"key": "WEB-1", "summary": "Mine"}]
 
     monkeypatch.setattr("coboose.cli._client", lambda: FakeClient())
