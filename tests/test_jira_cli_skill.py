@@ -48,5 +48,7 @@ def test_skill_body_is_the_cli_contract():
         "routing.open_command",
         "jira.fields",
         "do not pass `--clone-missing`",
+        "failed to spawn",
+        "--project",
     ):
         assert token in lowered

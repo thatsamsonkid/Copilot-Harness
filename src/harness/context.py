@@ -72,6 +72,10 @@ def collect_context(
             "Do not start a second wiki in the harness.",
             "Do not copy product standards into the harness. Do not rebuild a graph "
             "unless the user asked.",
+            "To start local apps in this workspace, run `harness start` "
+            "(see the workspace-start skill). That command prints a plan; "
+            "it does not launch processes. Save the sequence once with "
+            "`harness start --workspace <id> --save`.",
         ],
     }
 
@@ -85,6 +89,8 @@ def inspect_repo(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dict
         "name": repo.name,
         "id": repo.name,
         "path": str(path),
+        "relpath": repo.path,
+        "group": repo.group,
         "cloned": cloned,
         "placeholder": repo.is_placeholder,
         "tags": repo.tags,

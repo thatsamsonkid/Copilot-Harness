@@ -61,6 +61,8 @@ def test_clone_dry_run_and_doctor(harness_root: Path, capsys, monkeypatch):
     assert any(check["name"] == "uv" for check in doctor["checks"])
     assert "onboarding" in doctor
     assert "uv" in doctor
+    assert doctor["invoke"]["cwd"] == str(harness_root.resolve())
+    assert "--project" in doctor["invoke"]["command"]
 
 
 def test_error_is_json_on_stderr(harness_root: Path, capsys, monkeypatch):

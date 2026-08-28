@@ -42,5 +42,6 @@ def test_skill_keeps_tokens_out_of_chat():
         "macos",
         "windows",
         "setup.ps1",
+        "cannot spawn",
     ):
         assert token in lowered

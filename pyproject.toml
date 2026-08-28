@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "copilot-harness"
 version = "0.1.0"
-description = "VS Code + GitHub Copilot harness for sibling multi-repo workspaces, project templates, and Jira Cloud"
+description = "VS Code + GitHub Copilot harness for multi-repo workspaces, project templates, and Jira Cloud"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

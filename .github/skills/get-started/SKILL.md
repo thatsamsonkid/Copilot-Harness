@@ -9,6 +9,8 @@ This skill is the first-run contract. Site URL and email stay in `.env`. The API
 
 ## Commands
 
+Run these from the harness repo. After `cd` into a sibling, `uv run harness` cannot spawn — use `uv run --project "$HARNESS_ROOT" harness …` or `./scripts/harness.sh`.
+
 | User intent | Command |
 | --- | --- |
 | Check uv | `uv --version` |
@@ -51,5 +53,6 @@ This skill is the first-run contract. Site URL and email stay in `.env`. The API
 | 401 / 403 | Rotate the token on the Atlassian page and run `uv run harness jira login` again |
 | Placeholder clone URLs | Edit `repositories.yml`; do not invent remotes |
 | `whoami` ever includes a token | Stop. Treat it as a leak. |
+| `Failed to spawn: harness` | Cwd is a sibling clone. Re-run from this repo or `uv run --project "$HARNESS_ROOT" harness …` |
 
 After `ready` is true, point them at `/jira-ticket` or `/orient`.

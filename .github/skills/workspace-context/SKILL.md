@@ -5,15 +5,18 @@ description: Discover Graphify graphs, instruction files, feature notes/ADRs, an
 
 # Workspace context
 
-Product code lives in sibling clones. Those repos may already have Graphify output and their own Copilot instructions. The harness only discovers them.
+Product code lives in clones next to this harness (flat siblings or grouped folders such as `frontend/shop-web`). Those repos may already have Graphify output and their own Copilot instructions. The harness only discovers them.
 
 ## Commands
+
+Run these from the harness repo. After `cd` into a sibling, use `uv run --project "$HARNESS_ROOT" harness …` or `./scripts/harness.sh` — bare `uv run harness` cannot spawn from a product clone.
 
 | User intent | Command |
 | --- | --- |
 | All enabled repos | `uv run harness context --format json` |
 | One or more repos | `uv run harness context --repo frontend,backend --format json` |
 | Ticket plus routing | `uv run harness prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`) |
+| Local stack start plan | `uv run harness start --format json` (see the workspace-start skill). Saved sequences live in `workspaces/<id>.start.yml`. |
 
 ## Vague or low-context prompts
 
@@ -34,6 +37,6 @@ The harness does not own product patterns.
 
 ## Hard rules
 
-- Stay in the listed sibling folders. Never nest clones inside the harness.
+- Stay in the listed clone folders (including grouped paths). Never nest clones inside the harness.
 - Do not grep a large monorepo as the first move when a graph or instruction file exists.
 - Do not print `.env` or Jira tokens.

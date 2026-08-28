@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 
 from harness import HarnessError
-from harness.catalog import Catalog, Repo
+from harness.catalog import Catalog, Repo, parse_project_destination, paths_collide
 from harness.clone import RunFn, clone_one, rewrite_clone_url
 from harness.templates import Template, get_template, template_to_dict
 
@@ -19,6 +19,7 @@ def bootstrap_project(
     *,
     template_name: str,
     dest_name: str | None = None,
+    group: str | None = None,
     register: bool = False,
     remote: str | None = None,
     tags: list[str] | None = None,
@@ -40,12 +41,16 @@ def bootstrap_project(
     if not template.enabled:
         raise HarnessError(f"Template {template.name} is disabled")
 
-    project_name = (dest_name or template.name).strip()
-    _validate_project_name(project_name)
+    dest_raw = (dest_name or template.name).strip()
+    project_name, project_path, project_group = parse_project_destination(
+        dest_raw, group
+    )
 
     sibling_root = catalog.require_safe_sibling_root(harness_root)
-    dest = sibling_root / project_name
-    if dest.resolve() == harness_root.resolve():
+    dest = sibling_root / project_path
+    dest_resolved = dest.resolve()
+    harness = harness_root.resolve()
+    if dest_resolved == harness or harness in dest_resolved.parents:
         raise HarnessError("Refusing to bootstrap onto the harness repo itself")
     if dest.exists():
         raise HarnessError(
@@ -53,13 +58,19 @@ def bootstrap_project(
         )
 
     colliding = [repo.name for repo in catalog.repos if repo.name == project_name]
-    if colliding and register:
+    path_colliding = [
+        repo.name
+        for repo in catalog.repos
+        if paths_collide(repo.path, project_path)
+    ]
+    if (colliding or path_colliding) and register:
+        conflict = colliding[0] if colliding else path_colliding[0]
         raise HarnessError(
-            f"{project_name} is already listed in repositories.yml. "
-            "Pick a different --name or update the manifest by hand."
+            f"{conflict} already occupies this name or path in repositories.yml. "
+            "Pick a different --name / --group or update the manifest by hand."
         )
 
-    repo = template.as_repo(project_name)
+    repo = template.as_repo(project_name, path=project_path, group=project_group)
     clone_record = clone_one(
         repo,
         dest,
@@ -97,17 +108,20 @@ def bootstrap_project(
         register_repo = Repo(
             name=project_name,
             url=origin_url or f"git@github.com:YOUR_ORG/{project_name}.git",
-            path=project_name,
+            path=project_path,
             default_branch=template.default_branch,
             description=template.description,
             tags=tags or list(template.tags),
             enabled=True,
+            group=project_group,
         )
         if dry_run:
             register_record = {
                 "action": "register",
                 "name": register_repo.name,
                 "url": register_repo.url,
+                "path": register_repo.path,
+                "group": register_repo.group,
                 "tags": register_repo.tags,
                 "manifest": str(catalog.repos_source),
             }
@@ -119,6 +133,8 @@ def bootstrap_project(
         "template": template_to_dict(template),
         "project": {
             "name": project_name,
+            "group": project_group,
+            "relpath": project_path,
             "path": str(dest),
             "cloned": bool(clone_record.get("cloned")) and not dry_run,
             "action": "bootstrap" if clone_record.get("action") == "clone" else clone_record.get("action"),
@@ -174,19 +190,11 @@ def append_repository(path: Path, repo: Repo) -> dict[str, Any]:
         "action": "registered",
         "name": repo.name,
         "url": repo.url,
+        "path": repo.path,
+        "group": repo.group,
         "tags": repo.tags,
         "manifest": str(path),
     }
-
-
-def _validate_project_name(name: str) -> None:
-    if not name:
-        raise HarnessError("Project --name is required")
-    dest = Path(name)
-    if dest.is_absolute() or len(dest.parts) != 1 or dest.parts[0] in {".", ".."}:
-        raise HarnessError(
-            f"Project name must be a single sibling folder name: {name}"
-        )
 
 
 def _post_clone(
@@ -264,6 +272,11 @@ def _repo_yaml_entry(repo: Repo, indent: str = "  ") -> str:
         f"{field}url: {repo.url}",
         f"{field}tags: [{tags}]",
     ]
+    if repo.group:
+        lines.append(f"{field}group: {repo.group}")
+    derived = f"{repo.group}/{repo.name}" if repo.group else repo.name
+    if repo.path != derived:
+        lines.append(f"{field}path: {repo.path}")
     if repo.description:
         lines.append(f"{field}description: {_yaml_scalar(repo.description)}")
     return "\n".join(lines) + "\n"
@@ -293,7 +306,7 @@ def _next_steps(
     origin_url: str | None,
     remote_state: str,
 ) -> list[str]:
-    steps = [f"Open the new sibling project: code {dest}"]
+    steps = [f"Open the new project: code {dest}"]
     if not origin_url:
         steps.append(
             f"Add a GitHub remote when ready: git -C {dest} remote add origin "

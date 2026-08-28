@@ -29,6 +29,10 @@ def to_text(payload: Any) -> str:
         )
     if isinstance(payload, dict) and "template" in payload and "project" in payload:
         return _bootstrap_text(payload)
+    if isinstance(payload, dict) and "services" in payload and "order" in payload:
+        return _start_text(payload)
+    if _is_start_run_preview(payload):
+        return _start_run_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -49,6 +53,10 @@ def to_markdown(payload: Any) -> str:
         )
     if isinstance(payload, dict) and "template" in payload and "project" in payload:
         return _bootstrap_markdown(payload)
+    if isinstance(payload, dict) and "services" in payload and "order" in payload:
+        return _start_markdown(payload)
+    if _is_start_run_preview(payload):
+        return _start_run_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -186,6 +194,168 @@ def _templates_markdown(payload: dict[str, Any]) -> str:
                 "",
             ]
         )
+    return "\n".join(lines).strip() + "\n"
+
+
+def _start_text(payload: dict[str, Any]) -> str:
+    workspace = payload.get("workspace") or "all enabled repos"
+    lines = [f"Start plan ({workspace})", ""]
+    source = payload.get("plan_source")
+    plan_file = payload.get("plan_file")
+    if source == "saved" and plan_file:
+        lines.append(f"Saved sequence: {plan_file}")
+        lines.append("")
+    elif payload.get("workspace") and plan_file and not payload.get("plan_exists"):
+        lines.append(f"No saved sequence yet. Pin with --save → {plan_file}")
+        lines.append("")
+    invoke = payload.get("invoke") or {}
+    if invoke.get("command"):
+        lines.append(f"CLI: {invoke['command']}")
+        lines.append("")
+    services = payload.get("services") or []
+    if not services:
+        lines.append("No services in this plan.")
+        return "\n".join(lines).strip() + "\n"
+    for index, item in enumerate(services, start=1):
+        port = item.get("port_hint")
+        port_label = f"port {port}" if port else "port unknown"
+        blocked = f" BLOCKED: {item['blocked']}" if item.get("blocked") else ""
+        lines.append(
+            f"{index}. {item.get('name')} [{item.get('kind')}/{item.get('role')}] "
+            f"{item.get('command') or '(no command)'} ({port_label}){blocked}"
+        )
+        if item.get("run_via") and item.get("run_via") != "terminal":
+            lines.append(f"   run_via {item['run_via']}")
+        if item.get("copilot_command"):
+            lines.append(f"   copilot {item['copilot_command']}")
+        launch = item.get("launch") or {}
+        if launch.get("configuration"):
+            keys = ",".join(launch.get("env_keys") or [])
+            extra = f" env_keys={keys}" if keys else ""
+            lines.append(
+                f"   launch {launch['configuration']}{extra}"
+            )
+        for proxy in item.get("proxies") or []:
+            targets = ", ".join(
+                str(target.get("target"))
+                for target in (proxy.get("targets") or [])
+                if target.get("target")
+            )
+            suffix = f" -> {targets}" if targets else ""
+            lines.append(f"   proxy {proxy.get('relative')}{suffix}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _start_markdown(payload: dict[str, Any]) -> str:
+    workspace = payload.get("workspace") or "all enabled repos"
+    lines = [f"# Start plan (`{workspace}`)", ""]
+    source = payload.get("plan_source")
+    plan_file = payload.get("plan_file")
+    if source == "saved" and plan_file:
+        lines.append(f"Saved sequence: `{plan_file}`")
+        lines.append("")
+    elif payload.get("workspace") and plan_file and not payload.get("plan_exists"):
+        lines.append(f"No saved sequence yet. Pin with `--save` → `{plan_file}`")
+        lines.append("")
+    invoke = payload.get("invoke") or {}
+    if invoke.get("command"):
+        lines.extend(
+            [
+                f"CLI (any cwd): `{invoke['command']}`",
+                "",
+            ]
+        )
+    services = payload.get("services") or []
+    if not services:
+        lines.append("_No services in this plan._")
+        return "\n".join(lines).strip() + "\n"
+    for index, item in enumerate(services, start=1):
+        port = item.get("port_hint")
+        port_label = f"port `{port}`" if port else "port unknown until start"
+        command = f"`{item['command']}`" if item.get("command") else "_no command_"
+        lines.append(
+            f"{index}. **{item.get('name')}** ({item.get('kind')} / {item.get('role')}) "
+            f"— {command} — {port_label}"
+        )
+        if item.get("blocked"):
+            lines.append(f"   - Blocked: {item['blocked']}")
+        if item.get("run_via") and item.get("run_via") != "terminal":
+            lines.append(f"   - Run via: `{item['run_via']}`")
+        if item.get("copilot_command"):
+            lines.append(f"   - Copilot command: `{item['copilot_command']}`")
+        launch = item.get("launch") or {}
+        if launch.get("configuration") or launch.get("secret_risk"):
+            config = launch.get("configuration") or "launch.json"
+            keys = ", ".join(f"`{key}`" for key in (launch.get("env_keys") or []))
+            detail = f" (env keys: {keys})" if keys else ""
+            lines.append(f"   - Launch `{config}`{detail}")
+        for proxy in item.get("proxies") or []:
+            targets = ", ".join(
+                f"`{target.get('target')}`"
+                for target in (proxy.get("targets") or [])
+                if target.get("target")
+            )
+            detail = f" → {targets}" if targets else ""
+            lines.append(f"   - Proxy `{proxy.get('relative')}`{detail}")
+        for note in item.get("notes") or []:
+            lines.append(f"   - {note}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _is_start_run_preview(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and "name" in payload
+        and "command" in payload
+        and "applied_args" in payload
+        and "env_keys" in payload
+        and "services" not in payload
+    )
+
+
+def _start_run_text(payload: dict[str, Any]) -> str:
+    mode = "dry-run" if payload.get("dry_run") else "run"
+    lines = [f"Start {mode} ({payload.get('name')})", ""]
+    if payload.get("launch_configuration"):
+        lines.append(f"Launch: {payload['launch_configuration']}")
+    lines.append(f"cwd: {payload.get('cwd')}")
+    lines.append(f"command: {payload.get('command')}")
+    if payload.get("exec_command"):
+        lines.append(f"exec_command: {payload['exec_command']}")
+    if payload.get("applied_args") or payload.get("arg_count"):
+        lines.append(f"arg_count: {payload.get('arg_count', 0)}")
+    if payload.get("applied_vm_args") or payload.get("vm_arg_count"):
+        lines.append(f"vm_arg_count: {payload.get('vm_arg_count', 0)}")
+    if payload.get("java_tool_options"):
+        lines.append("java_tool_options: applied")
+    keys = payload.get("env_keys") or []
+    if keys:
+        lines.append(f"env_keys: {','.join(keys)}")
+    overwritten = payload.get("overwritten_keys") or []
+    if overwritten:
+        lines.append(f"overwritten: {','.join(overwritten)}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _start_run_markdown(payload: dict[str, Any]) -> str:
+    mode = "dry-run" if payload.get("dry_run") else "run"
+    lines = [f"# Start {mode} (`{payload.get('name')}`)", ""]
+    if payload.get("launch_configuration"):
+        lines.append(f"- **Launch:** `{payload['launch_configuration']}`")
+    lines.append(f"- **cwd:** `{payload.get('cwd')}`")
+    lines.append(f"- **command:** `{payload.get('command')}`")
+    if payload.get("exec_command"):
+        lines.append(f"- **exec_command:** `{payload['exec_command']}`")
+    if payload.get("applied_args") or payload.get("arg_count"):
+        lines.append(f"- **arg_count:** {payload.get('arg_count', 0)}")
+    if payload.get("applied_vm_args") or payload.get("vm_arg_count"):
+        lines.append(f"- **vm_arg_count:** {payload.get('vm_arg_count', 0)}")
+    if payload.get("java_tool_options"):
+        lines.append("- **java_tool_options:** applied")
+    keys = payload.get("env_keys") or []
+    if keys:
+        lines.append("- **env_keys:** " + ", ".join(f"`{key}`" for key in keys))
     return "\n".join(lines).strip() + "\n"
 
 

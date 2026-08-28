@@ -20,6 +20,7 @@ from harness.paths import find_harness_root, load_dotenv_files
 from harness.prepare import prepare_issue
 from harness.prompt import PromptSession
 from harness.routing import recommend_workspace
+from harness.start import collect_start_plan, execute_start_env, execute_start_run
 from harness.templates import get_template, template_to_dict, templates_payload
 from harness.workspace import generate_workspaces, list_workspaces, open_workspace
 from harness.workspace_create import create_workspace
@@ -61,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="harness",
         description=(
-            "Clone sibling git repos, bootstrap projects from listed templates, "
+            "Clone product git repos, bootstrap projects from listed templates, "
             "query Jira Cloud with basic auth, and create or select a feature "
             "VS Code workspace."
         ),
@@ -73,7 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     clone = sub.add_parser(
         "clone",
         parents=[shared],
-        help="Clone repositories.yml remotes as siblings of the harness",
+        help="Clone repositories.yml remotes under parent_dir (outside this harness)",
     )
     clone.add_argument("--only", help="Comma-separated repository names")
     clone.add_argument("--tag", help="Comma-separated tags from repositories.yml")
@@ -200,6 +201,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated tags; include every matching repositories.yml entry",
     )
     workspace_create.add_argument(
+        "--personal",
+        dest="personal",
+        action="store_true",
+        default=None,
+        help=(
+            "Create a local-only workspace under workspaces/personal/ "
+            "(gitignored). Does not edit catalog/stack.yaml"
+        ),
+    )
+    workspace_create.add_argument(
+        "--shared",
+        dest="personal",
+        action="store_false",
+        help=(
+            "Add the workspace to catalog/stack.yaml and workspaces/ "
+            "for everyone (default)"
+        ),
+    )
+    workspace_create.add_argument(
         "--include-harness",
         dest="include_harness",
         action="store_true",
@@ -293,6 +313,77 @@ def build_parser() -> argparse.ArgumentParser:
     )
     context.add_argument("--repo", help="Comma-separated repository names")
 
+    start = sub.add_parser(
+        "start",
+        parents=[shared],
+        help=(
+            "Print a workspace start plan, or run one repo without leaking "
+            "launch env. Prefer a saved workspaces/<id>.start.yml when present"
+        ),
+    )
+    start.add_argument(
+        "action",
+        nargs="?",
+        choices=("run", "env"),
+        help=(
+            "Omit for a plan. `run` starts one repo with launch.json env "
+            "loaded in-process. `env` applies that repo's env (keys only "
+            "on stdout; `--shell` execs a terminal that has the values)"
+        ),
+    )
+    start.add_argument("--workspace", help="Limit the plan to a catalog workspace id")
+    start.add_argument("--repo", help="Comma-separated repository names")
+    start.add_argument(
+        "--save",
+        action="store_true",
+        help=(
+            "Write the current sequence to workspaces/<id>.start.yml "
+            "(requires --workspace)"
+        ),
+    )
+    start.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Ignore a saved workspace plan and rediscover from sibling clones",
+    )
+    start.add_argument(
+        "--configuration",
+        help="launch.json configuration name for `start run`",
+    )
+    start.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "For `start run`, print the redacted exec_command, arg counts, "
+            "and env keys without launching. For `start env --shell`, "
+            "preview keys only"
+        ),
+    )
+    start.add_argument(
+        "--shell",
+        action="store_true",
+        help=(
+            "For `start env`, exec an interactive shell with that repo's "
+            "launch env applied. Values are not printed"
+        ),
+    )
+    start.add_argument(
+        "--prefix",
+        help=(
+            "Optional prefix for applied launch keys (example: BACKEND). "
+            "Default is none so apps see the same names as VS Code. "
+            "A trailing underscore is added if missing"
+        ),
+    )
+    start.add_argument(
+        "--keep-existing",
+        action="store_true",
+        help=(
+            "Do not overwrite env keys already set in this terminal. "
+            "Collisions are reported as skipped_keys"
+        ),
+    )
+
     templates = sub.add_parser(
         "templates",
         parents=[shared],
@@ -308,7 +399,7 @@ def build_parser() -> argparse.ArgumentParser:
     bootstrap = sub.add_parser(
         "bootstrap",
         parents=[shared],
-        help="Clone a listed template as a new sibling project",
+        help="Clone a listed template as a new project under parent_dir",
     )
     bootstrap.add_argument(
         "template",
@@ -322,7 +413,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     bootstrap.add_argument(
         "--name",
-        help="New sibling folder name (defaults to the template name)",
+        help="Project id or destination under parent_dir (frontend/shop-web)",
+    )
+    bootstrap.add_argument(
+        "--group",
+        help="Organize the clone under parent_dir/<group>/<name> (frontend, backend, …)",
     )
     bootstrap.add_argument(
         "--register",
@@ -420,6 +515,54 @@ def dispatch(args: argparse.Namespace) -> Any:
             harness_root,
             only=_split_ids(args.repo),
         )
+    if args.command == "start":
+        if args.action == "run":
+            if args.shell:
+                raise HarnessError(
+                    "harness start run starts the app. "
+                    "Use `start env --repo <name> --shell` to apply env in a terminal."
+                )
+            repos = _split_ids(args.repo) or []
+            if len(repos) != 1:
+                raise HarnessError("harness start run requires exactly one --repo")
+            payload = execute_start_run(
+                catalog,
+                harness_root,
+                repos[0],
+                configuration=args.configuration,
+                dry_run=args.dry_run,
+                prefix=args.prefix,
+                keep_existing=args.keep_existing,
+            )
+            if args.dry_run:
+                return payload
+            raise SystemExit(int(payload.get("exit_code") or 0))
+        if args.action == "env":
+            repos = _split_ids(args.repo) or []
+            if len(repos) != 1:
+                raise HarnessError("harness start env requires exactly one --repo")
+            if args.save:
+                raise HarnessError("harness start env does not write a start plan")
+            payload = execute_start_env(
+                catalog,
+                harness_root,
+                repos[0],
+                configuration=args.configuration,
+                prefix=args.prefix,
+                keep_existing=args.keep_existing,
+                shell=bool(args.shell) and not args.dry_run,
+            )
+            if args.shell and not args.dry_run:
+                raise SystemExit(0)
+            return payload
+        return collect_start_plan(
+            catalog,
+            harness_root,
+            workspace_id=args.workspace,
+            only=_split_ids(args.repo),
+            save=args.save,
+            refresh=args.refresh,
+        )
     if args.command == "catalog":
         return catalog_to_dict(catalog, harness_root)
     if args.command == "repos":
@@ -509,6 +652,7 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, harness_root: Pa
             folders=_split_ids(args.projects),
             tags=_split_ids(args.tag),
             include_harness=args.include_harness,
+            personal=args.personal,
             fallback=args.fallback,
             match_projects=_split_ids(args.match_projects),
             match_components=_split_ids(args.match_components),
@@ -566,6 +710,7 @@ def _dispatch_bootstrap(args: argparse.Namespace, catalog: Any, harness_root: Pa
         harness_root,
         template_name=template_name,
         dest_name=args.name,
+        group=args.group,
         register=args.register,
         remote=args.remote,
         tags=_split_ids(args.tags),

@@ -76,4 +76,6 @@ uv run harness init
 uv run harness doctor
 ```
 
+Those `uv run harness` commands must run from this repo. If the shell is already in a sibling clone, use `uv run --project <path-to-this-repo> harness …` or `./scripts/harness.sh` (Windows: `.\scripts\harness.ps1`).
+
 If `uv` is still not found, the installer put the binary in `~/.local/bin` (macOS/Linux) or `%USERPROFILE%\.local\bin` (Windows). Open a new terminal, or add that directory to PATH, then retry.

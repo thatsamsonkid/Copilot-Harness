@@ -9,6 +9,7 @@ from harness import HarnessError
 from harness.catalog import Catalog
 from harness.context import inspect_repo
 from harness.envspec import list_env
+from harness.invoke import invoke_spec
 from harness.jira_client import JiraClient, jira_settings_from_env
 from harness.keychain import (
     SOURCE_ENV,
@@ -124,6 +125,8 @@ def run_doctor(
             {
                 "id": repo.id,
                 "path": str(path),
+                "relpath": repo.path,
+                "group": repo.group,
                 "cloned": cloned,
                 "placeholder": repo.is_placeholder,
             }
@@ -265,6 +268,7 @@ def run_doctor(
         "keychain_guide": storage_guides(),
         "env": env_payload,
         "uv": uv,
+        "invoke": invoke_spec(harness_root),
         "checks": checks,
         "onboarding": steps,
     }

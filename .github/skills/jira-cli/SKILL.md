@@ -10,7 +10,7 @@ This workspace talks to Jira Cloud only through the `harness` CLI. There is no J
 
 ## Hard rules
 
-- Run `uv run harness <command>` from the harness repo (or `./scripts/harness.sh`). If `uv` is missing, follow `docs/install-uv.md` (macOS/Linux: `./scripts/setup.sh`; Windows: `.\scripts\setup.ps1`).
+- Run `uv run harness <command>` from the harness repo (or `./scripts/harness.sh` / `.\scripts\harness.ps1`). If you already `cd`'d into a sibling, use `uv run --project "$HARNESS_ROOT" harness <command>` — bare `uv run harness` cannot spawn there. If `uv` is missing, follow `docs/install-uv.md` (macOS/Linux: `./scripts/setup.sh`; Windows: `.\scripts\setup.ps1`).
 - Default `--format` is `json`. Keep JSON. Read stdout. Errors are JSON on stderr with a non-zero exit.
 - Treat CLI JSON as complete. It is already filtered by `catalog/stack.yaml` `jira.fields`. Do not ask Jira for more fields.
 - Never curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
@@ -78,12 +78,14 @@ This skill is the CLI contract, not an implementer.
 | 401 / 403 from the CLI | Tell them to rotate the Atlassian API token and run `uv run harness jira login` |
 | Placeholder clone URLs | Tell them to edit `repositories.yml`; do not invent remotes |
 | `uv` missing | `docs/install-uv.md` — macOS/Linux `setup.sh`, Windows `setup.ps1` |
+| `Failed to spawn: harness` / no `pyproject.toml` | Cwd is a sibling. Re-run from the harness folder or `uv run --project "$HARNESS_ROOT" harness …` |
 
 ## Related Copilot customizations
 
 - Always-on rules: `.github/copilot-instructions.md`
 - First-run setup: get-started skill or `/get-started`
 - Vague / large-repo orientation: workspace-context skill or `/orient`
+- Local stack start: workspace-start skill or `/start-workspace`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
 - Create a feature workspace: Workspace Creator agent or `/new-workspace`
 - Implement an agreed plan: Implementer agent

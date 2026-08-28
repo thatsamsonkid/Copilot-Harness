@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -8,7 +9,14 @@ import yaml
 
 from harness import HarnessError
 from harness.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
-from harness.paths import ENV_RELATIVE, REPOS_RELATIVE, STACK_RELATIVE, TEMPLATES_RELATIVE
+from harness.paths import (
+    ENV_RELATIVE,
+    PERSONAL_WORKSPACES_DIR,
+    REPOS_RELATIVE,
+    STACK_RELATIVE,
+    TEMPLATES_RELATIVE,
+    WORKSPACES_DIR,
+)
 
 if TYPE_CHECKING:
     from harness.envspec import EnvVar
@@ -54,6 +62,7 @@ class Repo:
     tags: list[str] = field(default_factory=list)
     enabled: bool = True
     graphify: GraphifyConfig = field(default_factory=GraphifyConfig)
+    group: str = ""
 
     @property
     def id(self) -> str:
@@ -84,6 +93,7 @@ class Workspace:
     include_harness: bool = True
     fallback: bool = False
     env: list[str] = field(default_factory=list)
+    personal: bool = False
     match: WorkspaceMatch = field(default_factory=WorkspaceMatch)
 
 
@@ -176,7 +186,13 @@ class Catalog:
     def workspace_file(self, harness_root: Path, workspace: Workspace | str) -> Path:
         if isinstance(workspace, str):
             workspace = self.workspace(workspace)
-        return harness_root / "workspaces" / f"{workspace.id}.code-workspace"
+        directory = PERSONAL_WORKSPACES_DIR if workspace.personal else WORKSPACES_DIR
+        return harness_root / directory / f"{workspace.id}.code-workspace"
+
+    def workspace_start_file(self, harness_root: Path, workspace: Workspace | str) -> Path:
+        """YAML start sequence saved next to the .code-workspace file."""
+        workspace_file = self.workspace_file(harness_root, workspace)
+        return workspace_file.with_name(f"{workspace_file.stem}.start.yml")
 
 
 def load_catalog(
@@ -196,7 +212,16 @@ def load_catalog(
     )
     env_file = harness_root / ENV_RELATIVE
     repos, parent_dir = load_repositories(repos_file)
-    workspaces, jira = load_stack(stack_file, {repo.name for repo in repos})
+    repo_names = {repo.name for repo in repos}
+    workspaces, jira = load_stack(stack_file, repo_names)
+    workspaces = [
+        *workspaces,
+        *load_personal_workspaces(
+            harness_root,
+            repo_names,
+            reserved_ids={workspace.id for workspace in workspaces},
+        ),
+    ]
     templates = load_templates(templates_file)
     from harness.envspec import load_env_spec, validate_env_spec
 
@@ -252,6 +277,7 @@ def load_repositories(path: Path) -> tuple[list[Repo], str]:
         seen_names.add(repo.name)
         seen_paths.add(repo.path)
         repos.append(repo)
+    _assert_no_path_collisions(repos)
     if not repos:
         raise HarnessError(
             f"{path} has no repositories. Add entries with name, url, and tags."
@@ -267,14 +293,18 @@ def _parse_repo(item: Any) -> Repo:
     if not name or not url:
         raise HarnessError("Each repository needs name and url (GitHub clone URL)")
     name = str(name)
-    repo_path = str(item.get("path") or name)
-    if Path(repo_path).is_absolute() or ".." in Path(repo_path).parts:
-        raise HarnessError(
-            f"Repo path must be a single sibling folder name: {repo_path}"
-        )
+    validate_repo_name(name)
+    repo_path, group = resolve_repo_layout(name, item.get("path"), item.get("group"))
     tags = _as_list(item.get("tags"))
     if not tags:
         raise HarnessError(f"Repository {name} needs at least one tag")
+    if item.get("start") is not None:
+        raise HarnessError(
+            f"Repository {name} has a start: block. repositories.yml no longer "
+            "owns start commands. Discover once with "
+            "`harness start --workspace <id>`, then save "
+            "workspaces/<id>.start.yml (or edit that file)."
+        )
     return Repo(
         name=name,
         url=str(url),
@@ -284,7 +314,101 @@ def _parse_repo(item: Any) -> Repo:
         tags=tags,
         enabled=bool(item.get("enabled", True)),
         graphify=_parse_graphify(name, item.get("graphify")),
+        group=group,
     )
+
+
+def validate_repo_name(name: str) -> str:
+    name = str(name).strip()
+    dest = Path(name)
+    if (
+        not name
+        or dest.is_absolute()
+        or len(dest.parts) != 1
+        or dest.parts[0] in {".", ".."}
+        or "/" in name
+        or "\\" in name
+    ):
+        raise HarnessError(
+            f"Repository name must be a single id, not a path: {name}"
+        )
+    return name
+
+
+def resolve_repo_layout(
+    name: str, raw_path: Any, raw_group: Any
+) -> tuple[str, str]:
+    group = normalize_clone_relpath(str(raw_group), "Repository group") if raw_group else ""
+    if raw_path:
+        repo_path = normalize_clone_relpath(str(raw_path), "Repo path")
+        if group and repo_path != group and not repo_path.startswith(f"{group}/"):
+            raise HarnessError(
+                f"Repository {name} path {repo_path!r} must be inside group {group!r}"
+            )
+        return repo_path, group
+    if group:
+        return f"{group}/{name}", group
+    return name, ""
+
+
+def parse_project_destination(
+    dest_name: str, group: str | None = None
+) -> tuple[str, str, str]:
+    """Return (name, path, group) for a bootstrap destination under parent_dir."""
+    dest_name = (dest_name or "").strip()
+    if not dest_name:
+        raise HarnessError("Project --name is required")
+    dest_name = dest_name.replace("\\", "/")
+    group = (group or "").strip().replace("\\", "/")
+    if group:
+        group = normalize_clone_relpath(group, "Project group")
+        if "/" in dest_name:
+            repo_path = normalize_clone_relpath(dest_name, "Project path")
+            if repo_path != group and not repo_path.startswith(f"{group}/"):
+                raise HarnessError(
+                    f"Project path {repo_path!r} must be inside group {group!r}"
+                )
+        else:
+            validate_repo_name(dest_name)
+            repo_path = f"{group}/{dest_name}"
+    else:
+        repo_path = normalize_clone_relpath(dest_name, "Project path")
+        if len(Path(repo_path).parts) > 1:
+            group = "/".join(Path(repo_path).parts[:-1])
+    name = Path(repo_path).name
+    validate_repo_name(name)
+    return name, repo_path, group
+
+
+def normalize_clone_relpath(value: str, label: str) -> str:
+    text = str(value).strip().replace("\\", "/")
+    path = Path(text)
+    if (
+        not text
+        or path.is_absolute()
+        or any(part in {"", ".", ".."} for part in path.parts)
+    ):
+        raise HarnessError(
+            f"{label} must be a relative path under parent_dir, without '..': {value}"
+        )
+    return path.as_posix()
+
+
+def paths_collide(left: str, right: str) -> bool:
+    left_parts = Path(left).parts
+    right_parts = Path(right).parts
+    shared = min(len(left_parts), len(right_parts))
+    return left_parts[:shared] == right_parts[:shared]
+
+
+def _assert_no_path_collisions(repos: list[Repo]) -> None:
+    for index, repo in enumerate(repos):
+        for other in repos[index + 1 :]:
+            if paths_collide(repo.path, other.path):
+                raise HarnessError(
+                    f"Repository paths collide: {repo.path!r} ({repo.name}) and "
+                    f"{other.path!r} ({other.name}). One clone cannot live inside another."
+                )
 
 
 def _parse_graphify(repo_name: str, raw: Any) -> GraphifyConfig:
@@ -393,6 +517,69 @@ def load_stack(
     return workspaces, jira
 
 
+def load_personal_workspaces(
+    harness_root: Path,
+    repo_names: set[str],
+    reserved_ids: set[str] | None = None,
+) -> list[Workspace]:
+    """Load local-only workspaces from workspaces/personal/ (gitignored)."""
+    directory = Path(harness_root) / PERSONAL_WORKSPACES_DIR
+    if not directory.is_dir():
+        return []
+    reserved = set(reserved_ids or ())
+    workspaces: list[Workspace] = []
+    seen: set[str] = set()
+    for path in sorted(directory.glob("*.code-workspace")):
+        workspace = parse_personal_workspace(path, repo_names)
+        if workspace is None:
+            continue
+        if workspace.id in reserved or workspace.id in seen:
+            continue
+        seen.add(workspace.id)
+        workspaces.append(workspace)
+    return workspaces
+
+
+def parse_personal_workspace(path: Path, repo_names: set[str]) -> Workspace | None:
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    meta = raw.get("harness") if isinstance(raw.get("harness"), dict) else {}
+    workspace_id = str(meta.get("id") or path.stem).strip()
+    if not workspace_id:
+        return None
+    folders = _as_list(meta.get("folders"))
+    if not folders:
+        folders = [
+            str(folder.get("name"))
+            for folder in (raw.get("folders") or [])
+            if isinstance(folder, dict)
+            and folder.get("name")
+            and str(folder.get("name")) != "harness"
+        ]
+    folders = [name for name in folders if name in repo_names]
+    include_harness = meta.get("include_harness")
+    if include_harness is None:
+        include_harness = any(
+            isinstance(folder, dict) and folder.get("name") == "harness"
+            for folder in (raw.get("folders") or [])
+        )
+    return Workspace(
+        id=workspace_id,
+        name=str(meta.get("name") or workspace_id.replace("-", " ").replace("_", " ").title()),
+        description=str(meta.get("description") or ""),
+        folders=folders,
+        tags=_as_list(meta.get("tags")),
+        include_harness=bool(include_harness),
+        fallback=False,
+        env=_as_list(meta.get("env")),
+        personal=True,
+    )
+
+
 def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
     sibling_root = catalog.sibling_root(harness_root)
     return {
@@ -405,6 +592,7 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                 "name": repo.name,
                 "url": repo.url,
                 "path": repo.path,
+                "group": repo.group,
                 "resolved_path": str(catalog.repo_path(harness_root, repo)),
                 "default_branch": repo.default_branch,
                 "description": repo.description,
@@ -427,7 +615,12 @@ def catalog_to_dict(catalog: Catalog, harness_root: Path) -> dict[str, Any]:
                 "include_harness": workspace.include_harness,
                 "fallback": workspace.fallback,
                 "env": workspace.env,
+                "personal": workspace.personal,
                 "file": str(catalog.workspace_file(harness_root, workspace)),
+                "start_file": str(catalog.workspace_start_file(harness_root, workspace)),
+                "start_plan": catalog.workspace_start_file(
+                    harness_root, workspace
+                ).is_file(),
                 "match": {
                     "projects": workspace.match.projects,
                     "components": workspace.match.components,

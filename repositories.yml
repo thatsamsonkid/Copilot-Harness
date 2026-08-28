@@ -1,10 +1,27 @@
 # Full-app repository manifest.
-# Every product repo Copilot may need lives here. Clones land as siblings
-# of this harness: <harness-parent>/<path or name>
+# Every product repo Copilot may need lives here. Clones land under
+# parent_dir (default: the folder that contains this harness):
+#   <harness-parent>/<path or group/name or name>
 #
 # Required per entry: name, url, tags
-# Optional: path, default_branch, description, enabled, graphify
-# graphify.out defaults to graphify-out inside that sibling clone.
+# Optional: path, group, default_branch, description, enabled, graphify
+# graphify.out defaults to graphify-out inside that clone.
+# Do not add start: here. Discover once, then pin the workspace sequence:
+#   harness start --workspace frontend --save
+#   → workspaces/frontend.start.yml
+# Java launch.json env/args stay in the sibling. The plan lists names/keys only;
+# start those apps with `harness start run --repo <name>`.
+# Apply one repo's env in a terminal with `harness start env --repo <name> --shell`.
+#
+# Use group or a nested path to organize clones without putting git
+# trees inside this harness:
+#   parent/
+#     Copilot-Harness/
+#     frontend/shop-web/     ← group: frontend
+#     backend/api/           ← path: backend/api
+#     infra/terraform/
+#     shared/design-tokens/
+#     mobile/                ← omit group/path for a flat sibling
 #
 # Replace YOUR_ORG with your GitHub org, then:
 #   ./scripts/clone-repos.sh
