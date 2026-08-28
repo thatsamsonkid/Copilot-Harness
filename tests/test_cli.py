@@ -50,6 +50,14 @@ def test_clone_dry_run_and_doctor(harness_root: Path, capsys, monkeypatch):
     doctor = json.loads(capsys.readouterr().out)
     assert doctor["sibling_root"] == str(harness_root.parent.resolve())
     assert any(check["name"] == "jira_env" for check in doctor["checks"])
+    assert any(check["name"] == "jira_token_store" for check in doctor["checks"])
+    assert "keychain" in doctor
+    assert "env" in doctor
+    assert {row["name"] for row in doctor["env"]["variables"]} >= {
+        "JIRA_BASE_URL",
+        "JIRA_EMAIL",
+        "JIRA_API_TOKEN",
+    }
     assert any(check["name"] == "uv" for check in doctor["checks"])
     assert "onboarding" in doctor
     assert "uv" in doctor

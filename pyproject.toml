@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 dependencies = [
     "PyYAML>=6.0",
     "python-dotenv>=1.0",
+    "keyring>=25.0",
 ]
 
 [dependency-groups]

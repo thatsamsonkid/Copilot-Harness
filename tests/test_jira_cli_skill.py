@@ -41,6 +41,8 @@ def test_skill_body_is_the_cli_contract():
         "jira search",
         "jira schema",
         "jira whoami",
+        "jira login",
+        "env list",
         "harness init",
         "harness context",
         "routing.open_command",

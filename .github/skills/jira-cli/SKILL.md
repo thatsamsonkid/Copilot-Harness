@@ -16,7 +16,7 @@ This workspace talks to Jira Cloud only through the `harness` CLI. There is no J
 - Never curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
 - Never read `.env`, print `env`, or expand `$JIRA_API_TOKEN` / `$JIRA_TOKEN`.
 - Never configure or call a Jira MCP tool.
-- If credentials are missing, tell the user to edit `.env` locally. Never ask them to paste a token into chat.
+- If credentials are missing, tell the user to set URL/email in `.env` and run `uv run harness jira login` in their own terminal. Never ask them to paste a token into chat.
 - `jira whoami` must not include a token. If it ever does, stop and do not repeat it.
 
 ## Parse the issue
@@ -34,6 +34,8 @@ Accept `PROJ-123` or a browse URL. The CLI extracts the key.
 | JQL search | `uv run harness jira search '<jql>'` |
 | What Copilot is allowed to see | `uv run harness jira schema` |
 | Auth check (no token in output) | `uv run harness jira whoami` |
+| Store token in OS keychain | Tell them to run `uv run harness jira login` (or `--from-env`) themselves |
+| Other declared secrets | `uv run harness env list` then `uv run harness env set NAME` in their terminal |
 | Catalog / clones / Jira env | `uv run harness doctor` |
 | Live Jira ping | `uv run harness doctor --ping-jira` |
 | First-run / missing token | `uv run harness init` (see the get-started skill) |
@@ -72,8 +74,8 @@ This skill is the CLI contract, not an implementer.
 
 | Symptom | What to do |
 | --- | --- |
-| Missing `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | Tell the user to copy `.env.example` to `.env` and fill it in themselves |
-| 401 / 403 from the CLI | Tell them to rotate the Atlassian API token in `.env` |
+| Missing `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | Tell the user to set URL/email in `.env` and run `uv run harness jira login` |
+| 401 / 403 from the CLI | Tell them to rotate the Atlassian API token and run `uv run harness jira login` |
 | Placeholder clone URLs | Tell them to edit `repositories.yml`; do not invent remotes |
 | `uv` missing | `docs/install-uv.md` — macOS/Linux `setup.sh`, Windows `setup.ps1` |
 | `Failed to spawn: harness` / no `pyproject.toml` | Cwd is a sibling. Re-run from the harness folder or `uv run --project "$HARNESS_ROOT" harness …` |

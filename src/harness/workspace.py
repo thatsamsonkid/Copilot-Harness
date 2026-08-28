@@ -8,6 +8,7 @@ from typing import Any
 
 from harness import HarnessError
 from harness.catalog import Catalog, Workspace
+from harness.envspec import vars_for
 from harness.invoke import HARNESS_FOLDER_NAME, terminal_env_settings
 
 
@@ -108,6 +109,12 @@ def list_workspaces(catalog: Catalog, harness_root: Path) -> list[dict[str, Any]
                 "name": workspace.name,
                 "description": workspace.description,
                 "fallback": workspace.fallback,
+                "env": [
+                    variable.name
+                    for variable in vars_for(
+                        catalog.env_vars, workspace.id, workspace.env
+                    )
+                ],
                 "personal": workspace.personal,
                 "file": str(path),
                 "exists": path.exists(),

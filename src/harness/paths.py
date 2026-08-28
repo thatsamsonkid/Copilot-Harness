@@ -8,6 +8,7 @@ from harness import HarnessError
 REPOS_RELATIVE = Path("repositories.yml")
 STACK_RELATIVE = Path("catalog") / "stack.yaml"
 TEMPLATES_RELATIVE = Path("templates.yml")
+ENV_RELATIVE = Path("catalog") / "env.yaml"
 WORKSPACES_DIR = Path("workspaces")
 PERSONAL_WORKSPACES_DIR = WORKSPACES_DIR / "personal"
 

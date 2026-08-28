@@ -10,6 +10,7 @@ from harness import HarnessError
 from harness.adf import adf_to_markdown
 from harness.http import HttpClient, HttpResponse
 from harness.jira_fields import JiraSettings, project_issue
+from harness.keychain import resolve_token
 
 ISSUE_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
 
@@ -29,7 +30,7 @@ def parse_issue_key(value: str) -> str:
 def jira_settings_from_env() -> tuple[str, str, str]:
     base_url = (os.environ.get("JIRA_BASE_URL") or "").rstrip("/")
     email = os.environ.get("JIRA_EMAIL") or os.environ.get("JIRA_USERNAME") or ""
-    token = os.environ.get("JIRA_API_TOKEN") or os.environ.get("JIRA_TOKEN") or ""
+    token, _source = resolve_token()
     missing = [
         name
         for name, value in (
@@ -40,12 +41,24 @@ def jira_settings_from_env() -> tuple[str, str, str]:
         if not value
     ]
     if missing:
-        raise HarnessError(
-            "Missing Jira settings: "
-            + ", ".join(missing)
-            + ". Copy .env.example to .env or export the variables."
-        )
+        raise HarnessError(_missing_settings_message(missing))
     return base_url, email, token
+
+
+def _missing_settings_message(missing: list[str]) -> str:
+    parts = ["Missing Jira settings: " + ", ".join(missing) + "."]
+    if "JIRA_BASE_URL" in missing or "JIRA_EMAIL" in missing:
+        parts.append("Set the site URL and email in .env.")
+    if "JIRA_API_TOKEN" in missing:
+        parts.append(
+            "Store the API token with `uv run harness jira login` "
+            "(macOS Keychain or Windows Credential Manager), or set "
+            "JIRA_API_TOKEN in .env as a fallback."
+        )
+    else:
+        parts.append("Copy .env.example to .env or export the variables.")
+    parts.append("See docs/jira-api-token.md. Do not paste the token into chat.")
+    return " ".join(parts)
 
 
 class JiraClient:
@@ -185,7 +198,8 @@ class JiraClient:
     def _decode(self, response: HttpResponse, method: str) -> Any:
         if response.status == 401:
             raise HarnessError(
-                "Jira authentication failed. Check credentials in .env; do not print them."
+                "Jira authentication failed. Check the token in the OS keychain "
+                "(`harness jira login`) or .env; do not print them."
             )
         if response.status == 403:
             raise HarnessError("Jira denied access to this resource.")

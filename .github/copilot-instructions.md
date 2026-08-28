@@ -29,7 +29,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Do **not** read `.env`, print `env`, or expand `$JIRA_API_TOKEN` / `$JIRA_TOKEN`.
 - Do **not** read sibling `.vscode/launch.json` env/args or product `.env` / `envFile` values. Use `harness start` (redacted keys), `harness start run`, and `harness start env`.
 - Do **not** configure or call an MCP Jira tool.
-- If credentials are missing, tell the user to edit `.env` locally. Never ask them to paste a token into chat.
+- If credentials are missing, tell the user to set `JIRA_BASE_URL` / `JIRA_EMAIL` in `.env` and run `uv run harness jira login` in their own terminal (macOS Keychain or Windows Credential Manager). Never ask them to paste a token into chat.
 
 ## Repo layout
 
@@ -38,7 +38,7 @@ This workspace has **no Jira MCP server**. The API token must never enter the ch
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
 - CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context, start.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness. Personal/local mixes live in `workspaces/personal/` (gitignored, not in `catalog/stack.yaml`).
-- Secrets: `.env` (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`). Never commit tokens or print them.
+- Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `harness env set NAME` / `harness jira login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 
 ## Commands
 

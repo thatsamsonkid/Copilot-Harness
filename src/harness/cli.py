@@ -12,6 +12,8 @@ from harness.clone import clone_repos
 from harness.context import collect_context
 from harness.doctor import run_doctor
 from harness.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
+from harness.envspec import find_var, list_env, set_env_value, unset_env_value
+from harness.keychain import login_token, logout_token
 from harness.onboard import run_init
 from harness.output import render
 from harness.paths import find_harness_root, load_dotenv_files
@@ -97,6 +99,74 @@ def build_parser() -> argparse.ArgumentParser:
     jira_context.add_argument("issue")
     jira_sub.add_parser("whoami", parents=[shared], help="Validate Jira credentials")
     jira_sub.add_parser("schema", parents=[shared], help="Show configured Jira output fields")
+    jira_login = jira_sub.add_parser(
+        "login",
+        parents=[shared],
+        help="Store the Jira API token in macOS Keychain or Windows Credential Manager",
+    )
+    jira_login.add_argument(
+        "--from-env",
+        action="store_true",
+        help="Move JIRA_API_TOKEN from .env into the OS keychain, then blank .env",
+    )
+    jira_login.add_argument(
+        "--keep-env",
+        action="store_true",
+        help="Leave JIRA_API_TOKEN in .env after storing it in the keychain",
+    )
+    jira_logout = jira_sub.add_parser(
+        "logout",
+        parents=[shared],
+        help="Remove the Jira API token from the OS keychain",
+    )
+    jira_logout.add_argument(
+        "--clear-env",
+        action="store_true",
+        help="Also blank JIRA_API_TOKEN in .env",
+    )
+
+    env = sub.add_parser(
+        "env",
+        parents=[shared],
+        help="List or store catalog/env.yaml variables (secrets go in the OS keychain)",
+    )
+    env_sub = env.add_subparsers(dest="env_command", required=True)
+    env_list = env_sub.add_parser(
+        "list",
+        parents=[shared],
+        help="Show declared env vars and whether each is present (never prints values)",
+    )
+    env_list.add_argument(
+        "--workspace",
+        help="Limit to shared vars plus names scoped to this workspace id",
+    )
+    env_set = env_sub.add_parser(
+        "set",
+        parents=[shared],
+        help="Set one declared variable. Secrets are stored in the OS keychain.",
+    )
+    env_set.add_argument("name", help="Variable name from catalog/env.yaml")
+    env_set.add_argument(
+        "--from-env",
+        action="store_true",
+        help="Read the current value from .env / the environment, then store it",
+    )
+    env_set.add_argument(
+        "--keep-env",
+        action="store_true",
+        help="Leave a secret in .env after storing it in the keychain",
+    )
+    env_unset = env_sub.add_parser(
+        "unset",
+        parents=[shared],
+        help="Remove a secret from the OS keychain",
+    )
+    env_unset.add_argument("name", help="Variable name from catalog/env.yaml")
+    env_unset.add_argument(
+        "--clear-env",
+        action="store_true",
+        help="Also blank the variable in .env",
+    )
 
     workspace = sub.add_parser(
         "workspace", parents=[shared], help="Feature workspace helpers"
@@ -413,7 +483,9 @@ def dispatch(args: argparse.Namespace) -> Any:
             )
         return payload
     if args.command == "jira":
-        return _dispatch_jira(args, catalog)
+        return _dispatch_jira(args, catalog, harness_root)
+    if args.command == "env":
+        return _dispatch_env(args, catalog, harness_root)
     if args.command == "workspace":
         return _dispatch_workspace(args, catalog, harness_root)
     if args.command == "prepare":
@@ -508,10 +580,18 @@ def dispatch(args: argparse.Namespace) -> Any:
     raise HarnessError(f"Unknown command: {args.command}")
 
 
-def _dispatch_jira(args: argparse.Namespace, catalog: Any) -> Any:
+def _dispatch_jira(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
     settings = catalog.jira
     if args.jira_command == "schema":
         return {"jira": settings.schema()}
+    if args.jira_command == "login":
+        return login_token(
+            harness_root,
+            from_env=args.from_env,
+            clear_env=not args.keep_env,
+        )
+    if args.jira_command == "logout":
+        return logout_token(harness_root, clear_env=args.clear_env)
     client = _client()
     if args.jira_command == "get":
         return client.get_issue(args.issue, settings=settings)
@@ -529,6 +609,31 @@ def _dispatch_jira(args: argparse.Namespace, catalog: Any) -> Any:
     if args.jira_command == "whoami":
         return client.myself()
     raise HarnessError(f"Unknown jira command: {args.jira_command}")
+
+
+def _dispatch_env(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
+    if args.env_command == "list":
+        extra = None
+        if args.workspace:
+            extra = catalog.workspace(args.workspace).env
+        return list_env(
+            catalog.env_vars,
+            harness_root,
+            workspace_id=args.workspace,
+            extra_names=extra,
+            source=catalog.env_source,
+        )
+    variable = find_var(catalog.env_vars, args.name)
+    if args.env_command == "set":
+        return set_env_value(
+            variable,
+            harness_root,
+            from_env=args.from_env,
+            clear_env=not args.keep_env,
+        )
+    if args.env_command == "unset":
+        return unset_env_value(variable, harness_root, clear_env=args.clear_env)
+    raise HarnessError(f"Unknown env command: {args.env_command}")
 
 
 def _dispatch_workspace(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
