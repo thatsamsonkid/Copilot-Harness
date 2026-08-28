@@ -28,7 +28,13 @@ def test_defaults_when_env_yaml_missing(tmp_path: Path):
         "JIRA_BASE_URL",
         "JIRA_EMAIL",
         "JIRA_API_TOKEN",
+        "FIGMA_ACCESS_TOKEN",
     ]
+    assert find_var(variables, "FIGMA_TOKEN").secret is True
+    assert find_var(variables, "FIGMA_ACCESS_TOKEN").required is False
+    assert find_var(variables, "FIGMA_ACCESS_TOKEN").keychain_account == (
+        "figma-access-token"
+    )
     assert find_var(variables, "JIRA_TOKEN").secret is True
     assert find_var(variables, "JIRA_API_TOKEN").keychain_account == "jira-api-token"
 

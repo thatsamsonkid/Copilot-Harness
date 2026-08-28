@@ -27,3 +27,11 @@ uv run coboose prepare ISSUE-123 --format json
 ```
 
 Then open `routing.open_command` and plan against those roots. Treat `done_when` as the stop condition. Do not nest git clones inside this repository.
+
+For a Figma file or frame URL, follow `.github/skills/figma-cli/SKILL.md`:
+
+```bash
+uv run coboose figma images 'https://www.figma.com/design/…' --format json
+```
+
+Open each returned `images[].url` in VS Code Simple Browser. Do not curl Figma or reconstruct the layout from JSON.

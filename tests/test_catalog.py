@@ -163,6 +163,27 @@ def test_loads_jira_projection_from_stack(tmp_path: Path, sample_catalog_data: d
     assert schema["field_aliases"]["customfield_10016"] == "story_points"
 
 
+def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: dict):
+    sample_catalog_data["figma"] = {
+        "fields": ["file_key", "images"],
+        "shapes": {"images": ["id", "url"]},
+        "default_format": "jpg",
+        "default_scale": 1,
+        "max_ids": 3,
+        "drop_empty": False,
+    }
+    root = tmp_path / "coboose"
+    write_coboose_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    assert catalog.figma.output_fields() == ["file_key", "images"]
+    assert catalog.figma.default_format == "jpg"
+    assert catalog.figma.default_scale == 1.0
+    assert catalog.figma.max_ids == 3
+    assert catalog.figma.shapes["images"] == ["id", "url"]
+    schema = catalog.figma.schema()
+    assert schema["drop_empty"] is False
+
+
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
     root = tmp_path / "coboose"

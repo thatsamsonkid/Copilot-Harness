@@ -142,3 +142,4 @@ This file is the boot **sequence** (order, command, port, wait, optional `launch
 - Vague / large-repo orientation: workspace-context skill or `/orient`
 - First-run setup: get-started skill or `/get-started`
 - Ticket routing: jira-cli skill or `/jira-ticket`
+- Figma frames: figma-cli skill or `/figma-frame`

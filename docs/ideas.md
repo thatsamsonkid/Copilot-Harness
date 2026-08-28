@@ -108,5 +108,6 @@ These are separate from the themes above but fit the same coboose:
 - **CI awareness** — `gh pr checks` per sibling before anyone says “ship it.” GitHub MCP is fine; Jira MCP is not.
 - **MCP allowlist in instructions** — say explicitly: GitHub MCP okay, Jira MCP never. Stops a well-meaning teammate from installing Atlassian MCP “to help.”
 - **Assignment board in chat** — `/mine` prompt that runs `jira mine` then `prepare` on the chosen key. Thin wrapper; only add if people keep forgetting the command.
+- **Figma comments / tokens later** — `figma images` + login already ship. Comments and variable names stay a later clip if designers actually write them.
 
 When you have the next batch of ideas, we can add them here and promote one slice at a time.

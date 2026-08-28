@@ -9,12 +9,14 @@ from coboose import CobooseError
 from coboose.catalog import Catalog
 from coboose.context import inspect_repo
 from coboose.envfile import env_file_age
-from coboose.envspec import list_env
+from coboose.envspec import list_env, resolve_var
+from coboose.figma_client import FigmaClient, figma_var
 from coboose.invoke import invoke_spec
 from coboose.jira_client import JiraClient, jira_settings_from_env
 from coboose.keychain import (
     SOURCE_ENV,
     SOURCE_KEYCHAIN,
+    SOURCE_MISSING,
     backend_display_name,
     keychain_status,
     resolve_token,
@@ -31,6 +33,7 @@ def run_doctor(
     coboose_root: Path,
     *,
     ping_jira: bool = False,
+    ping_figma: bool = False,
     workspace_id: str | None = None,
     all_repos: bool = False,
     environ: Mapping[str, str] | None = None,
@@ -255,8 +258,67 @@ def run_doctor(
     else:
         checks.append(_check("jira_env", True, f"Jira credentials are present ({source})"))
 
+    figma = None
+    figma_token, figma_source = resolve_var(figma_var(catalog.env_vars))
+    if figma_source == SOURCE_MISSING:
+        figma_token = ""
+    if figma_source == SOURCE_KEYCHAIN:
+        checks.append(
+            _check(
+                "figma_token_store",
+                True,
+                f"Figma token is in {backend_display_name()}",
+            )
+        )
+    elif figma_source == SOURCE_ENV:
+        checks.append(
+            _check(
+                "figma_token_store",
+                False,
+                "Figma token is in .env; prefer `uv run coboose figma login --from-env`",
+                ok_when_false=True,
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "figma_token_store",
+                False,
+                "Figma token is not in the OS keychain or .env (optional)",
+                ok_when_false=True,
+            )
+        )
+    if ping_figma:
+        if not figma_token:
+            checks.append(
+                _check(
+                    "figma_auth",
+                    False,
+                    "Cannot ping Figma until FIGMA_ACCESS_TOKEN is stored",
+                )
+            )
+        else:
+            try:
+                figma = FigmaClient(figma_token).myself()
+                checks.append(
+                    _check(
+                        "figma_auth",
+                        True,
+                        f"authenticated as {figma.get('handle') or figma.get('email')}",
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001 - doctor should not crash
+                checks.append(_check("figma_auth", False, str(exc)))
+    elif figma_token:
+        checks.append(_check("figma_env", True, f"Figma credentials are present ({figma_source})"))
+
     for row in env_payload["variables"]:
-        if row["name"] in {"JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"}:
+        if row["name"] in {
+            "JIRA_BASE_URL",
+            "JIRA_EMAIL",
+            "JIRA_API_TOKEN",
+            "FIGMA_ACCESS_TOKEN",
+        }:
             continue
         checks.append(
             _check(
@@ -302,6 +364,8 @@ def run_doctor(
         "workspaces": generated,
         "jira": jira,
         "jira_token_source": source,
+        "figma": figma,
+        "figma_token_source": figma_source,
         "keychain": status.as_dict(),
         "keychain_guide": storage_guides(),
         "env": env_payload,

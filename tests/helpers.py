@@ -52,7 +52,7 @@ def write_coboose_config(root: Path, data: dict) -> Path:
             "repositories": repositories,
         },
     )
-    stack = {key: data[key] for key in ("workspaces", "jira") if key in data}
+    stack = {key: data[key] for key in ("workspaces", "jira", "figma") if key in data}
     write_yaml(root / "catalog" / "stack.yaml", stack)
     if "templates" in data:
         write_yaml(root / "templates.yml", {"templates": data["templates"]})

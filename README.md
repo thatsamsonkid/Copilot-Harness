@@ -54,13 +54,13 @@ Then:
 
 1. Edit `repositories.yml` — add each product repo (`name`, GitHub `url`, `tags`).
 2. Edit `templates.yml` — add starter remotes you want Copilot or `coboose bootstrap` to offer.
-3. Copy `.env.example` to `.env` and set `JIRA_BASE_URL` / `JIRA_EMAIL`. Store the API token with `uv run coboose jira login` (macOS Keychain or Windows Credential Manager). See [docs/jira-api-token.md](docs/jira-api-token.md).
+3. Copy `.env.example` to `.env` and set `JIRA_BASE_URL` / `JIRA_EMAIL`. Store the Jira API token with `uv run coboose jira login` (macOS Keychain or Windows Credential Manager). See [docs/jira-api-token.md](docs/jira-api-token.md). Optional Figma: `uv run coboose figma login` ([docs/figma-access-token.md](docs/figma-access-token.md)).
 4. Clone product repos: `./scripts/clone-repos.sh`
 5. Generate workspaces: `coboose workspace generate`
 6. Or create a new feature workspace and pick projects from `repositories.yml`:
    `coboose workspace create` (or `/new-workspace` in chat). Choose **shared** for the team catalog, or **personal** for a local-only file under `workspaces/personal/` (gitignored).
 7. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/orient`, `/jira-cli`, or `/bootstrap-project`
+8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/orient`, `/jira-cli`, or `/bootstrap-project`
 
 `setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, and install this package in editable mode. Prefer `uv` over pip. Run the CLI from this repo. After `cd` into a sibling clone, `uv run coboose` cannot spawn — use `--project` or the wrapper script:
 
@@ -224,6 +224,23 @@ uv run coboose start env --repo backend --shell
 
 The CLI never prints a raw vendor REST payload. `catalog/stack.yaml` `jira.fields` is the Copilot allowlist; `jira.shapes` clips nested objects (project, parent, comments, links) and `jira.search_fields` is the leaner search/mine list. Empty values are dropped by default. Add a custom field with `extra_fields` + `field_aliases`, then list the alias in `fields`. The same `fields` / `shapes` projector (`coboose.projection`) is what later integrations should reuse — change the YAML, not the client.
 
+## Figma CLI (personal access token)
+
+Figma MCP is not available here. Copilot talks to Figma by running `coboose`. The **figma-cli** skill (`.github/skills/figma-cli/SKILL.md`) is the on-demand contract. The Images API is the first slice: rendered frame URLs, not the file JSON.
+
+Create a personal access token using [docs/figma-access-token.md](docs/figma-access-token.md). Store it in the OS keychain:
+
+```bash
+uv run coboose figma login
+uv run coboose figma whoami
+uv run coboose figma schema
+uv run coboose figma images 'https://www.figma.com/design/FILEKEY/Name?node-id=12-34'
+```
+
+`figma login` writes to macOS Keychain or Windows Credential Manager. `figma login --from-env` moves a token that is already in `.env`. This token is optional; `init` / `doctor` stay green without it.
+
+`catalog/stack.yaml` `figma.fields` is the Copilot allowlist (`file_key`, `url`, `format`, `scale`, `images`, `missing`). Copilot should open each `images[].url` in VS Code Simple Browser to look at the frame. Do not curl `api.figma.com`.
+
 The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 
 `prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, print the `code` command that opens the matching workspace, and attach `done_when` (ticket acceptance criteria + each repo's verify commands + coboose invariants).
@@ -255,10 +272,12 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
 | `.github/skills/workspace-start/SKILL.md` | Local stack plan + sequential start (`/start-workspace`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
+| `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images CLI contract (`/figma-frame`) |
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
+| `.github/prompts/figma-frame.prompt.md` | `/figma-frame` |
 | `.github/prompts/new-workspace.prompt.md` | `/new-workspace` |
 | `.github/prompts/orient.prompt.md` | `/orient` |
 | `.github/prompts/start-workspace.prompt.md` | `/start-workspace` |
