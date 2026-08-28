@@ -15,6 +15,7 @@ from coboose.figma_fields import (
     project_images,
 )
 from coboose.http import HttpClient, HttpResponse
+from coboose.projection import project
 
 FIGMA_API = "https://api.figma.com"
 FIGMA_DOC = "docs/figma-access-token.md"
@@ -173,17 +174,27 @@ class FigmaClient:
         if not isinstance(raw_images, dict):
             raise CobooseError("Figma returned an images payload without an images map.")
 
-        images = {
-            str(node_id): (url if url else None)
-            for node_id, url in raw_images.items()
-        }
+        images: list[dict[str, Any]] = []
+        missing: list[str] = []
+        item_spec = settings.image_item_projection()
+        for node_id in target.node_ids:
+            url = raw_images.get(node_id)
+            if not url:
+                # Figma may echo the hyphen form used in some URLs.
+                url = raw_images.get(node_id.replace(":", "-"))
+            if url:
+                images.append(project({"id": node_id, "url": url}, item_spec))
+            else:
+                missing.append(node_id)
+
         return project_images(
             {
                 "file_key": target.file_key,
                 "url": target.url,
-                "err": payload.get("err"),
+                "format": chosen_format,
+                "scale": chosen_scale,
                 "images": images,
-                "status": payload.get("status"),
+                "missing": missing,
             },
             settings,
         )

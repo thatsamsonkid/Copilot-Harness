@@ -12,9 +12,7 @@ def test_figma_schema_needs_no_credentials(coboose_root: Path, capsys, monkeypat
     assert main(["--root", str(coboose_root), "figma", "schema"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["figma"]["fields"][0] == "file_key"
-    assert "images" in payload["figma"]["fields"]
-    assert "err" in payload["figma"]["fields"]
-    assert "images" not in payload["figma"]["shapes"]
+    assert payload["figma"]["shapes"]["images"] == ["id", "url"]
     assert payload["figma"]["default_format"] == "png"
     assert payload["figma"]["default_scale"] == 2
     assert payload["figma"]["drop_empty"] is True
@@ -31,7 +29,9 @@ def test_figma_images_uses_client(coboose_root: Path, capsys, monkeypatch):
             return {
                 "file_key": "AbCdEfGhIjKlMnOpQr",
                 "url": file,
-                "images": {"12:34": "https://example/one.png"},
+                "format": "png",
+                "scale": 2,
+                "images": [{"id": "12:34", "url": "https://example/one.png"}],
             }
 
     monkeypatch.setattr("coboose.cli._figma_client", lambda _catalog: FakeClient())
@@ -45,7 +45,7 @@ def test_figma_images_uses_client(coboose_root: Path, capsys, monkeypatch):
         ]
     ) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["images"]["12:34"] == "https://example/one.png"
+    assert payload["images"][0]["url"] == "https://example/one.png"
 
 
 def test_missing_figma_env(coboose_root: Path, capsys, monkeypatch):

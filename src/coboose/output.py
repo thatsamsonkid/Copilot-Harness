@@ -397,30 +397,21 @@ def _is_figma_images(payload: Any) -> bool:
     )
 
 
-def _figma_image_entries(payload: dict[str, Any]) -> list[tuple[str, str | None]]:
-    images = payload.get("images")
-    if isinstance(images, dict):
-        return [(str(node_id), url if url else None) for node_id, url in images.items()]
-    if isinstance(images, list):
-        return [
-            (str(item.get("id")), item.get("url") if item.get("url") else None)
-            for item in images
-            if isinstance(item, dict)
-        ]
-    return []
-
-
 def _figma_images_text(payload: dict[str, Any]) -> str:
     lines = [
-        f"Figma {payload.get('file_key')}",
+        f"Figma {payload.get('file_key')} ({payload.get('format')} @ {payload.get('scale')}x)",
         f"File: {payload.get('url')}",
         "",
     ]
-    entries = _figma_image_entries(payload)
-    if not entries:
+    images = payload.get("images") or []
+    if not images:
         lines.append("No rendered image URLs.")
-    for node_id, url in entries:
-        lines.append(f"- {node_id}: {url or '(null)'}")
+    for item in images:
+        lines.append(f"- {item.get('id')}: {item.get('url')}")
+    missing = payload.get("missing") or []
+    if missing:
+        lines.append("")
+        lines.append("Missing: " + ", ".join(str(item) for item in missing))
     return "\n".join(lines).strip() + "\n"
 
 
@@ -429,17 +420,28 @@ def _figma_images_markdown(payload: dict[str, Any]) -> str:
         f"# Figma `{payload.get('file_key')}`",
         "",
         f"- **File:** {payload.get('url')}",
+        f"- **Format:** {payload.get('format')} @ {payload.get('scale')}x",
         "",
         "## Images",
         "",
     ]
-    entries = _figma_image_entries(payload)
-    if not entries:
+    images = payload.get("images") or []
+    if not images:
         lines.append("_No rendered image URLs._")
-    for node_id, url in entries:
-        lines.append(f"- `{node_id}` — {url or '_null_'}")
+    for item in images:
+        lines.append(f"- `{item.get('id')}` — {item.get('url')}")
+    missing = payload.get("missing") or []
+    if missing:
+        lines.extend(
+            [
+                "",
+                "## Missing",
+                "",
+                ", ".join(f"`{item}`" for item in missing),
+            ]
+        )
     lines.append("")
-    lines.append("Open each non-null image URL in VS Code Simple Browser to look at the frame.")
+    lines.append("Open each image URL in VS Code Simple Browser to look at the frame.")
     return "\n".join(lines).strip() + "\n"
 
 

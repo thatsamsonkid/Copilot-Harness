@@ -239,7 +239,7 @@ uv run coboose figma images 'https://www.figma.com/design/FILEKEY/Name?node-id=1
 
 `figma login` writes to macOS Keychain or Windows Credential Manager. `figma login --from-env` moves a token that is already in `.env`. This token is optional; `init` / `doctor` stay green without it.
 
-`catalog/stack.yaml` `figma.fields` is the Copilot allowlist. The Images body stays official: `err`, `images` (node id → URL map), `status`, plus `file_key` / `url`. A map value may be `null` if that node failed. Copilot should open each non-null URL in VS Code Simple Browser. Do not curl `api.figma.com`.
+`catalog/stack.yaml` `figma.fields` is the Copilot allowlist (`file_key`, `url`, `format`, `scale`, `images`, `missing`). Copilot should open each `images[].url` in VS Code Simple Browser to look at the frame. Do not curl `api.figma.com`.
 
 The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 

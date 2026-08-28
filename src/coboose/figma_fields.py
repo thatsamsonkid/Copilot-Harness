@@ -7,18 +7,18 @@ from typing import Any
 
 from coboose.projection import ProjectionSpec, project
 
-# Official GET /v1/images/:key body is { err, images: Map<id, url>, status }.
-# file_key / url are coboose identity fields so Copilot still knows which file.
 DEFAULT_OUTPUT_FIELDS = [
     "file_key",
     "url",
-    "err",
+    "format",
+    "scale",
     "images",
-    "status",
+    "missing",
 ]
 
-# images is a node-id → URL map. Do not shape it — keys are dynamic.
-DEFAULT_SHAPES: dict[str, tuple[str, ...]] = {}
+DEFAULT_SHAPES: dict[str, tuple[str, ...]] = {
+    "images": ("id", "url"),
+}
 
 DEFAULT_FORMAT = "png"
 DEFAULT_SCALE = 2.0
@@ -59,6 +59,9 @@ class FigmaSettings:
             drop_empty=self.drop_empty,
         )
 
+    def image_item_projection(self) -> ProjectionSpec:
+        return self.images_projection().nested("images", DEFAULT_SHAPES["images"])
+
     def schema(self) -> dict[str, Any]:
         return {
             "fields": self.output_fields(),
@@ -74,5 +77,5 @@ def project_images(payload: dict[str, Any], settings: FigmaSettings) -> dict[str
     """Keep only configured output fields. Never pass through a raw Figma payload."""
     projected = project(payload, settings.images_projection())
     if settings.wants("images") and "images" not in projected:
-        projected["images"] = {}
+        projected["images"] = []
     return projected

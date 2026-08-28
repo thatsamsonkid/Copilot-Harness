@@ -22,7 +22,7 @@ When the user gives a Figma file/design/proto URL or asks to look at a frame, lo
 
 1. Run `uv run coboose figma images <URL> --format json` from this repo. If cwd is a sibling clone, use `uv run --project "$COBOOSE_ROOT" coboose figma images <URL> --format json`.
 2. Use that CLI JSON as the only Figma source. It is already field-filtered. Do not ask Figma for the file tree.
-3. Open each non-null URL in `images` (node id → URL map) in VS Code Simple Browser so you can see the rendered frame. That image is the visual source of truth.
+3. Open each `images[].url` in VS Code Simple Browser so you can see the rendered frame. That image is the visual source of truth.
 4. Do not curl `api.figma.com`, read `.env`, or call a Figma MCP tool.
 
 `coboose` stdout is JSON by default. Read stdout. Errors are JSON on stderr with a non-zero exit code.

@@ -39,7 +39,7 @@ def test_skill_body_is_the_cli_contract():
         "figma schema",
         "figma login",
         "simple browser",
-        "images",
+        "images[].url",
         "figma.fields",
         "never curl",
         "failed to spawn",

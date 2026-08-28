@@ -45,20 +45,20 @@ Prefer `figma images` over assembling a Figma REST call yourself.
 
 Use these objects only:
 
-- `file_key` — Figma file key (coboose)
-- `url` — browse URL for the file (coboose)
-- `err` — official Images API error string; omitted on success
-- `images` — official map of node id → rendered URL. A value may be `null` if that node failed to render
-- `status` — official Images API status; omitted on success
+- `file_key` — Figma file key
+- `url` — browse URL for the file (and node when one was given)
+- `format` / `scale` — export settings
+- `images` — list of `{id, url}`. Each `url` is a temporary rendered PNG (or the requested format)
+- `missing` — node ids Figma could not render
 
 ## After a successful export
 
 This skill is the CLI contract, not an implementer.
 
-1. For each non-null value in `images`, open that URL in **VS Code Simple Browser** (Simple Browser: Show) so you can see the rendered frame. Taking a screenshot of that tab is the intended way to look at the design.
+1. For each `images[].url`, open the URL in **VS Code Simple Browser** (Simple Browser: Show) so you can see the rendered frame. Taking a screenshot of that tab is the intended way to look at the design.
 2. Summarize from what you can see in those images plus the returned ids. Do not invent layout, spacing, or copy that is not visible.
 3. Do not download the PNG into a product repo unless the user asked.
-4. If an `images` value is `null`, say that node failed. Do not guess that frame.
+4. If `missing` is set, say which nodes failed. Do not guess those frames.
 5. If the user wants a plan, write one from the visible frames and stop. Do not edit product code until they ask.
 
 Do not try to reconstruct the screen from JSON. The Images payload is only ids and URLs.
