@@ -18,11 +18,6 @@ from coboose.invoke import invoke_spec
 from coboose.launch import load_launch_runtime, summarize_launch
 
 RunFn = Callable[[str, Path, dict[str, str]], int]
-_START_METHODS = frozenset({"terminal", "vscode", "coboose", "harness"})
-
-
-def _normalize_start_method(method: str) -> str:
-    return "coboose" if method == "harness" else method
 
 PACKAGE_START_SCRIPTS = ("start", "serve", "dev")
 MAKE_START_TARGETS = ("start", "run", "serve", "dev", "up", "bootrun")
@@ -219,13 +214,13 @@ def load_saved_start_plan(path: Path) -> dict[str, Any]:
                 f"Saved start plan {path} env_file", env_file
             )
         method = str(item.get("method") or "").strip().lower()
-        if method and method not in _START_METHODS:
+        if method and method not in {"terminal", "vscode", "coboose"}:
             raise CobooseError(
                 f"Saved start plan {path} service {entry['name']} "
                 "method must be terminal, vscode, or coboose"
             )
         if method:
-            entry["method"] = _normalize_start_method(method)
+            entry["method"] = method
         if "depends_on" in item:
             entry["depends_on"] = as_list(item.get("depends_on"))
         notes = item.get("notes")
@@ -1078,7 +1073,6 @@ def _run_via(
     method: str,
     launch: dict[str, Any] | None,
 ) -> str:
-    method = _normalize_start_method(method)
     secret_risk = bool(launch and launch.get("secret_risk"))
     uses_inputs = bool(launch and launch.get("uses_vscode_inputs"))
     if uses_inputs:
@@ -1118,7 +1112,6 @@ def workspace_folder_map(catalog: Catalog, coboose_root: Path) -> dict[str, Path
         repo.name: catalog.repo_path(coboose_root, repo) for repo in catalog.repos
     }
     folders["coboose"] = Path(coboose_root).resolve()
-    folders["harness"] = folders["coboose"]
     return folders
 
 

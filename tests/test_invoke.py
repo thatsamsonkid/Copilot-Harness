@@ -39,7 +39,7 @@ def test_invoke_spec_points_at_coboose_root(tmp_path: Path):
     assert "spawn" in spec["note"].lower()
 
 
-def test_terminal_env_uses_named_harness_folder():
+def test_terminal_env_uses_named_coboose_folder():
     settings = terminal_env_settings()
     for key in (
         "terminal.integrated.env.linux",
@@ -47,18 +47,18 @@ def test_terminal_env_uses_named_harness_folder():
         "terminal.integrated.env.windows",
     ):
         assert settings[key]["COBOOSE_ROOT"] == "${workspaceFolder:coboose}"
-        assert settings[key]["HARNESS_ROOT"] == "${workspaceFolder:coboose}"
+        assert "HARNESS_ROOT" not in settings[key]
 
 
 def test_terminal_env_single_root_folder():
     settings = terminal_env_settings(folder_name=None)
     assert settings["terminal.integrated.env.linux"]["COBOOSE_ROOT"] == "${workspaceFolder}"
-    assert settings["terminal.integrated.env.linux"]["HARNESS_ROOT"] == "${workspaceFolder}"
+    assert "HARNESS_ROOT" not in settings["terminal.integrated.env.linux"]
     assert "UV_PROJECT" not in settings["terminal.integrated.env.linux"]
 
 
 @pytest.mark.skipif(shutil.which("uv") is None, reason="uv is required for spawn check")
-def test_uv_run_harness_spawns_from_sibling_with_project(tmp_path: Path):
+def test_uv_run_coboose_spawns_from_sibling_with_project(tmp_path: Path):
     repo = Path(__file__).resolve().parents[1]
     sibling = tmp_path / "frontend"
     sibling.mkdir()

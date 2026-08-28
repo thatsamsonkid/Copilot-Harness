@@ -4,7 +4,6 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export COBOOSE_ROOT="${COBOOSE_ROOT:-$ROOT}"
-export HARNESS_ROOT="${HARNESS_ROOT:-$COBOOSE_ROOT}"
 
 if command -v uv >/dev/null 2>&1 && [[ -f "$ROOT/uv.lock" || -f "$ROOT/pyproject.toml" ]]; then
   exec uv run --project "$ROOT" coboose "$@"

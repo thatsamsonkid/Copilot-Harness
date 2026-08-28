@@ -307,7 +307,7 @@ def _resolve_personal(personal: bool | None, prompt: PromptSession) -> bool:
         lowered = answer.strip().lower()
         if lowered in {"personal", "p", "local", "mine"}:
             return True
-        if lowered in {"shared", "s", "team", "coboose", "harness"}:
+        if lowered in {"shared", "s", "team", "coboose"}:
             return False
         prompt.write("Choose personal or shared.\n")
 

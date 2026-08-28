@@ -42,25 +42,6 @@ def read_yaml(path: Path) -> Any:
         raise CobooseError(f"Invalid YAML in {path}: {exc}") from exc
 
 
-KIT_FOLDER_NAMES = frozenset({"coboose", "harness"})
-
-
-def _include_kit(item: dict[str, Any], default: bool = True) -> bool:
-    if "include_coboose" in item:
-        return bool(item["include_coboose"])
-    if "include_harness" in item:
-        return bool(item["include_harness"])
-    return default
-
-
-def _workspace_meta(raw: dict[str, Any]) -> dict[str, Any]:
-    for key in ("coboose", "harness"):
-        value = raw.get(key)
-        if isinstance(value, dict):
-            return value
-    return {}
-
-
 _as_list = as_list
 _read_yaml = read_yaml
 
@@ -499,7 +480,7 @@ def load_stack(
                 description=str(item.get("description") or ""),
                 folders=folders,
                 tags=tags,
-                include_coboose=_include_kit(item),
+                include_coboose=bool(item.get("include_coboose", True)),
                 fallback=bool(item.get("fallback", False)),
                 env=_as_list(item.get("env")),
                 match=WorkspaceMatch(
@@ -566,7 +547,7 @@ def parse_personal_workspace(path: Path, repo_names: set[str]) -> Workspace | No
         return None
     if not isinstance(raw, dict):
         return None
-    meta = _workspace_meta(raw)
+    meta = raw.get("coboose") if isinstance(raw.get("coboose"), dict) else {}
     workspace_id = str(meta.get("id") or path.stem).strip()
     if not workspace_id:
         return None
@@ -577,15 +558,13 @@ def parse_personal_workspace(path: Path, repo_names: set[str]) -> Workspace | No
             for folder in (raw.get("folders") or [])
             if isinstance(folder, dict)
             and folder.get("name")
-            and str(folder.get("name")) not in KIT_FOLDER_NAMES
+            and str(folder.get("name")) != "coboose"
         ]
     folders = [name for name in folders if name in repo_names]
     include_coboose = meta.get("include_coboose")
     if include_coboose is None:
-        include_coboose = meta.get("include_harness")
-    if include_coboose is None:
         include_coboose = any(
-            isinstance(folder, dict) and folder.get("name") in KIT_FOLDER_NAMES
+            isinstance(folder, dict) and folder.get("name") == "coboose"
             for folder in (raw.get("folders") or [])
         )
     return Workspace(

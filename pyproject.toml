@@ -21,7 +21,6 @@ dev = [
 
 [project.scripts]
 coboose = "coboose.cli:main"
-harness = "coboose.cli:main"
 
 [tool.uv]
 default-groups = ["dev"]

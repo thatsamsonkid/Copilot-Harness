@@ -7,7 +7,7 @@ Product code does **not** live here. This repo holds:
 1. A `repositories.yml` manifest of every product repo, plus feature-focused Code workspaces
 2. A `templates.yml` list of starter remotes used to bootstrap **new** projects
 3. A clone script that places product remotes **next to** this Coboose repo (flat siblings or grouped folders)
-4. A `coboose` CLI Copilot can run to list/bootstrap templates and pull Jira Cloud tickets over basic auth (no Jira MCP). The old `harness` command still works as an alias.
+4. A `coboose` CLI Copilot can run to list/bootstrap templates and pull Jira Cloud tickets over basic auth (no Jira MCP)
 
 ```text
 parent/

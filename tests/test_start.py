@@ -769,20 +769,3 @@ def test_saved_plan_rejects_bad_method(coboose_root: Path, catalog):
     )
     with pytest.raises(CobooseError, match="method must be terminal"):
         collect_start_plan(catalog, coboose_root, workspace_id="frontend")
-
-
-def test_saved_plan_accepts_legacy_harness_method(coboose_root: Path, catalog):
-    _write_spring(coboose_root)
-    plan_path = catalog.workspace_start_file(coboose_root, "frontend")
-    plan_path.parent.mkdir(parents=True, exist_ok=True)
-    plan_path.write_text(
-        "workspace: frontend\n"
-        "services:\n"
-        "  - name: backend\n"
-        "    command: ./mvnw spring-boot:run\n"
-        "    method: harness\n",
-        encoding="utf-8",
-    )
-    payload = collect_start_plan(catalog, coboose_root, workspace_id="frontend")
-    backend = next(item for item in payload["services"] if item["name"] == "backend")
-    assert backend["run_via"] == "coboose"

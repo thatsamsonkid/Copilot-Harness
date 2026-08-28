@@ -17,16 +17,13 @@
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
     "chat.useCustomizationsInParentRepositories": true,
     "terminal.integrated.env.linux": {
-      "COBOOSE_ROOT": "${workspaceFolder:coboose}",
-      "HARNESS_ROOT": "${workspaceFolder:coboose}"
+      "COBOOSE_ROOT": "${workspaceFolder:coboose}"
     },
     "terminal.integrated.env.osx": {
-      "COBOOSE_ROOT": "${workspaceFolder:coboose}",
-      "HARNESS_ROOT": "${workspaceFolder:coboose}"
+      "COBOOSE_ROOT": "${workspaceFolder:coboose}"
     },
     "terminal.integrated.env.windows": {
-      "COBOOSE_ROOT": "${workspaceFolder:coboose}",
-      "HARNESS_ROOT": "${workspaceFolder:coboose}"
+      "COBOOSE_ROOT": "${workspaceFolder:coboose}"
     }
   },
   "extensions": {

@@ -5,9 +5,6 @@ $Root = Split-Path -Parent $PSScriptRoot
 if (-not $env:COBOOSE_ROOT) {
     $env:COBOOSE_ROOT = $Root
 }
-if (-not $env:HARNESS_ROOT) {
-    $env:HARNESS_ROOT = $env:COBOOSE_ROOT
-}
 
 if (Get-Command uv -ErrorAction SilentlyContinue) {
     if ((Test-Path (Join-Path $Root "uv.lock")) -or (Test-Path (Join-Path $Root "pyproject.toml"))) {

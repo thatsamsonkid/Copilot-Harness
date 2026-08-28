@@ -12,16 +12,13 @@
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "terminal.integrated.env.linux": {
-    "COBOOSE_ROOT": "${workspaceFolder}",
-    "HARNESS_ROOT": "${workspaceFolder}"
+    "COBOOSE_ROOT": "${workspaceFolder}"
   },
   "terminal.integrated.env.osx": {
-    "COBOOSE_ROOT": "${workspaceFolder}",
-    "HARNESS_ROOT": "${workspaceFolder}"
+    "COBOOSE_ROOT": "${workspaceFolder}"
   },
   "terminal.integrated.env.windows": {
-    "COBOOSE_ROOT": "${workspaceFolder}",
-    "HARNESS_ROOT": "${workspaceFolder}"
+    "COBOOSE_ROOT": "${workspaceFolder}"
   },
   "files.exclude": {
     "**/.env": true,

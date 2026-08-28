@@ -24,10 +24,7 @@ def test_workspace_paths_point_at_siblings(catalog, coboose_root: Path):
         document["settings"]["terminal.integrated.env.osx"]["COBOOSE_ROOT"]
         == "${workspaceFolder:coboose}"
     )
-    assert (
-        document["settings"]["terminal.integrated.env.linux"]["HARNESS_ROOT"]
-        == "${workspaceFolder:coboose}"
-    )
+    assert "HARNESS_ROOT" not in document["settings"]["terminal.integrated.env.linux"]
     assert "UV_PROJECT" not in document["settings"]["terminal.integrated.env.linux"]
 
 

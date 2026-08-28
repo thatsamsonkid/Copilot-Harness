@@ -18,14 +18,12 @@ def is_coboose_root(path: Path) -> bool:
 
 
 def find_coboose_root(start: Path | None = None) -> Path:
-    for name in ("COBOOSE_ROOT", "HARNESS_ROOT"):
-        env = os.environ.get(name)
-        if not env:
-            continue
+    env = os.environ.get("COBOOSE_ROOT")
+    if env:
         root = Path(env).expanduser().resolve()
         if not is_coboose_root(root):
             raise CobooseError(
-                f"{name}={root} does not contain {REPOS_RELATIVE} "
+                f"COBOOSE_ROOT={root} does not contain {REPOS_RELATIVE} "
                 f"or {STACK_RELATIVE}"
             )
         return root

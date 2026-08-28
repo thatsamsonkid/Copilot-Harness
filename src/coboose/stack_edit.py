@@ -155,7 +155,7 @@ def _format_raw_workspace(item: dict) -> str:
         description=str(item.get("description") or ""),
         folders=[str(v) for v in (item.get("folders") or [])],
         tags=[str(v) for v in (item.get("tags") or [])],
-        include_coboose=bool(item.get("include_coboose", item.get("include_harness", True))),
+        include_coboose=bool(item.get("include_coboose", True)),
         fallback=bool(item.get("fallback", False)),
         env=[str(v) for v in (item.get("env") or [])],
         match=WorkspaceMatch(

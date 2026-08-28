@@ -84,15 +84,6 @@ def test_find_coboose_root_from_nested_cwd(coboose_root: Path, monkeypatch: pyte
     nested.mkdir(parents=True)
     monkeypatch.chdir(nested)
     monkeypatch.delenv("COBOOSE_ROOT", raising=False)
-    monkeypatch.delenv("HARNESS_ROOT", raising=False)
-    assert find_coboose_root() == coboose_root.resolve()
-
-
-def test_find_coboose_root_accepts_legacy_env(
-    coboose_root: Path, monkeypatch: pytest.MonkeyPatch
-):
-    monkeypatch.delenv("COBOOSE_ROOT", raising=False)
-    monkeypatch.setenv("HARNESS_ROOT", str(coboose_root))
     assert find_coboose_root() == coboose_root.resolve()
 
 

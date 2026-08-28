@@ -13,7 +13,6 @@ from coboose import CobooseError
 from coboose.envfile import upsert_env_file
 
 SERVICE = "coboose"
-LEGACY_SERVICE = "copilot-harness"
 ACCOUNT = "jira-api-token"
 TOKEN_DOC = "docs/jira-api-token.md"
 
@@ -108,14 +107,13 @@ def env_token() -> str:
 
 
 def get_stored_secret(account: str) -> str | None:
-    for service in (SERVICE, LEGACY_SERVICE):
-        try:
-            value = _store().get_password(service, account)
-        except Exception:  # noqa: BLE001 - missing backends must not crash lookup
-            continue
-        if value and value.strip():
-            return value.strip()
-    return None
+    try:
+        value = _store().get_password(SERVICE, account)
+    except Exception:  # noqa: BLE001 - missing backends must not crash lookup
+        return None
+    if not value:
+        return None
+    return value.strip() or None
 
 
 def set_stored_secret(account: str, value: str) -> None:
@@ -140,16 +138,12 @@ def set_stored_secret(account: str, value: str) -> None:
 def delete_stored_secret(account: str) -> bool:
     if get_stored_secret(account) is None:
         return False
-    errors: list[Exception] = []
-    for service in (SERVICE, LEGACY_SERVICE):
-        try:
-            _store().delete_password(service, account)
-        except Exception as exc:  # noqa: BLE001 - surface a safe user message
-            errors.append(exc)
-    if get_stored_secret(account) is not None and errors:
+    try:
+        _store().delete_password(SERVICE, account)
+    except Exception as exc:  # noqa: BLE001 - surface a safe user message
         raise CobooseError(
-            f"Could not remove the secret from {backend_display_name()}: {errors[0]}."
-        ) from errors[0]
+            f"Could not remove the secret from {backend_display_name()}: {exc}."
+        ) from exc
     return True
 
 

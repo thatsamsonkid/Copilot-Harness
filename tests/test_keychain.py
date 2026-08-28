@@ -64,12 +64,6 @@ def test_resolve_token_prefers_env_then_keychain(isolated_keychain, monkeypatch)
     isolated_keychain.set_password(SERVICE, ACCOUNT, "from-keychain")
     assert resolve_token() == ("from-keychain", SOURCE_KEYCHAIN)
 
-
-def test_legacy_keychain_service_still_resolves(isolated_keychain, monkeypatch):
-    _clear_jira_env(monkeypatch)
-    isolated_keychain.set_password("copilot-harness", ACCOUNT, "legacy-token")
-    assert resolve_token() == ("legacy-token", SOURCE_KEYCHAIN)
-
     monkeypatch.setenv("JIRA_API_TOKEN", "from-env")
     assert resolve_token() == ("from-env", SOURCE_ENV)
 
