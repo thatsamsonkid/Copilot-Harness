@@ -2,14 +2,14 @@ from pathlib import Path
 
 import pytest
 
-from harness import HarnessError
-from harness.catalog import load_catalog
-from harness.paths import TEMPLATES_RELATIVE
-from harness.templates import get_template, load_templates, select_templates
-from tests.helpers import write_harness_config, write_yaml
+from coboose import CobooseError
+from coboose.catalog import load_catalog
+from coboose.paths import TEMPLATES_RELATIVE
+from coboose.templates import get_template, load_templates, select_templates
+from tests.helpers import write_coboose_config, write_yaml
 
 
-def test_load_templates_from_harness_root(catalog):
+def test_load_templates_from_coboose_root(catalog):
     names = [item.name for item in catalog.templates]
     assert names == ["web-starter", "api-starter"]
     assert catalog.template("web-starter").kind == "frontend"
@@ -18,8 +18,8 @@ def test_load_templates_from_harness_root(catalog):
 
 def test_missing_templates_file_is_empty(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data.pop("templates")
-    root = tmp_path / "harness"
-    write_harness_config(root, sample_catalog_data)
+    root = tmp_path / "coboose"
+    write_coboose_config(root, sample_catalog_data)
     assert not (root / TEMPLATES_RELATIVE).exists()
     catalog = load_catalog(root)
     assert catalog.templates == []
@@ -43,7 +43,7 @@ def test_rejects_duplicate_template_names(tmp_path: Path):
             ]
         },
     )
-    with pytest.raises(HarnessError, match="Duplicate template"):
+    with pytest.raises(CobooseError, match="Duplicate template"):
         load_templates(path)
 
 
@@ -52,14 +52,14 @@ def test_requires_name_url_and_tags(tmp_path: Path):
         tmp_path / "templates.yml",
         {"templates": [{"name": "web", "url": "https://github.com/acme/a.git"}]},
     )
-    with pytest.raises(HarnessError, match="at least one tag"):
+    with pytest.raises(CobooseError, match="at least one tag"):
         load_templates(path)
 
 
 def test_select_templates_by_tag_and_unknown_name(catalog):
     selected = select_templates(catalog.templates, tags=["mobile", "api"])
     assert [item.name for item in selected] == ["api-starter"]
-    with pytest.raises(HarnessError, match="Unknown template"):
+    with pytest.raises(CobooseError, match="Unknown template"):
         get_template(catalog.templates, "nope")
 
 
@@ -76,7 +76,7 @@ def test_rejects_repositories_key_in_templates_file(tmp_path: Path):
             ]
         },
     )
-    with pytest.raises(HarnessError, match="repositories.yml"):
+    with pytest.raises(CobooseError, match="repositories.yml"):
         load_templates(path)
 
 

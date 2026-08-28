@@ -4,13 +4,13 @@ import shlex
 from pathlib import Path
 from typing import Any
 
-HARNESS_FOLDER_NAME = "harness"
+COBOOSE_FOLDER_NAME = "coboose"
 
 _SPAWN_NOTE = (
-    "Bare `uv run harness` only works when the process cwd is this harness "
+    "Bare `uv run coboose` only works when the process cwd is this Coboose "
     "repo (it has pyproject.toml). After cd into a sibling clone, uv cannot "
-    "spawn `harness`. Set the command cwd to `cwd`, or run `command` / `script` "
-    "from any directory. Do not reuse an app terminal for harness commands."
+    "spawn `coboose`. Set the command cwd to `cwd`, or run `command` / `script` "
+    "from any directory. Do not reuse an app terminal for coboose commands."
 )
 
 
@@ -19,17 +19,17 @@ def invoke_spec(root: Path) -> dict[str, str]:
     root = Path(root).resolve()
     return {
         "cwd": str(root),
-        "command": f"uv run --project {shlex.quote(str(root))} harness",
-        "script": str(root / "scripts" / "harness.sh"),
-        "windows_script": str(root / "scripts" / "harness.ps1"),
+        "command": f"uv run --project {shlex.quote(str(root))} coboose",
+        "script": str(root / "scripts" / "coboose.sh"),
+        "windows_script": str(root / "scripts" / "coboose.ps1"),
         "note": _SPAWN_NOTE,
     }
 
 
-def terminal_env_settings(*, folder_name: str | None = HARNESS_FOLDER_NAME) -> dict[str, Any]:
-    """VS Code terminal env so HARNESS_ROOT survives a cd into a product repo."""
+def terminal_env_settings(*, folder_name: str | None = COBOOSE_FOLDER_NAME) -> dict[str, Any]:
+    """VS Code terminal env so COBOOSE_ROOT survives a cd into a product repo."""
     value = f"${{workspaceFolder:{folder_name}}}" if folder_name else "${workspaceFolder}"
-    env = {"HARNESS_ROOT": value}
+    env = {"COBOOSE_ROOT": value, "HARNESS_ROOT": value}
     return {
         "terminal.integrated.env.linux": dict(env),
         "terminal.integrated.env.osx": dict(env),

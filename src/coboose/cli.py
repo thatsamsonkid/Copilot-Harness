@@ -5,25 +5,25 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-from harness import HarnessError, __version__
-from harness.bootstrap import bootstrap_project
-from harness.catalog import catalog_to_dict, load_catalog
-from harness.clone import clone_repos
-from harness.context import collect_context
-from harness.doctor import run_doctor
-from harness.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
-from harness.envspec import find_var, list_env, set_env_value, unset_env_value
-from harness.keychain import login_token, logout_token
-from harness.onboard import run_init
-from harness.output import render
-from harness.paths import find_harness_root, load_dotenv_files
-from harness.prepare import prepare_issue
-from harness.prompt import PromptSession
-from harness.routing import recommend_workspace
-from harness.start import collect_start_plan, execute_start_env, execute_start_run
-from harness.templates import get_template, template_to_dict, templates_payload
-from harness.workspace import generate_workspaces, list_workspaces, open_workspace
-from harness.workspace_create import create_workspace
+from coboose import CobooseError, __version__
+from coboose.bootstrap import bootstrap_project
+from coboose.catalog import catalog_to_dict, load_catalog
+from coboose.clone import clone_repos
+from coboose.context import collect_context
+from coboose.doctor import run_doctor
+from coboose.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
+from coboose.envspec import find_var, list_env, set_env_value, unset_env_value
+from coboose.keychain import login_token, logout_token
+from coboose.onboard import run_init
+from coboose.output import render
+from coboose.paths import find_coboose_root, load_dotenv_files
+from coboose.prepare import prepare_issue
+from coboose.prompt import PromptSession
+from coboose.routing import recommend_workspace
+from coboose.start import collect_start_plan, execute_start_env, execute_start_run
+from coboose.templates import get_template, template_to_dict, templates_payload
+from coboose.workspace import generate_workspaces, list_workspaces, open_workspace
+from coboose.workspace_create import create_workspace
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -34,7 +34,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if payload is not None:
             print(render(payload, args.format))
         return 0
-    except HarnessError as exc:
+    except CobooseError as exc:
         _print_error(exc.message, getattr(args, "format", "json"), getattr(exc, "payload", None))
         return exc.code
     except KeyboardInterrupt:
@@ -53,14 +53,14 @@ def _shared_options() -> argparse.ArgumentParser:
     shared.add_argument("--catalog", type=Path, help="Override catalog/stack.yaml")
     shared.add_argument("--repos", type=Path, help="Override repositories.yml")
     shared.add_argument("--templates", type=Path, help="Override templates.yml")
-    shared.add_argument("--root", type=Path, help="Override harness root")
+    shared.add_argument("--root", type=Path, help="Override Coboose repo root")
     return shared
 
 
 def build_parser() -> argparse.ArgumentParser:
     shared = _shared_options()
     parser = argparse.ArgumentParser(
-        prog="harness",
+        prog="coboose",
         description=(
             "Clone product git repos, bootstrap projects from listed templates, "
             "query Jira Cloud with basic auth, and create or select a feature "
@@ -68,13 +68,13 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         parents=[shared],
     )
-    parser.add_argument("--version", action="version", version=f"harness {__version__}")
+    parser.add_argument("--version", action="version", version=f"coboose {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     clone = sub.add_parser(
         "clone",
         parents=[shared],
-        help="Clone repositories.yml remotes under parent_dir (outside this harness)",
+        help="Clone repositories.yml remotes under parent_dir (outside this Coboose repo)",
     )
     clone.add_argument("--only", help="Comma-separated repository names")
     clone.add_argument("--tag", help="Comma-separated tags from repositories.yml")
@@ -220,17 +220,17 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     workspace_create.add_argument(
-        "--include-harness",
-        dest="include_harness",
+        "--include-coboose",
+        dest="include_coboose",
         action="store_true",
         default=None,
-        help="Add this harness as the first workspace folder (default)",
+        help="Add this Coboose repo as the first workspace folder (default)",
     )
     workspace_create.add_argument(
-        "--no-include-harness",
-        dest="include_harness",
+        "--no-include-coboose",
+        dest="include_coboose",
         action="store_false",
-        help="Do not add this harness as a workspace folder",
+        help="Do not add this Coboose repo as a workspace folder",
     )
     workspace_create.add_argument(
         "--fallback",
@@ -451,10 +451,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def dispatch(args: argparse.Namespace) -> Any:
-    harness_root = Path(args.root).resolve() if args.root else find_harness_root()
-    load_dotenv_files(harness_root)
+    coboose_root = Path(args.root).resolve() if args.root else find_coboose_root()
+    load_dotenv_files(coboose_root)
     catalog = load_catalog(
-        harness_root,
+        coboose_root,
         stack_path=Path(args.catalog).resolve() if args.catalog else None,
         repos_path=Path(args.repos).resolve() if args.repos else None,
         templates_path=Path(args.templates).resolve() if args.templates else None,
@@ -465,7 +465,7 @@ def dispatch(args: argparse.Namespace) -> Any:
         tags = _split_ids(getattr(args, "tag", None))
         repos = clone_repos(
             catalog,
-            harness_root,
+            coboose_root,
             only=only,
             tags=tags,
             update=args.update,
@@ -473,7 +473,7 @@ def dispatch(args: argparse.Namespace) -> Any:
             https=args.https,
         )
         payload = {
-            "sibling_root": str(catalog.sibling_root(harness_root)),
+            "sibling_root": str(catalog.sibling_root(coboose_root)),
             "repos": repos,
         }
         if any(item.get("action") == "blocked" for item in repos):
@@ -483,51 +483,51 @@ def dispatch(args: argparse.Namespace) -> Any:
             )
         return payload
     if args.command == "jira":
-        return _dispatch_jira(args, catalog, harness_root)
+        return _dispatch_jira(args, catalog, coboose_root)
     if args.command == "env":
-        return _dispatch_env(args, catalog, harness_root)
+        return _dispatch_env(args, catalog, coboose_root)
     if args.command == "workspace":
-        return _dispatch_workspace(args, catalog, harness_root)
+        return _dispatch_workspace(args, catalog, coboose_root)
     if args.command == "prepare":
         return prepare_issue(
             catalog,
-            harness_root,
+            coboose_root,
             _client(),
             args.issue,
             clone_missing=args.clone_missing,
             generate=not args.no_generate,
         )
     if args.command == "doctor":
-        payload = run_doctor(catalog, harness_root, ping_jira=args.ping_jira)
+        payload = run_doctor(catalog, coboose_root, ping_jira=args.ping_jira)
         if not payload.get("ok"):
             raise _payload_error("Doctor found blocking issues.", payload)
         return payload
     if args.command == "init":
         return run_init(
             catalog,
-            harness_root,
+            coboose_root,
             interactive=args.interactive,
             ping_jira=args.ping_jira,
         )
     if args.command == "context":
         return collect_context(
             catalog,
-            harness_root,
+            coboose_root,
             only=_split_ids(args.repo),
         )
     if args.command == "start":
         if args.action == "run":
             if args.shell:
-                raise HarnessError(
-                    "harness start run starts the app. "
+                raise CobooseError(
+                    "coboose start run starts the app. "
                     "Use `start env --repo <name> --shell` to apply env in a terminal."
                 )
             repos = _split_ids(args.repo) or []
             if len(repos) != 1:
-                raise HarnessError("harness start run requires exactly one --repo")
+                raise CobooseError("coboose start run requires exactly one --repo")
             payload = execute_start_run(
                 catalog,
-                harness_root,
+                coboose_root,
                 repos[0],
                 configuration=args.configuration,
                 dry_run=args.dry_run,
@@ -540,12 +540,12 @@ def dispatch(args: argparse.Namespace) -> Any:
         if args.action == "env":
             repos = _split_ids(args.repo) or []
             if len(repos) != 1:
-                raise HarnessError("harness start env requires exactly one --repo")
+                raise CobooseError("coboose start env requires exactly one --repo")
             if args.save:
-                raise HarnessError("harness start env does not write a start plan")
+                raise CobooseError("coboose start env does not write a start plan")
             payload = execute_start_env(
                 catalog,
-                harness_root,
+                coboose_root,
                 repos[0],
                 configuration=args.configuration,
                 prefix=args.prefix,
@@ -557,16 +557,16 @@ def dispatch(args: argparse.Namespace) -> Any:
             return payload
         return collect_start_plan(
             catalog,
-            harness_root,
+            coboose_root,
             workspace_id=args.workspace,
             only=_split_ids(args.repo),
             save=args.save,
             refresh=args.refresh,
         )
     if args.command == "catalog":
-        return catalog_to_dict(catalog, harness_root)
+        return catalog_to_dict(catalog, coboose_root)
     if args.command == "repos":
-        payload = catalog_to_dict(catalog, harness_root)
+        payload = catalog_to_dict(catalog, coboose_root)
         return {
             "manifest": payload["repos_source"],
             "parent_dir": payload["parent_dir"],
@@ -576,28 +576,28 @@ def dispatch(args: argparse.Namespace) -> Any:
     if args.command == "templates":
         return _dispatch_templates(args, catalog)
     if args.command == "bootstrap":
-        return _dispatch_bootstrap(args, catalog, harness_root)
-    raise HarnessError(f"Unknown command: {args.command}")
+        return _dispatch_bootstrap(args, catalog, coboose_root)
+    raise CobooseError(f"Unknown command: {args.command}")
 
 
-def _dispatch_jira(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
+def _dispatch_jira(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
     settings = catalog.jira
     if args.jira_command == "schema":
         return {"jira": settings.schema()}
     if args.jira_command == "login":
         return login_token(
-            harness_root,
+            coboose_root,
             from_env=args.from_env,
             clear_env=not args.keep_env,
         )
     if args.jira_command == "logout":
-        return logout_token(harness_root, clear_env=args.clear_env)
+        return logout_token(coboose_root, clear_env=args.clear_env)
     client = _client()
     if args.jira_command == "get":
         return client.get_issue(args.issue, settings=settings)
     if args.jira_command == "comments":
         if not settings.wants("comments"):
-            raise HarnessError("Comments are disabled in catalog/stack.yaml jira.fields")
+            raise CobooseError("Comments are disabled in catalog/stack.yaml jira.fields")
         return {
             "key": parse_issue_key(args.issue),
             "comments": client.get_comments(args.issue, max_results=settings.max_comments),
@@ -608,17 +608,17 @@ def _dispatch_jira(args: argparse.Namespace, catalog: Any, harness_root: Path) -
         return client.get_context(args.issue, settings=settings)
     if args.jira_command == "whoami":
         return client.myself()
-    raise HarnessError(f"Unknown jira command: {args.jira_command}")
+    raise CobooseError(f"Unknown jira command: {args.jira_command}")
 
 
-def _dispatch_env(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
+def _dispatch_env(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
     if args.env_command == "list":
         extra = None
         if args.workspace:
             extra = catalog.workspace(args.workspace).env
         return list_env(
             catalog.env_vars,
-            harness_root,
+            coboose_root,
             workspace_id=args.workspace,
             extra_names=extra,
             source=catalog.env_source,
@@ -627,31 +627,31 @@ def _dispatch_env(args: argparse.Namespace, catalog: Any, harness_root: Path) ->
     if args.env_command == "set":
         return set_env_value(
             variable,
-            harness_root,
+            coboose_root,
             from_env=args.from_env,
             clear_env=not args.keep_env,
         )
     if args.env_command == "unset":
-        return unset_env_value(variable, harness_root, clear_env=args.clear_env)
-    raise HarnessError(f"Unknown env command: {args.env_command}")
+        return unset_env_value(variable, coboose_root, clear_env=args.clear_env)
+    raise CobooseError(f"Unknown env command: {args.env_command}")
 
 
-def _dispatch_workspace(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
+def _dispatch_workspace(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
     if args.workspace_command == "list":
-        return {"workspaces": list_workspaces(catalog, harness_root)}
+        return {"workspaces": list_workspaces(catalog, coboose_root)}
     if args.workspace_command == "generate":
-        return {"workspaces": generate_workspaces(catalog, harness_root)}
+        return {"workspaces": generate_workspaces(catalog, coboose_root)}
     if args.workspace_command == "create":
         prompt = PromptSession(interactive=False if args.no_prompt else None)
         return create_workspace(
             catalog,
-            harness_root,
+            coboose_root,
             workspace_id=args.id,
             name=args.name,
             description=args.description,
             folders=_split_ids(args.projects),
             tags=_split_ids(args.tag),
-            include_harness=args.include_harness,
+            include_coboose=args.include_coboose,
             personal=args.personal,
             fallback=args.fallback,
             match_projects=_split_ids(args.match_projects),
@@ -678,11 +678,11 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, harness_root: Pa
             "alternatives": alternatives,
         }
     if args.workspace_command == "open":
-        return open_workspace(catalog.workspace_file(harness_root, args.id))
+        return open_workspace(catalog.workspace_file(coboose_root, args.id))
     if args.workspace_command == "path":
-        path = catalog.workspace_file(harness_root, args.id)
+        path = catalog.workspace_file(coboose_root, args.id)
         return {"id": args.id, "file": str(path), "exists": path.exists()}
-    raise HarnessError(f"Unknown workspace command: {args.workspace_command}")
+    raise CobooseError(f"Unknown workspace command: {args.workspace_command}")
 
 
 def _dispatch_templates(args: argparse.Namespace, catalog: Any) -> Any:
@@ -697,17 +697,17 @@ def _dispatch_templates(args: argparse.Namespace, catalog: Any) -> Any:
     return templates_payload(catalog.templates, source or Path("templates.yml"), tags=tags)
 
 
-def _dispatch_bootstrap(args: argparse.Namespace, catalog: Any, harness_root: Path) -> Any:
+def _dispatch_bootstrap(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
     template_name = args.template_flag or args.template
     if args.template_flag and args.template and args.template_flag != args.template:
-        raise HarnessError("Positional template and --template do not match")
+        raise CobooseError("Positional template and --template do not match")
     if not template_name:
-        raise HarnessError(
-            "Pass a listed template: harness bootstrap --template <name> --name <folder>"
+        raise CobooseError(
+            "Pass a listed template: coboose bootstrap --template <name> --name <folder>"
         )
     return bootstrap_project(
         catalog,
-        harness_root,
+        coboose_root,
         template_name=template_name,
         dest_name=args.name,
         group=args.group,
@@ -732,8 +732,8 @@ def _split_ids(value: str | None) -> list[str] | None:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-def _payload_error(message: str, payload: dict) -> HarnessError:
-    return HarnessError(message, payload=payload)
+def _payload_error(message: str, payload: dict) -> CobooseError:
+    return CobooseError(message, payload=payload)
 
 
 def _print_error(message: str, fmt: str, payload: dict | None = None) -> None:

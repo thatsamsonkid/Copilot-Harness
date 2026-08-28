@@ -9,10 +9,11 @@ from getpass import getpass
 from pathlib import Path
 from typing import Any, Protocol
 
-from harness import HarnessError
-from harness.envfile import upsert_env_file
+from coboose import CobooseError
+from coboose.envfile import upsert_env_file
 
-SERVICE = "copilot-harness"
+SERVICE = "coboose"
+LEGACY_SERVICE = "copilot-harness"
 ACCOUNT = "jira-api-token"
 TOKEN_DOC = "docs/jira-api-token.md"
 
@@ -50,7 +51,7 @@ class UnavailableStore:
         return None
 
     def set_password(self, service: str, username: str, password: str) -> None:
-        raise HarnessError(_unavailable_message())
+        raise CobooseError(_unavailable_message())
 
     def delete_password(self, service: str, username: str) -> None:
         return None
@@ -107,29 +108,30 @@ def env_token() -> str:
 
 
 def get_stored_secret(account: str) -> str | None:
-    try:
-        value = _store().get_password(SERVICE, account)
-    except Exception:  # noqa: BLE001 - missing backends must not crash lookup
-        return None
-    if not value:
-        return None
-    return value.strip() or None
+    for service in (SERVICE, LEGACY_SERVICE):
+        try:
+            value = _store().get_password(service, account)
+        except Exception:  # noqa: BLE001 - missing backends must not crash lookup
+            continue
+        if value and value.strip():
+            return value.strip()
+    return None
 
 
 def set_stored_secret(account: str, value: str) -> None:
     cleaned = (value or "").strip()
     if not cleaned:
-        raise HarnessError("A non-empty secret is required")
+        raise CobooseError("A non-empty secret is required")
     if not account.strip():
-        raise HarnessError("A keychain account name is required")
+        raise CobooseError("A keychain account name is required")
     if not keychain_available():
-        raise HarnessError(_unavailable_message())
+        raise CobooseError(_unavailable_message())
     try:
         _store().set_password(SERVICE, account, cleaned)
-    except HarnessError:
+    except CobooseError:
         raise
     except Exception as exc:  # noqa: BLE001 - surface a safe user message
-        raise HarnessError(
+        raise CobooseError(
             f"Could not store the secret in {backend_display_name()}: {exc}. "
             f"See {TOKEN_DOC}."
         ) from exc
@@ -138,12 +140,16 @@ def set_stored_secret(account: str, value: str) -> None:
 def delete_stored_secret(account: str) -> bool:
     if get_stored_secret(account) is None:
         return False
-    try:
-        _store().delete_password(SERVICE, account)
-    except Exception as exc:  # noqa: BLE001 - surface a safe user message
-        raise HarnessError(
-            f"Could not remove the secret from {backend_display_name()}: {exc}."
-        ) from exc
+    errors: list[Exception] = []
+    for service in (SERVICE, LEGACY_SERVICE):
+        try:
+            _store().delete_password(service, account)
+        except Exception as exc:  # noqa: BLE001 - surface a safe user message
+            errors.append(exc)
+    if get_stored_secret(account) is not None and errors:
+        raise CobooseError(
+            f"Could not remove the secret from {backend_display_name()}: {errors[0]}."
+        ) from errors[0]
     return True
 
 
@@ -222,9 +228,9 @@ def keychain_status(account: str | None = None) -> KeychainStatus:
 def storage_guides() -> dict[str, Any]:
     current = platform.system()
     return {
-        "preferred_cli": "uv run harness jira login",
-        "env_command": "uv run harness env set NAME",
-        "migrate_command": "uv run harness jira login --from-env",
+        "preferred_cli": "uv run coboose jira login",
+        "env_command": "uv run coboose env set NAME",
+        "migrate_command": "uv run coboose jira login --from-env",
         "service": SERVICE,
         "account": ACCOUNT,
         "current": storage_guide(current),
@@ -240,8 +246,8 @@ def storage_guide(system: str | None = None) -> dict[str, Any]:
         return {
             "os": "macOS",
             "store": "macOS Keychain",
-            "cli_command": "uv run harness jira login",
-            "migrate_command": "uv run harness jira login --from-env",
+            "cli_command": "uv run coboose jira login",
+            "migrate_command": "uv run coboose jira login --from-env",
             "service": SERVICE,
             "account": ACCOUNT,
             "manual_steps": [
@@ -260,8 +266,8 @@ def storage_guide(system: str | None = None) -> dict[str, Any]:
         return {
             "os": "Windows",
             "store": "Windows Credential Manager",
-            "cli_command": "uv run harness jira login",
-            "migrate_command": "uv run harness jira login --from-env",
+            "cli_command": "uv run coboose jira login",
+            "migrate_command": "uv run coboose jira login --from-env",
             "service": SERVICE,
             "account": ACCOUNT,
             "manual_steps": [
@@ -277,19 +283,19 @@ def storage_guide(system: str | None = None) -> dict[str, Any]:
     return {
         "os": "Linux",
         "store": "Secret Service (GNOME Keyring / KWallet)",
-        "cli_command": "uv run harness jira login",
-        "migrate_command": "uv run harness jira login --from-env",
+        "cli_command": "uv run coboose jira login",
+        "migrate_command": "uv run coboose jira login --from-env",
         "service": SERVICE,
         "account": ACCOUNT,
         "manual_steps": [
-            "On a desktop session with GNOME Keyring or KWallet, run `uv run harness jira login`.",
+            "On a desktop session with GNOME Keyring or KWallet, run `uv run coboose jira login`.",
             "Headless or CI machines can keep JIRA_API_TOKEN in .env instead.",
         ],
     }
 
 
 def login_token(
-    harness_root: Path,
+    coboose_root: Path,
     *,
     from_env: bool = False,
     clear_env: bool = True,
@@ -299,18 +305,18 @@ def login_token(
     if from_env:
         token = env_token()
         if not token:
-            raise HarnessError(
+            raise CobooseError(
                 "No JIRA_API_TOKEN in the environment or .env. "
-                "Run `uv run harness jira login` in your own terminal, "
+                "Run `uv run coboose jira login` in your own terminal, "
                 f"or see {TOKEN_DOC}."
             )
     else:
         if stdin_isatty is None:
             stdin_isatty = sys.stdin.isatty()
         if not stdin_isatty:
-            raise HarnessError(
+            raise CobooseError(
                 "Refusing interactive login without a TTY. Run this in your own "
-                "terminal, or use `harness jira login --from-env` if the token is "
+                "terminal, or use `coboose jira login --from-env` if the token is "
                 f"already in .env. See {TOKEN_DOC}."
             )
         prompt = (
@@ -318,12 +324,12 @@ def login_token(
         )
         token = (secret_fn or getpass)(prompt).strip()
         if not token:
-            raise HarnessError("A non-empty API token is required")
+            raise CobooseError("A non-empty API token is required")
 
     set_stored_token(token)
     cleared_env = False
     if clear_env:
-        cleared_env = _clear_env_token(harness_root)
+        cleared_env = _clear_env_token(coboose_root)
 
     status = keychain_status()
     return {
@@ -336,9 +342,9 @@ def login_token(
     }
 
 
-def logout_token(harness_root: Path, *, clear_env: bool = False) -> dict[str, Any]:
+def logout_token(coboose_root: Path, *, clear_env: bool = False) -> dict[str, Any]:
     removed = delete_stored_token()
-    cleared_env = _clear_env_token(harness_root) if clear_env else False
+    cleared_env = _clear_env_token(coboose_root) if clear_env else False
     status = keychain_status()
     return {
         "removed": removed,
@@ -352,13 +358,13 @@ def logout_token(harness_root: Path, *, clear_env: bool = False) -> dict[str, An
 def missing_token_action() -> str:
     return (
         f"Create a token ({TOKEN_DOC}) and store it with "
-        "`uv run harness jira login` (macOS Keychain or Windows Credential Manager). "
+        "`uv run coboose jira login` (macOS Keychain or Windows Credential Manager). "
         "Do not paste the token into chat."
     )
 
 
-def _clear_env_token(harness_root: Path) -> bool:
-    env_path = harness_root / ".env"
+def _clear_env_token(coboose_root: Path) -> bool:
+    env_path = coboose_root / ".env"
     had_env = bool(env_token())
     for key in ("JIRA_API_TOKEN", "JIRA_TOKEN"):
         os.environ.pop(key, None)

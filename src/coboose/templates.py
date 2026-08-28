@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from harness import HarnessError
-from harness.catalog import Repo, as_list, read_yaml
-from harness.paths import TEMPLATES_RELATIVE
+from coboose import CobooseError
+from coboose.catalog import Repo, as_list, read_yaml
+from coboose.paths import TEMPLATES_RELATIVE
 
 
 @dataclass(frozen=True)
@@ -59,20 +59,20 @@ def load_templates(path: Path) -> list[Template]:
         items = raw
     elif isinstance(raw, dict):
         if raw.get("repositories") and not raw.get("templates"):
-            raise HarnessError(
+            raise CobooseError(
                 f"{path} looks like {Path('repositories.yml')}. "
                 f"Keep starter remotes under `templates:` in {TEMPLATES_RELATIVE}."
             )
         items = raw.get("templates") or raw.get("template_repositories") or []
     else:
-        raise HarnessError(f"{path} must be a mapping or a list of templates")
+        raise CobooseError(f"{path} must be a mapping or a list of templates")
 
     templates: list[Template] = []
     seen: set[str] = set()
     for item in items:
         template = _parse_template(item)
         if template.name in seen:
-            raise HarnessError(f"Duplicate template name: {template.name}")
+            raise CobooseError(f"Duplicate template name: {template.name}")
         seen.add(template.name)
         templates.append(template)
     return templates
@@ -80,15 +80,15 @@ def load_templates(path: Path) -> list[Template]:
 
 def _parse_template(item: Any) -> Template:
     if not isinstance(item, dict):
-        raise HarnessError("Each template entry must be a mapping")
+        raise CobooseError("Each template entry must be a mapping")
     name = item.get("name") or item.get("id")
     url = item.get("url") or item.get("clone_url") or item.get("git")
     if not name or not url:
-        raise HarnessError("Each template needs name and url (GitHub clone URL)")
+        raise CobooseError("Each template needs name and url (GitHub clone URL)")
     name = str(name)
     tags = as_list(item.get("tags"))
     if not tags:
-        raise HarnessError(f"Template {name} needs at least one tag")
+        raise CobooseError(f"Template {name} needs at least one tag")
     return Template(
         name=name,
         url=str(url),
@@ -114,10 +114,10 @@ def select_templates(
         known = {item.name for item in templates}
         unknown = wanted.difference(known)
         if unknown:
-            raise HarnessError(
+            raise CobooseError(
                 "Unknown template name(s): "
                 + ", ".join(sorted(unknown))
-                + ". Run `harness templates` to see the list."
+                + ". Run `coboose templates` to see the list."
             )
         selected = [item for item in selected if item.name in wanted]
     if tags:
@@ -134,8 +134,8 @@ def get_template(templates: list[Template], name: str) -> Template:
     for item in templates:
         if item.name == name:
             return item
-    raise HarnessError(
-        f"Unknown template: {name}. Run `harness templates` to see the list."
+    raise CobooseError(
+        f"Unknown template: {name}. Run `coboose templates` to see the list."
     )
 
 

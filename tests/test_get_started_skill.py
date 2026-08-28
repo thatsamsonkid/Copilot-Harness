@@ -30,7 +30,7 @@ def test_skill_keeps_tokens_out_of_chat():
         assert token in description
     lowered = body.lower()
     for token in (
-        "uv run harness init",
+        "uv run coboose init",
         "docs/jira-api-token.md",
         "never ask the user to paste a token",
         "init --interactive",

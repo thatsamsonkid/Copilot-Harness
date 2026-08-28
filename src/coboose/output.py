@@ -163,7 +163,7 @@ def _templates_text(payload: dict[str, Any]) -> str:
         if tags:
             lines.append("  tags: " + ", ".join(tags))
     lines.append("")
-    lines.append("Bootstrap: harness bootstrap --template <name> --name <folder>")
+    lines.append("Bootstrap: coboose bootstrap --template <name> --name <folder>")
     return "\n".join(lines).strip() + "\n"
 
 
@@ -190,7 +190,7 @@ def _templates_markdown(payload: dict[str, Any]) -> str:
                 f"- **Kind:** {item.get('kind') or 'n/a'}",
                 f"- **Language:** {item.get('language') or 'n/a'}",
                 f"- **Tags:** {', '.join(item.get('tags') or []) or 'none'}",
-                f"- **Bootstrap:** `harness bootstrap --template {item.get('name')} --name <folder>`",
+                f"- **Bootstrap:** `coboose bootstrap --template {item.get('name')} --name <folder>`",
                 "",
             ]
         )

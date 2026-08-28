@@ -7,11 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from harness.invoke import invoke_spec, terminal_env_settings
+from coboose.invoke import invoke_spec, terminal_env_settings
 
 
 def _clean_uv_env() -> dict[str, str]:
-    """Drop the harness venv that `uv run pytest` injects, so spawn matches Copilot."""
+    """Drop the coboose venv that `uv run pytest` injects, so spawn matches Copilot."""
     env = {
         key: value
         for key, value in os.environ.items()
@@ -26,16 +26,16 @@ def _clean_uv_env() -> dict[str, str]:
     return env
 
 
-def test_invoke_spec_points_at_harness_root(tmp_path: Path):
-    root = tmp_path / "Copilot-Harness"
+def test_invoke_spec_points_at_coboose_root(tmp_path: Path):
+    root = tmp_path / "Coboose"
     root.mkdir()
     spec = invoke_spec(root)
     assert spec["cwd"] == str(root.resolve())
     assert "--project" in spec["command"]
     assert str(root.resolve()) in spec["command"]
-    assert spec["command"].endswith(" harness")
-    assert spec["script"].endswith("scripts/harness.sh")
-    assert spec["windows_script"].endswith("scripts/harness.ps1")
+    assert spec["command"].endswith(" coboose")
+    assert spec["script"].endswith("scripts/coboose.sh")
+    assert spec["windows_script"].endswith("scripts/coboose.ps1")
     assert "spawn" in spec["note"].lower()
 
 
@@ -46,11 +46,13 @@ def test_terminal_env_uses_named_harness_folder():
         "terminal.integrated.env.osx",
         "terminal.integrated.env.windows",
     ):
-        assert settings[key]["HARNESS_ROOT"] == "${workspaceFolder:harness}"
+        assert settings[key]["COBOOSE_ROOT"] == "${workspaceFolder:coboose}"
+        assert settings[key]["HARNESS_ROOT"] == "${workspaceFolder:coboose}"
 
 
 def test_terminal_env_single_root_folder():
     settings = terminal_env_settings(folder_name=None)
+    assert settings["terminal.integrated.env.linux"]["COBOOSE_ROOT"] == "${workspaceFolder}"
     assert settings["terminal.integrated.env.linux"]["HARNESS_ROOT"] == "${workspaceFolder}"
     assert "UV_PROJECT" not in settings["terminal.integrated.env.linux"]
 
@@ -62,7 +64,7 @@ def test_uv_run_harness_spawns_from_sibling_with_project(tmp_path: Path):
     sibling.mkdir()
     env = _clean_uv_env()
     bare = subprocess.run(
-        ["uv", "run", "harness", "--version"],
+        ["uv", "run", "coboose", "--version"],
         cwd=sibling,
         env=env,
         capture_output=True,
@@ -73,16 +75,16 @@ def test_uv_run_harness_spawns_from_sibling_with_project(tmp_path: Path):
     assert "spawn" in combined or "pyproject" in combined or "project" in combined
 
     pinned = subprocess.run(
-        ["uv", "run", "--project", str(repo), "harness", "--version"],
+        ["uv", "run", "--project", str(repo), "coboose", "--version"],
         cwd=sibling,
         env=env,
         capture_output=True,
         text=True,
     )
     assert pinned.returncode == 0, pinned.stderr
-    assert "harness" in pinned.stdout.lower() or pinned.stdout.strip()
+    assert "coboose" in pinned.stdout.lower() or pinned.stdout.strip()
 
-    script = repo / "scripts" / "harness.sh"
+    script = repo / "scripts" / "coboose.sh"
     wrapped = subprocess.run(
         [str(script), "--version"],
         cwd=sibling,

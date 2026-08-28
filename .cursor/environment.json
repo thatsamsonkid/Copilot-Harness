@@ -1,5 +1,5 @@
 {
-  "name": "Copilot Harness",
+  "name": "Coboose",
   "user": "ubuntu",
   "install": "bash .cursor/install.sh"
 }

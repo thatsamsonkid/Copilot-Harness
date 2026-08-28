@@ -6,8 +6,8 @@ from pathlib import Path
 
 import yaml
 
-from harness import HarnessError
-from harness.catalog import Workspace
+from coboose import CobooseError
+from coboose.catalog import Workspace
 
 _WORKSPACES_KEY = re.compile(r"^workspaces\s*:(.*)$")
 _TOP_LEVEL_KEY = re.compile(r"^[A-Za-z_][\w-]*\s*:")
@@ -32,9 +32,9 @@ def upsert_workspace_in_stack(
         items = raw.get("workspaces") or []
         ids = [str(item.get("id")) for item in items if isinstance(item, dict)]
         if workspace.id not in ids:
-            raise HarnessError("Failed to persist workspace to catalog/stack.yaml")
+            raise CobooseError("Failed to persist workspace to catalog/stack.yaml")
         if ids.count(workspace.id) > 1:
-            raise HarnessError(f"Duplicate workspace id after write: {workspace.id}")
+            raise CobooseError(f"Duplicate workspace id after write: {workspace.id}")
     except Exception:
         if original:
             path.write_text(original, encoding="utf-8")
@@ -69,7 +69,7 @@ def upsert_workspace_text(
 
     existing = next((item for item in items if item[0] == workspace.id), None)
     if existing and not replace:
-        raise HarnessError(
+        raise CobooseError(
             f"Workspace {workspace.id} already exists. Pass --force to replace it."
         )
 
@@ -115,8 +115,8 @@ def format_workspace_yaml(workspace: Workspace) -> str:
         lines.append(f"    folders: [{', '.join(workspace.folders)}]")
     if workspace.tags:
         lines.append(f"    tags: [{', '.join(workspace.tags)}]")
-    if not workspace.include_harness:
-        lines.append("    include_harness: false")
+    if not workspace.include_coboose:
+        lines.append("    include_coboose: false")
     if workspace.fallback:
         lines.append("    fallback: true")
     if workspace.env:
@@ -146,7 +146,7 @@ def format_workspace_yaml(workspace: Workspace) -> str:
 
 
 def _format_raw_workspace(item: dict) -> str:
-    from harness.catalog import Workspace, WorkspaceMatch
+    from coboose.catalog import Workspace, WorkspaceMatch
 
     match_raw = item.get("match") or {}
     workspace = Workspace(
@@ -155,7 +155,7 @@ def _format_raw_workspace(item: dict) -> str:
         description=str(item.get("description") or ""),
         folders=[str(v) for v in (item.get("folders") or [])],
         tags=[str(v) for v in (item.get("tags") or [])],
-        include_harness=bool(item.get("include_harness", True)),
+        include_coboose=bool(item.get("include_coboose", item.get("include_harness", True))),
         fallback=bool(item.get("fallback", False)),
         env=[str(v) for v in (item.get("env") or [])],
         match=WorkspaceMatch(
