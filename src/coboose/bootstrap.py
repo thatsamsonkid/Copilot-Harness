@@ -7,15 +7,15 @@ from typing import Any
 
 import yaml
 
-from harness import HarnessError
-from harness.catalog import Catalog, Repo, parse_project_destination, paths_collide
-from harness.clone import RunFn, clone_one, rewrite_clone_url
-from harness.templates import Template, get_template, template_to_dict
+from coboose import CobooseError
+from coboose.catalog import Catalog, Repo, parse_project_destination, paths_collide
+from coboose.clone import RunFn, clone_one, rewrite_clone_url
+from coboose.templates import Template, get_template, template_to_dict
 
 
 def bootstrap_project(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     template_name: str,
     dest_name: str | None = None,
@@ -30,30 +30,30 @@ def bootstrap_project(
     run: RunFn | None = None,
 ) -> dict[str, Any]:
     if keep_remote and fresh_git:
-        raise HarnessError("Use either --keep-remote or --fresh-git, not both")
+        raise CobooseError("Use either --keep-remote or --fresh-git, not both")
 
     if not catalog.templates:
-        raise HarnessError(
+        raise CobooseError(
             f"No templates listed. Add entries to {catalog.templates_source}."
         )
 
     template = get_template(catalog.templates, template_name)
     if not template.enabled:
-        raise HarnessError(f"Template {template.name} is disabled")
+        raise CobooseError(f"Template {template.name} is disabled")
 
     dest_raw = (dest_name or template.name).strip()
     project_name, project_path, project_group = parse_project_destination(
         dest_raw, group
     )
 
-    sibling_root = catalog.require_safe_sibling_root(harness_root)
+    sibling_root = catalog.require_safe_sibling_root(coboose_root)
     dest = sibling_root / project_path
     dest_resolved = dest.resolve()
-    harness = harness_root.resolve()
-    if dest_resolved == harness or harness in dest_resolved.parents:
-        raise HarnessError("Refusing to bootstrap onto the harness repo itself")
+    coboose = coboose_root.resolve()
+    if dest_resolved == coboose or coboose in dest_resolved.parents:
+        raise CobooseError("Refusing to bootstrap onto the Coboose repo itself")
     if dest.exists():
-        raise HarnessError(
+        raise CobooseError(
             f"{dest} already exists. Choose another --name or move that folder aside."
         )
 
@@ -65,7 +65,7 @@ def bootstrap_project(
     ]
     if (colliding or path_colliding) and register:
         conflict = colliding[0] if colliding else path_colliding[0]
-        raise HarnessError(
+        raise CobooseError(
             f"{conflict} already occupies this name or path in repositories.yml. "
             "Pick a different --name / --group or update the manifest by hand."
         )
@@ -81,7 +81,7 @@ def bootstrap_project(
         run=run,
     )
     if clone_record.get("action") == "blocked":
-        raise HarnessError(
+        raise CobooseError(
             "Template URL is still a placeholder. Update templates.yml first.",
             payload={"template": template_to_dict(template), "project": clone_record},
         )
@@ -159,24 +159,24 @@ def bootstrap_project(
 
 def append_repository(path: Path, repo: Repo) -> dict[str, Any]:
     if not path.exists():
-        raise HarnessError(f"File not found: {path}")
+        raise CobooseError(f"File not found: {path}")
     text = path.read_text(encoding="utf-8")
     raw = yaml.safe_load(text)
     if raw is None:
         raw = {}
     if isinstance(raw, list):
-        raise HarnessError(
+        raise CobooseError(
             f"{path} is a top-level list. Add the new repo by hand; "
             "auto-register only supports the `repositories:` mapping form."
         )
     if not isinstance(raw, dict):
-        raise HarnessError(f"{path} must be a mapping to auto-register a repo")
+        raise CobooseError(f"{path} must be a mapping to auto-register a repo")
     items = raw.get("repositories") or []
     if not isinstance(items, list):
-        raise HarnessError(f"{path} repositories: must be a list")
+        raise CobooseError(f"{path} repositories: must be a list")
     for item in items:
         if isinstance(item, dict) and (item.get("name") or item.get("id")) == repo.name:
-            raise HarnessError(f"{repo.name} is already listed in {path}")
+            raise CobooseError(f"{repo.name} is already listed in {path}")
 
     indent = _repo_list_indent(text)
     entry = _repo_yaml_entry(repo, indent=indent)
@@ -184,7 +184,7 @@ def append_repository(path: Path, repo: Repo) -> dict[str, Any]:
     try:
         yaml.safe_load(updated)
     except yaml.YAMLError as exc:
-        raise HarnessError(f"Refusing to write invalid YAML to {path}: {exc}") from exc
+        raise CobooseError(f"Refusing to write invalid YAML to {path}: {exc}") from exc
     path.write_text(updated, encoding="utf-8")
     return {
         "action": "registered",
@@ -216,9 +216,9 @@ def _post_clone(
             [
                 "git",
                 "-c",
-                "user.email=harness@local",
+                "user.email=coboose@local",
                 "-c",
-                "user.name=harness",
+                "user.name=coboose",
                 "commit",
                 "-m",
                 f"Bootstrap from {template_name}",
@@ -251,7 +251,7 @@ def _git_remotes(dest: Path, run: RunFn) -> set[str]:
 
 
 def _require_run() -> RunFn:
-    from harness.clone import _run
+    from coboose.clone import _run
 
     return _run
 
@@ -322,5 +322,5 @@ def _next_steps(
             f"or rerun with --register --name {name}"
         )
     else:
-        steps.append("Run `harness workspace generate` if a feature workspace should include it.")
+        steps.append("Run `coboose workspace generate` if a feature workspace should include it.")
     return steps

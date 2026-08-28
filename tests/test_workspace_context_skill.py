@@ -34,7 +34,7 @@ def test_skill_covers_graphify_and_standards():
         assert token in description
     lowered = body.lower()
     for token in (
-        "uv run harness context",
+        "uv run coboose context",
         "graphify.report",
         "suggested_verify",
         "do not copy",

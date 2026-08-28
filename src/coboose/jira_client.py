@@ -6,11 +6,11 @@ import re
 from typing import Any
 from urllib.parse import quote
 
-from harness import HarnessError
-from harness.adf import adf_to_markdown
-from harness.http import HttpClient, HttpResponse
-from harness.jira_fields import JiraSettings, project_issue
-from harness.keychain import resolve_token
+from coboose import CobooseError
+from coboose.adf import adf_to_markdown
+from coboose.http import HttpClient, HttpResponse
+from coboose.jira_fields import JiraSettings, project_issue
+from coboose.keychain import resolve_token
 
 ISSUE_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
 
@@ -18,13 +18,13 @@ ISSUE_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
 def parse_issue_key(value: str) -> str:
     text = (value or "").strip()
     if not text:
-        raise HarnessError("Issue key is required")
+        raise CobooseError("Issue key is required")
     if re.fullmatch(r"[A-Z][A-Z0-9]+-\d+", text):
         return text
     match = ISSUE_KEY_RE.search(text)
     if match:
         return match.group(1)
-    raise HarnessError(f"Could not parse a Jira issue key from: {value}")
+    raise CobooseError(f"Could not parse a Jira issue key from: {value}")
 
 
 def jira_settings_from_env() -> tuple[str, str, str]:
@@ -41,7 +41,7 @@ def jira_settings_from_env() -> tuple[str, str, str]:
         if not value
     ]
     if missing:
-        raise HarnessError(_missing_settings_message(missing))
+        raise CobooseError(_missing_settings_message(missing))
     return base_url, email, token
 
 
@@ -51,7 +51,7 @@ def _missing_settings_message(missing: list[str]) -> str:
         parts.append("Set the site URL and email in .env.")
     if "JIRA_API_TOKEN" in missing:
         parts.append(
-            "Store the API token with `uv run harness jira login` "
+            "Store the API token with `uv run coboose jira login` "
             "(macOS Keychain or Windows Credential Manager), or set "
             "JIRA_API_TOKEN in .env as a fallback."
         )
@@ -116,7 +116,7 @@ class JiraClient:
 
     def search(self, jql: str, max_results: int = 25) -> list[dict[str, Any]]:
         if not jql.strip():
-            raise HarnessError("JQL is required")
+            raise CobooseError("JQL is required")
         fields = [
             "summary",
             "status",
@@ -197,21 +197,21 @@ class JiraClient:
 
     def _decode(self, response: HttpResponse, method: str) -> Any:
         if response.status == 401:
-            raise HarnessError(
+            raise CobooseError(
                 "Jira authentication failed. Check the token in the OS keychain "
-                "(`harness jira login`) or .env; do not print them."
+                "(`coboose jira login`) or .env; do not print them."
             )
         if response.status == 403:
-            raise HarnessError("Jira denied access to this resource.")
+            raise CobooseError("Jira denied access to this resource.")
         if response.status == 404:
-            raise HarnessError("Jira resource not found.")
+            raise CobooseError("Jira resource not found.")
         if response.status >= 400:
             detail = _error_message(response)
-            raise HarnessError(f"Jira API {method} failed ({response.status}): {detail}")
+            raise CobooseError(f"Jira API {method} failed ({response.status}): {detail}")
         try:
             return response.json()
         except ValueError as exc:
-            raise HarnessError("Jira returned a non-JSON response") from exc
+            raise CobooseError("Jira returned a non-JSON response") from exc
 
 
 def _error_message(response: HttpResponse) -> str:

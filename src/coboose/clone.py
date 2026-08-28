@@ -5,8 +5,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
-from harness import HarnessError
-from harness.catalog import Catalog, Repo
+from coboose import CobooseError
+from coboose.catalog import Catalog, Repo
 
 RunFn = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -23,7 +23,7 @@ def rewrite_clone_url(url: str, *, https: bool) -> str:
 
 def clone_repos(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     only: list[str] | None = None,
     tags: list[str] | None = None,
@@ -34,19 +34,19 @@ def clone_repos(
 ) -> list[dict[str, Any]]:
     runner = run or _run
     if not shutil.which("git") and run is None:
-        raise HarnessError("git is not installed or not on PATH")
+        raise CobooseError("git is not installed or not on PATH")
 
-    sibling_root = catalog.require_safe_sibling_root(harness_root)
-    if sibling_root == harness_root.resolve():
-        raise HarnessError(
-            "parent_dir resolves to the harness repo. "
+    sibling_root = catalog.require_safe_sibling_root(coboose_root)
+    if sibling_root == coboose_root.resolve():
+        raise CobooseError(
+            "parent_dir resolves to the Coboose repo. "
             "Set parent_dir: .. so clones stay outside this repository."
         )
 
     results: list[dict[str, Any]] = []
     for repo in catalog.enabled_repos(only, tags):
-        dest = catalog.repo_path(harness_root, repo)
-        _refuse_harness_destination(dest, harness_root)
+        dest = catalog.repo_path(coboose_root, repo)
+        _refuse_coboose_destination(dest, coboose_root)
         results.append(
             clone_one(
                 repo,
@@ -73,12 +73,12 @@ def clone_one(
 ) -> dict[str, Any]:
     run = run or _run
     if dest.exists() and not (dest / ".git").exists():
-        raise HarnessError(
+        raise CobooseError(
             f"{dest} exists but is not a git repo. "
             "Move it aside so it is not treated as a nested tree."
         )
     if dest.exists() and dest.resolve() == sibling_root:
-        raise HarnessError(f"Refusing to clone onto sibling root: {dest}")
+        raise CobooseError(f"Refusing to clone onto sibling root: {dest}")
 
     url = rewrite_clone_url(repo.url, https=https)
     record: dict[str, Any] = {
@@ -141,12 +141,12 @@ def clone_one(
     return record
 
 
-def _refuse_harness_destination(dest: Path, harness_root: Path) -> None:
+def _refuse_coboose_destination(dest: Path, coboose_root: Path) -> None:
     dest_resolved = dest.resolve()
-    harness = harness_root.resolve()
-    if dest_resolved == harness or harness in dest_resolved.parents:
-        raise HarnessError(
-            f"Refusing to clone into the harness repo: {dest}. "
+    coboose = coboose_root.resolve()
+    if dest_resolved == coboose or coboose in dest_resolved.parents:
+        raise CobooseError(
+            f"Refusing to clone into the Coboose repo: {dest}. "
             "Keep product clones under parent_dir, not inside this repository."
         )
 
@@ -162,7 +162,7 @@ def _run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
         )
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or "").strip()
-        raise HarnessError(
+        raise CobooseError(
             f"Command failed ({exc.returncode}): {' '.join(command)}"
             + (f"\n{detail}" if detail else "")
         ) from exc

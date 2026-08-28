@@ -6,8 +6,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from harness import HarnessError
-from harness.envfile import env_file_keys, load_env_file
+from coboose import CobooseError
+from coboose.envfile import env_file_keys, load_env_file
 
 LAUNCH_RELATIVE = ".vscode/launch.json"
 _VSCODE_INPUT = re.compile(r"^\$\{(?:input|command):")
@@ -186,7 +186,7 @@ def select_configuration(
                 for item in launchable
                 if item.get("name")
             ) or "(none)"
-            raise HarnessError(
+            raise CobooseError(
                 f"launch.json has no configuration named {name!r}. "
                 f"Available: {available}"
             )
@@ -448,7 +448,7 @@ def _launch_cwd(repo_path: Path, selected: dict[str, Any] | None) -> Path:
         try:
             path.resolve().relative_to(repo_path.resolve())
         except ValueError as exc:
-            raise HarnessError(
+            raise CobooseError(
                 f"launch.json cwd must stay inside the repo: {raw}"
             ) from exc
         return path

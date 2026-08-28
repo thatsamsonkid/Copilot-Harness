@@ -17,14 +17,14 @@ if [[ ! -f .env && -f .env.example ]]; then
   echo "Created .env from .env.example — fill in Jira values."
 fi
 
-uv run harness workspace generate
+uv run coboose workspace generate
 echo "Setup complete."
 echo "Next:"
 echo "  1. Create a Jira API token (docs/jira-api-token.md), set email/URL in .env,"
-echo "     then run: uv run harness jira login"
-echo "     (or: uv run harness init --interactive)"
+echo "     then run: uv run coboose jira login"
+echo "     (or: uv run coboose init --interactive)"
 echo "  2. Edit repositories.yml, then ./scripts/clone-repos.sh"
 echo "  3. In Copilot Chat: /get-started"
-echo "Run the CLI with: uv run harness <command>"
-echo "From a sibling clone: uv run --project \"$ROOT\" harness <command>"
-echo "  or: \"$ROOT/scripts/harness.sh\" <command>"
+echo "Run the CLI with: uv run coboose <command>"
+echo "From a sibling clone: uv run --project \"$ROOT\" coboose <command>"
+echo "  or: \"$ROOT/scripts/coboose.sh\" <command>"

@@ -4,8 +4,8 @@ import re
 from pathlib import Path
 from typing import Any, Sequence
 
-from harness import HarnessError
-from harness.catalog import (
+from coboose import CobooseError
+from coboose.catalog import (
     Catalog,
     Repo,
     Workspace,
@@ -13,10 +13,10 @@ from harness.catalog import (
     load_catalog,
     parse_personal_workspace,
 )
-from harness.paths import PERSONAL_WORKSPACES_DIR
-from harness.prompt import PromptSession
-from harness.stack_edit import upsert_workspace_in_stack
-from harness.workspace import open_command, write_workspace_file
+from coboose.paths import PERSONAL_WORKSPACES_DIR
+from coboose.prompt import PromptSession
+from coboose.stack_edit import upsert_workspace_in_stack
+from coboose.workspace import open_command, write_workspace_file
 
 _WORKSPACE_ID = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 _RANGE = re.compile(r"^(\d+)\s*-\s*(\d+)$")
@@ -35,7 +35,7 @@ def title_from_id(workspace_id: str) -> str:
 def validate_workspace_id(workspace_id: str) -> str:
     workspace_id = slugify(workspace_id)
     if not workspace_id or not _WORKSPACE_ID.match(workspace_id):
-        raise HarnessError(
+        raise CobooseError(
             "Workspace id must be a lowercase slug such as checkout or checkout-flow."
         )
     return workspace_id
@@ -45,11 +45,11 @@ def parse_project_selection(text: str, repos: Sequence[Repo]) -> list[str]:
     """Parse numbers, ranges, names, 'all', or tag:<tag> into repository names."""
     text = text.strip()
     if not text:
-        raise HarnessError("Select at least one project from repositories.yml.")
+        raise CobooseError("Select at least one project from repositories.yml.")
     if text.lower() in {"all", "*"}:
         names = [repo.name for repo in repos if repo.enabled]
         if not names:
-            raise HarnessError("No enabled repositories in repositories.yml.")
+            raise CobooseError("No enabled repositories in repositories.yml.")
         return names
 
     by_name = {repo.name.lower(): repo.name for repo in repos}
@@ -75,7 +75,7 @@ def parse_project_selection(text: str, repos: Sequence[Repo]) -> list[str]:
             ]
             if not matched:
                 known = sorted({tag for repo in repos for tag in repo.tags})
-                raise HarnessError(
+                raise CobooseError(
                     f"No repositories.yml entry has tag {tag!r}. "
                     f"Known tags: {', '.join(known) or '(none)'}."
                 )
@@ -100,11 +100,11 @@ def parse_project_selection(text: str, repos: Sequence[Repo]) -> list[str]:
         known = ", ".join(
             f"{index}:{repo.name}" for index, repo in enumerate(repos, start=1)
         )
-        raise HarnessError(
+        raise CobooseError(
             f"Unknown project {token!r}. Choose from repositories.yml ({known})."
         )
     if not selected:
-        raise HarnessError("Select at least one project from repositories.yml.")
+        raise CobooseError("Select at least one project from repositories.yml.")
     return selected
 
 
@@ -129,14 +129,14 @@ def format_project_menu(repos: Sequence[Repo]) -> str:
 
 def create_workspace(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     workspace_id: str | None = None,
     name: str | None = None,
     description: str | None = None,
     folders: list[str] | None = None,
     tags: list[str] | None = None,
-    include_harness: bool | None = None,
+    include_coboose: bool | None = None,
     personal: bool | None = None,
     fallback: bool = False,
     match_projects: list[str] | None = None,
@@ -152,10 +152,10 @@ def create_workspace(
 
     personal = _resolve_personal(personal, prompt)
     workspace_id = _resolve_id(workspace_id, prompt)
-    existing = _existing_workspace(catalog, harness_root, workspace_id)
+    existing = _existing_workspace(catalog, coboose_root, workspace_id)
     if existing is not None and existing.personal != personal:
         kind = "personal" if existing.personal else "shared"
-        raise HarnessError(
+        raise CobooseError(
             f"Workspace {workspace_id} already exists as a {kind} workspace. "
             "Choose a different id."
         )
@@ -167,26 +167,26 @@ def create_workspace(
             ):
                 force = True
             else:
-                raise HarnessError(
+                raise CobooseError(
                     f"Workspace {workspace_id} already exists. Pass --force to replace it."
                 )
         else:
-            raise HarnessError(
+            raise CobooseError(
                 f"Workspace {workspace_id} already exists. Pass --force to replace it."
             )
 
     name = _resolve_name(name, workspace_id, prompt)
     description = _resolve_description(description, prompt)
     folders, tags = _resolve_projects(catalog, folders, tags, prompt)
-    include_harness = _resolve_include_harness(include_harness, prompt)
+    include_coboose = _resolve_include_coboose(include_coboose, prompt)
 
     if personal and fallback:
-        raise HarnessError(
+        raise CobooseError(
             "Personal workspaces cannot be fallback=true. "
             "Jira routing only uses shared catalog/stack.yaml workspaces."
         )
     if personal and not generate and not dry_run:
-        raise HarnessError(
+        raise CobooseError(
             "Personal workspaces only exist as .code-workspace files. "
             "Omit --no-generate, or pass --dry-run."
         )
@@ -195,7 +195,7 @@ def create_workspace(
             item.id for item in catalog.workspaces if item.fallback and not item.personal
         ]
         if current and current != [workspace_id]:
-            raise HarnessError(
+            raise CobooseError(
                 f"Only one workspace can be fallback=true; {current[0]} already is. "
                 "Edit catalog/stack.yaml to change it."
             )
@@ -206,7 +206,7 @@ def create_workspace(
         description=description or "",
         folders=folders,
         tags=tags,
-        include_harness=include_harness,
+        include_coboose=include_coboose,
         fallback=fallback,
         personal=personal,
         match=WorkspaceMatch(
@@ -220,7 +220,7 @@ def create_workspace(
 
     included = catalog.workspace_repo_names(workspace)
     if not included:
-        raise HarnessError(
+        raise CobooseError(
             "Workspace would include no repositories. "
             "Choose projects or tags from repositories.yml."
         )
@@ -228,11 +228,11 @@ def create_workspace(
     replaced = existing is not None
 
     if dry_run:
-        document_folders = ["harness"] if include_harness else []
+        document_folders = ["coboose"] if include_coboose else []
         document_folders.extend(catalog.workspace_repo_names(workspace))
         return _payload(
             catalog,
-            harness_root,
+            coboose_root,
             workspace,
             created=not replaced,
             replaced=replaced,
@@ -244,7 +244,7 @@ def create_workspace(
     if not personal:
         upsert_workspace_in_stack(stack_path, workspace, replace=force or replaced)
         refreshed = load_catalog(
-            harness_root,
+            coboose_root,
             stack_path=stack_path,
             repos_path=catalog.repos_source,
         )
@@ -255,32 +255,32 @@ def create_workspace(
 
     written: dict[str, Any] | None = None
     if generate:
-        written = write_workspace_file(refreshed, harness_root, persisted)
+        written = write_workspace_file(refreshed, coboose_root, persisted)
 
     return _payload(
         refreshed,
-        harness_root,
+        coboose_root,
         persisted,
         created=not replaced,
         replaced=replaced,
         generated=written is not None,
         dry_run=False,
         folders=(written or {}).get("folders")
-        or (["harness"] if include_harness else [])
+        or (["coboose"] if include_coboose else [])
         + refreshed.workspace_repo_names(persisted),
         file=(written or {}).get("file"),
     )
 
 
 def _existing_workspace(
-    catalog: Catalog, harness_root: Path, workspace_id: str
+    catalog: Catalog, coboose_root: Path, workspace_id: str
 ) -> Workspace | None:
     existing = next(
         (item for item in catalog.workspaces if item.id == workspace_id), None
     )
     if existing is not None:
         return existing
-    personal_path = harness_root / PERSONAL_WORKSPACES_DIR / f"{workspace_id}.code-workspace"
+    personal_path = coboose_root / PERSONAL_WORKSPACES_DIR / f"{workspace_id}.code-workspace"
     if not personal_path.exists():
         return None
     return parse_personal_workspace(
@@ -301,13 +301,13 @@ def _resolve_personal(personal: bool | None, prompt: PromptSession) -> bool:
     )
     while True:
         answer = prompt.ask(
-            "Create a personal workspace or a shared harness workspace?",
+            "Create a personal workspace or a shared coboose workspace?",
             default="shared",
         )
         lowered = answer.strip().lower()
         if lowered in {"personal", "p", "local", "mine"}:
             return True
-        if lowered in {"shared", "s", "team", "harness"}:
+        if lowered in {"shared", "s", "team", "coboose"}:
             return False
         prompt.write("Choose personal or shared.\n")
 
@@ -316,7 +316,7 @@ def _resolve_id(workspace_id: str | None, prompt: PromptSession) -> str:
     if workspace_id:
         return validate_workspace_id(workspace_id)
     if not prompt.can_prompt():
-        raise HarnessError(
+        raise CobooseError(
             "workspace create needs --id, or a terminal so it can prompt."
         )
     raw = prompt.ask("Workspace id (slug, e.g. checkout)")
@@ -358,7 +358,7 @@ def _resolve_projects(
         _validate_tags(catalog, tags)
         return folders, tags
     if not prompt.can_prompt():
-        raise HarnessError(
+        raise CobooseError(
             "workspace create needs --projects / --folders or --tag, "
             "or a terminal so it can prompt."
         )
@@ -371,23 +371,23 @@ def _resolve_projects(
                 repos,
             )
             return selected, []
-        except (HarnessError, EOFError) as exc:
+        except (CobooseError, EOFError) as exc:
             if isinstance(exc, EOFError):
-                raise HarnessError(
+                raise CobooseError(
                     "Select at least one project from repositories.yml."
                 ) from exc
             prompt.write(f"{exc.message}\n")
 
 
-def _resolve_include_harness(
-    include_harness: bool | None, prompt: PromptSession
+def _resolve_include_coboose(
+    include_coboose: bool | None, prompt: PromptSession
 ) -> bool:
-    if include_harness is not None:
-        return include_harness
+    if include_coboose is not None:
+        return include_coboose
     if not prompt.can_prompt():
         return True
     return prompt.confirm(
-        "Include this harness as the first workspace folder?",
+        "Include this Coboose repo as the first workspace folder?",
         default=True,
     )
 
@@ -396,7 +396,7 @@ def _validate_folders(catalog: Catalog, folders: list[str]) -> None:
     unknown = [name for name in folders if name not in {repo.name for repo in catalog.repos}]
     if unknown:
         known = ", ".join(repo.name for repo in catalog.repos)
-        raise HarnessError(
+        raise CobooseError(
             "Unknown repo name(s): "
             + ", ".join(unknown)
             + f". Add them to repositories.yml or choose from: {known}."
@@ -407,7 +407,7 @@ def _validate_tags(catalog: Catalog, tags: list[str]) -> None:
     known = {tag.lower() for repo in catalog.repos for tag in repo.tags}
     unknown = [tag for tag in tags if tag.lower() not in known]
     if unknown:
-        raise HarnessError(
+        raise CobooseError(
             "Unknown tag(s): "
             + ", ".join(unknown)
             + ". Known tags: "
@@ -418,7 +418,7 @@ def _validate_tags(catalog: Catalog, tags: list[str]) -> None:
 
 def _payload(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     workspace: Workspace,
     *,
     created: bool,
@@ -428,11 +428,11 @@ def _payload(
     folders: list[str],
     file: str | None = None,
 ) -> dict[str, Any]:
-    path = catalog.workspace_file(harness_root, workspace)
+    path = catalog.workspace_file(coboose_root, workspace)
     repos = []
     for repo_id in catalog.workspace_repo_names(workspace):
         repo = catalog.repo(repo_id)
-        repo_path = catalog.repo_path(harness_root, repo)
+        repo_path = catalog.repo_path(coboose_root, repo)
         repos.append(
             {
                 "name": repo.name,
@@ -451,7 +451,7 @@ def _payload(
             "description": workspace.description,
             "folders": catalog.workspace_repo_names(workspace),
             "tags": workspace.tags,
-            "include_harness": workspace.include_harness,
+            "include_coboose": workspace.include_coboose,
             "fallback": workspace.fallback,
             "personal": workspace.personal,
             "file": file or str(path),
@@ -480,7 +480,7 @@ def _append_unique(values: list[str], value: str) -> None:
 def _index_name(index: int, repos: Sequence[Repo], by_index: dict[str, str]) -> str:
     name = by_index.get(str(index))
     if not name:
-        raise HarnessError(
+        raise CobooseError(
             f"Project number {index} is out of range (1-{len(repos)})."
         )
     return name

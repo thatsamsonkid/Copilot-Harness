@@ -1,7 +1,7 @@
 {
   "folders": [
     {
-      "name": "harness",
+      "name": "coboose",
       "path": ".."
     },
     {
@@ -21,13 +21,13 @@
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
     "chat.useCustomizationsInParentRepositories": true,
     "terminal.integrated.env.linux": {
-      "HARNESS_ROOT": "${workspaceFolder:harness}"
+      "COBOOSE_ROOT": "${workspaceFolder:coboose}"
     },
     "terminal.integrated.env.osx": {
-      "HARNESS_ROOT": "${workspaceFolder:harness}"
+      "COBOOSE_ROOT": "${workspaceFolder:coboose}"
     },
     "terminal.integrated.env.windows": {
-      "HARNESS_ROOT": "${workspaceFolder:harness}"
+      "COBOOSE_ROOT": "${workspaceFolder:coboose}"
     }
   },
   "extensions": {

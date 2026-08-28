@@ -8,18 +8,18 @@ from getpass import getpass
 from pathlib import Path
 from typing import Any
 
-from harness import HarnessError
-from harness.catalog import Catalog
-from harness.envfile import env_file_keys
-from harness.envspec import (
+from coboose import CobooseError
+from coboose.catalog import Catalog
+from coboose.envfile import env_file_keys
+from coboose.envspec import (
     list_env,
     set_env_value,
     var_is_present,
     var_source,
     var_status,
 )
-from harness.jira_client import JiraClient, jira_settings_from_env
-from harness.keychain import (
+from coboose.jira_client import JiraClient, jira_settings_from_env
+from coboose.keychain import (
     SOURCE_ENV,
     SOURCE_KEYCHAIN,
     SOURCE_MISSING,
@@ -28,7 +28,7 @@ from harness.keychain import (
     storage_guides,
     token_source,
 )
-from harness.uv_check import UV_DOC, detect_uv, uv_missing_action
+from coboose.uv_check import UV_DOC, detect_uv, uv_missing_action
 
 TOKEN_DOC = "docs/jira-api-token.md"
 TOKEN_URL = "https://id.atlassian.com/manage-profile/security/api-tokens"
@@ -38,17 +38,17 @@ JIRA_KEYS = ("JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN")
 
 def run_init(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     interactive: bool = False,
     ping_jira: bool = False,
     prompt_fn: Callable[[str], str] | None = None,
     secret_fn: Callable[[str], str] | None = None,
 ) -> dict[str, Any]:
-    env_path = harness_root / ".env"
+    env_path = coboose_root / ".env"
     created_env = False
-    if not env_path.exists() and (harness_root / ".env.example").exists():
-        shutil.copyfile(harness_root / ".env.example", env_path)
+    if not env_path.exists() and (coboose_root / ".env.example").exists():
+        shutil.copyfile(coboose_root / ".env.example", env_path)
         created_env = True
 
     written_keys: list[str] = []
@@ -67,7 +67,7 @@ def run_init(
         stored_token = token_source()
 
     uv = detect_uv()
-    steps = onboarding_steps(catalog, harness_root, uv=uv)
+    steps = onboarding_steps(catalog, coboose_root, uv=uv)
     jira = None
     if ping_jira and _jira_env_present():
         try:
@@ -96,7 +96,7 @@ def run_init(
         "keychain_guide": storage_guides(),
         "env": list_env(
             catalog.env_vars,
-            harness_root,
+            coboose_root,
             source=catalog.env_source,
         ),
         "steps": steps,
@@ -106,12 +106,12 @@ def run_init(
 
 def onboarding_steps(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     uv: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     uv = uv or detect_uv()
-    env_path = harness_root / ".env"
+    env_path = coboose_root / ".env"
     file_keys = env_file_keys(env_path)
     steps: list[dict[str, Any]] = [
         _step(
@@ -152,26 +152,26 @@ def onboarding_steps(
             else "placeholder remotes remain: " + ", ".join(placeholders),
             action=None
             if not placeholders
-            else "Replace YOUR_ORG in repositories.yml, then run harness clone",
+            else "Replace YOUR_ORG in repositories.yml, then run coboose clone",
         )
     )
 
     cloned = [
         repo.name
         for repo in catalog.enabled_repos()
-        if catalog.repo_path(harness_root, repo).exists()
+        if catalog.repo_path(coboose_root, repo).exists()
     ]
     missing = [
         repo.name
         for repo in catalog.enabled_repos()
-        if not repo.is_placeholder and not catalog.repo_path(harness_root, repo).exists()
+        if not repo.is_placeholder and not catalog.repo_path(coboose_root, repo).exists()
     ]
     steps.append(
         _step(
             "clones",
             not missing,
             f"cloned: {', '.join(cloned) or 'none'}",
-            action=None if not missing else "Run ./scripts/clone-repos.sh (or harness clone)",
+            action=None if not missing else "Run ./scripts/clone-repos.sh (or coboose clone)",
             optional=True,
         )
     )
@@ -194,7 +194,7 @@ def _fill_env_interactive(
     secret_fn: Callable[[str], str],
 ) -> tuple[dict[str, str], str]:
     if prompt_fn is input and not sys.stdin.isatty():
-        raise HarnessError(
+        raise CobooseError(
             "Refusing interactive init without a TTY. Edit .env locally "
             f"or see {TOKEN_DOC}."
         )
@@ -235,7 +235,7 @@ def _var_detail(variable: Any, file_keys: dict[str, bool], present: bool) -> str
 
 
 def _jira_env_present() -> bool:
-    from harness.envspec import default_env_vars
+    from coboose.envspec import default_env_vars
 
     return all(var_is_present(variable, {}) for variable in default_env_vars())
 
@@ -286,21 +286,21 @@ def _next_commands(
     missing_secrets = [variable for variable in missing_vars if variable.secret]
     if "env_file" in ids or missing_plain:
         commands.append("Edit .env locally. See catalog/env.yaml")
-        commands.append("uv run harness init --interactive")
+        commands.append("uv run coboose init --interactive")
     for variable in missing_secrets:
         if variable.name == "JIRA_API_TOKEN":
-            commands.append("uv run harness jira login")
+            commands.append("uv run coboose jira login")
         else:
-            commands.append(f"uv run harness env set {variable.name}")
-        if "uv run harness init --interactive" not in commands:
-            commands.append("uv run harness init --interactive")
+            commands.append(f"uv run coboose env set {variable.name}")
+        if "uv run coboose init --interactive" not in commands:
+            commands.append("uv run coboose init --interactive")
     if missing_secrets or missing_plain or "env_file" in ids:
-        commands.append("uv run harness env list")
-        commands.append("uv run harness doctor --ping-jira")
+        commands.append("uv run coboose env list")
+        commands.append("uv run coboose doctor --ping-jira")
     if "repositories" in ids:
         commands.append("Edit repositories.yml and replace YOUR_ORG")
     missing_clones = next((step for step in steps if step["id"] == "clones" and not step["ok"]), None)
     if missing_clones:
         commands.append("./scripts/clone-repos.sh")
-    commands.append("uv run harness workspace generate")
+    commands.append("uv run coboose workspace generate")
     return commands

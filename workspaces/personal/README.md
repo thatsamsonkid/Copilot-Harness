@@ -5,10 +5,10 @@
 Create one with:
 
 ```bash
-harness workspace create --personal
+coboose workspace create --personal
 ```
 
-or choose **personal** when `harness workspace create` prompts.
+or choose **personal** when `coboose workspace create` prompts.
 
 Shared team workspaces still live in `workspaces/<id>.code-workspace` and `catalog/stack.yaml`. Those are what `/new-workspace` writes when you pick **shared**.
 

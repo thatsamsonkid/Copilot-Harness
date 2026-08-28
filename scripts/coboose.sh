@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Run the harness CLI through uv when possible.
+# Run the coboose CLI through uv when possible.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export HARNESS_ROOT="${HARNESS_ROOT:-$ROOT}"
+export COBOOSE_ROOT="${COBOOSE_ROOT:-$ROOT}"
 
 if command -v uv >/dev/null 2>&1 && [[ -f "$ROOT/uv.lock" || -f "$ROOT/pyproject.toml" ]]; then
-  exec uv run --project "$ROOT" harness "$@"
+  exec uv run --project "$ROOT" coboose "$@"
 fi
 
-if [[ -x "$ROOT/.venv/bin/harness" ]]; then
-  exec "$ROOT/.venv/bin/harness" "$@"
+if [[ -x "$ROOT/.venv/bin/coboose" ]]; then
+  exec "$ROOT/.venv/bin/coboose" "$@"
 fi
 
-if command -v harness >/dev/null 2>&1; then
-  exec harness "$@"
+if command -v coboose >/dev/null 2>&1; then
+  exec coboose "$@"
 fi
 
 echo "uv is required. See docs/install-uv.md (macOS/Linux: ./scripts/setup.sh, Windows: .\\scripts\\setup.ps1)" >&2

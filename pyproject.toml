@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "copilot-harness"
+name = "coboose"
 version = "0.1.0"
-description = "VS Code + GitHub Copilot harness for multi-repo workspaces, project templates, and Jira Cloud"
+description = "Coboose: a Copilot Kit for multi-repo workspaces, project templates, and Jira Cloud"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -20,7 +20,7 @@ dev = [
 ]
 
 [project.scripts]
-harness = "harness.cli:main"
+coboose = "coboose.cli:main"
 
 [tool.uv]
 default-groups = ["dev"]

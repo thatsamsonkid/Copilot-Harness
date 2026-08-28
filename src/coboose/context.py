@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from harness.catalog import Catalog, Repo
+from coboose.catalog import Catalog, Repo
 
 INSTRUCTION_FILES = (
     ".github/copilot-instructions.md",
@@ -54,36 +54,36 @@ MAKE_VERIFY_TARGETS = ("verify", "check", "lint", "test", "format", "fmt", "ci")
 
 def collect_context(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     only: list[str] | None = None,
 ) -> dict[str, Any]:
     repos = []
     for repo in catalog.enabled_repos(only=only):
-        repos.append(inspect_repo(catalog, harness_root, repo))
+        repos.append(inspect_repo(catalog, coboose_root, repo))
     return {
-        "sibling_root": str(catalog.sibling_root(harness_root)),
+        "sibling_root": str(catalog.sibling_root(coboose_root)),
         "repos": repos,
         "guidance": [
             "For vague or low-context prompts, read each cloned repo's graphify.report "
             "before grepping the tree.",
             "Before editing a sibling repo, load its instruction files and use its tooling.",
             "Product knowledge lives in each sibling (docs/features, ADRs, Graphify). "
-            "Do not start a second wiki in the harness.",
-            "Do not copy product standards into the harness. Do not rebuild a graph "
+            "Do not start a second wiki in the Coboose repo.",
+            "Do not copy product standards into the Coboose repo. Do not rebuild a graph "
             "unless the user asked.",
-            "To start local apps in this workspace, run `harness start` "
+            "To start local apps in this workspace, run `coboose start` "
             "(see the workspace-start skill). That command prints a plan; "
             "it does not launch processes. Save the sequence once with "
-            "`harness start --workspace <id> --save`.",
+            "`coboose start --workspace <id> --save`.",
         ],
     }
 
 
-def inspect_repo(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dict[str, Any]:
+def inspect_repo(catalog: Catalog, coboose_root: Path, repo: Repo | str) -> dict[str, Any]:
     if isinstance(repo, str):
         repo = catalog.repo(repo)
-    path = catalog.repo_path(harness_root, repo)
+    path = catalog.repo_path(coboose_root, repo)
     cloned = path.exists()
     return {
         "name": repo.name,
@@ -189,8 +189,8 @@ def discover_knowledge(repo_path: Path) -> dict[str, Any]:
         "template": FEATURE_NOTE_TEMPLATE,
         "write_hint": (
             "Keep feature notes and ADRs in this sibling repo. "
-            f"Use the harness {FEATURE_NOTE_TEMPLATE} template. "
-            "Do not copy product knowledge into the harness."
+            f"Use the Coboose {FEATURE_NOTE_TEMPLATE} template. "
+            "Do not copy product knowledge into the Coboose repo."
         ),
     }
 
@@ -263,8 +263,8 @@ def _empty_knowledge() -> dict[str, Any]:
         "template": FEATURE_NOTE_TEMPLATE,
         "write_hint": (
             "Keep feature notes and ADRs in this sibling repo. "
-            f"Use the harness {FEATURE_NOTE_TEMPLATE} template. "
-            "Do not copy product knowledge into the harness."
+            f"Use the Coboose {FEATURE_NOTE_TEMPLATE} template. "
+            "Do not copy product knowledge into the Coboose repo."
         ),
     }
 

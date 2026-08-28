@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from harness import HarnessError
-from harness.cli import main
-from harness.jira_client import jira_settings_from_env
-from harness.keychain import (
+from coboose import CobooseError
+from coboose.cli import main
+from coboose.jira_client import jira_settings_from_env
+from coboose.keychain import (
     ACCOUNT,
     SERVICE,
     SOURCE_ENV,
@@ -54,7 +54,7 @@ def test_storage_guide_covers_macos_and_windows():
     guides = storage_guides()
     assert guides["macos"]["store"] == "macOS Keychain"
     assert guides["windows"]["store"] == "Windows Credential Manager"
-    assert guides["preferred_cli"] == "uv run harness jira login"
+    assert guides["preferred_cli"] == "uv run coboose jira login"
 
 
 def test_resolve_token_prefers_env_then_keychain(isolated_keychain, monkeypatch):
@@ -85,7 +85,7 @@ def test_missing_token_mentions_keychain_login(monkeypatch):
     _clear_jira_env(monkeypatch)
     monkeypatch.setenv("JIRA_BASE_URL", "https://acme.atlassian.net")
     monkeypatch.setenv("JIRA_EMAIL", "ada@acme.test")
-    with pytest.raises(HarnessError, match="jira login") as exc:
+    with pytest.raises(CobooseError, match="jira login") as exc:
         jira_settings_from_env()
     assert "Keychain" in exc.value.message
     assert "Credential Manager" in exc.value.message
@@ -93,10 +93,10 @@ def test_missing_token_mentions_keychain_login(monkeypatch):
 
 
 def test_login_from_env_moves_token_and_blanks_dotenv(
-    harness_root: Path, isolated_keychain, monkeypatch
+    coboose_root: Path, isolated_keychain, monkeypatch
 ):
     _clear_jira_env(monkeypatch)
-    env_path = harness_root / ".env"
+    env_path = coboose_root / ".env"
     env_path.write_text(
         "JIRA_BASE_URL=https://acme.atlassian.net\n"
         "JIRA_EMAIL=ada@acme.test\n"
@@ -104,7 +104,7 @@ def test_login_from_env_moves_token_and_blanks_dotenv(
         encoding="utf-8",
     )
     monkeypatch.setenv("JIRA_API_TOKEN", "ATLASSIAN-SECRET")
-    payload = login_token(harness_root, from_env=True)
+    payload = login_token(coboose_root, from_env=True)
     assert payload["stored"] is True
     assert payload["source"] == SOURCE_KEYCHAIN
     assert payload["cleared_env"] is True
@@ -115,40 +115,40 @@ def test_login_from_env_moves_token_and_blanks_dotenv(
     assert "JIRA_API_TOKEN" not in os.environ
 
 
-def test_login_without_tty_is_refused(harness_root: Path, monkeypatch):
+def test_login_without_tty_is_refused(coboose_root: Path, monkeypatch):
     _clear_jira_env(monkeypatch)
-    with pytest.raises(HarnessError, match="TTY"):
-        login_token(harness_root, from_env=False, stdin_isatty=False)
+    with pytest.raises(CobooseError, match="TTY"):
+        login_token(coboose_root, from_env=False, stdin_isatty=False)
 
 
-def test_login_unavailable_keychain_fails(harness_root: Path, monkeypatch):
+def test_login_unavailable_keychain_fails(coboose_root: Path, monkeypatch):
     _clear_jira_env(monkeypatch)
     monkeypatch.setenv("JIRA_API_TOKEN", "ATLASSIAN-SECRET")
     set_store(UnavailableStore(), backend="unavailable", available=False)
-    with pytest.raises(HarnessError, match="not available"):
-        login_token(harness_root, from_env=True)
+    with pytest.raises(CobooseError, match="not available"):
+        login_token(coboose_root, from_env=True)
 
 
-def test_logout_removes_keychain_token(harness_root: Path, isolated_keychain):
+def test_logout_removes_keychain_token(coboose_root: Path, isolated_keychain):
     isolated_keychain.set_password(SERVICE, ACCOUNT, "ATLASSIAN-SECRET")
-    payload = logout_token(harness_root)
+    payload = logout_token(coboose_root)
     assert payload["removed"] is True
     assert isolated_keychain.get_password(SERVICE, ACCOUNT) is None
     assert "ATLASSIAN-SECRET" not in json.dumps(payload)
 
 
 def test_cli_login_from_env_and_doctor_report_keychain(
-    harness_root: Path, isolated_keychain, monkeypatch, capsys
+    coboose_root: Path, isolated_keychain, monkeypatch, capsys
 ):
     _clear_jira_env(monkeypatch)
-    (harness_root / ".env").write_text(
+    (coboose_root / ".env").write_text(
         "JIRA_BASE_URL=https://acme.atlassian.net\n"
         "JIRA_EMAIL=ada@acme.test\n"
         "JIRA_API_TOKEN=ATLASSIAN-SECRET\n",
         encoding="utf-8",
     )
-    monkeypatch.chdir(harness_root)
-    assert main(["--root", str(harness_root), "jira", "login", "--from-env"]) == 0
+    monkeypatch.chdir(coboose_root)
+    assert main(["--root", str(coboose_root), "jira", "login", "--from-env"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["stored"] is True
     assert payload["present"] is True
@@ -160,7 +160,7 @@ def test_cli_login_from_env_and_doctor_report_keychain(
     assert "ATLASSIAN-SECRET" not in json.dumps(payload)
     assert isolated_keychain.get_password(SERVICE, ACCOUNT) == "ATLASSIAN-SECRET"
 
-    assert main(["--root", str(harness_root), "doctor"]) == 0
+    assert main(["--root", str(coboose_root), "doctor"]) == 0
     doctor = json.loads(capsys.readouterr().out)
     assert doctor["jira_token_source"] == "keychain"
     assert doctor["keychain"]["present"] is True

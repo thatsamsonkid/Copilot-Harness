@@ -9,9 +9,9 @@ from getpass import getpass
 from pathlib import Path
 from typing import Any
 
-from harness import HarnessError
-from harness.envfile import env_file_keys, upsert_env_file
-from harness.keychain import (
+from coboose import CobooseError
+from coboose.envfile import env_file_keys, upsert_env_file
+from coboose.keychain import (
     SOURCE_ENV,
     SOURCE_KEYCHAIN,
     SOURCE_MISSING,
@@ -23,7 +23,7 @@ from harness.keychain import (
     set_stored_secret,
     storage_guides,
 )
-from harness.paths import ENV_RELATIVE
+from coboose.paths import ENV_RELATIVE
 
 _ENV_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
@@ -92,29 +92,29 @@ def default_env_vars() -> list[EnvVar]:
 def load_env_spec(path: Path | None) -> tuple[list[EnvVar], Path | None]:
     if path is None or not path.exists():
         return default_env_vars(), None
-    from harness.catalog import read_yaml
+    from coboose.catalog import read_yaml
 
     raw = read_yaml(path)
     if raw is None:
         return default_env_vars(), path
     if not isinstance(raw, dict):
-        raise HarnessError(f"{path} must be a mapping with a variables list")
+        raise CobooseError(f"{path} must be a mapping with a variables list")
     items = raw.get("variables")
     if items is None:
         return default_env_vars(), path
     if not isinstance(items, list):
-        raise HarnessError(f"{path} variables must be a list")
+        raise CobooseError(f"{path} variables must be a list")
     variables: list[EnvVar] = []
     seen: set[str] = set()
     for item in items:
         variable = _parse_var(item, path)
         for name in variable.names:
             if name in seen:
-                raise HarnessError(f"{path} has a duplicate env name: {name}")
+                raise CobooseError(f"{path} has a duplicate env name: {name}")
             seen.add(name)
         variables.append(variable)
     if not variables:
-        raise HarnessError(f"{path} variables list is empty")
+        raise CobooseError(f"{path} variables list is empty")
     return variables, path
 
 
@@ -130,14 +130,14 @@ def validate_env_spec(
     for variable in variables:
         unknown = [item for item in variable.workspaces if item not in workspace_ids]
         if unknown:
-            raise HarnessError(
+            raise CobooseError(
                 f"{label} {variable.name} references unknown workspace id(s): "
                 + ", ".join(unknown)
             )
     for workspace_id, names in workspace_env.items():
         missing = [name for name in names if name not in known]
         if missing:
-            raise HarnessError(
+            raise CobooseError(
                 f"Workspace {workspace_id} env references unknown variable(s): "
                 + ", ".join(missing)
                 + f". Add them to {label}."
@@ -150,7 +150,7 @@ def find_var(variables: Iterable[EnvVar], name: str) -> EnvVar:
         if needle in variable.names:
             return variable
     known = ", ".join(variable.name for variable in variables)
-    raise HarnessError(
+    raise CobooseError(
         f"Unknown env variable {name!r}. Known names: {known or '(none)'}."
     )
 
@@ -225,12 +225,12 @@ def var_status(
         payload["action"] = missing_action(variable)
     elif variable.secret and source == SOURCE_ENV:
         payload["action"] = (
-            f"Token is in .env. Prefer `uv run harness env set {variable.name} "
+            f"Token is in .env. Prefer `uv run coboose env set {variable.name} "
             "--from-env` to move it into macOS Keychain or Windows Credential Manager."
         )
         if variable.name == "JIRA_API_TOKEN":
             payload["action"] = (
-                "Token is in .env. Prefer `uv run harness jira login --from-env` "
+                "Token is in .env. Prefer `uv run coboose jira login --from-env` "
                 "to move it into macOS Keychain or Windows Credential Manager."
             )
     return payload
@@ -240,9 +240,9 @@ def missing_action(variable: EnvVar) -> str:
     docs = f" ({variable.docs})" if variable.docs else ""
     if variable.secret:
         command = (
-            "uv run harness jira login"
+            "uv run coboose jira login"
             if variable.name == "JIRA_API_TOKEN"
-            else f"uv run harness env set {variable.name}"
+            else f"uv run coboose env set {variable.name}"
         )
         return (
             f"Create a value{docs} and store it with `{command}` "
@@ -258,13 +258,13 @@ def missing_action(variable: EnvVar) -> str:
 
 def list_env(
     variables: Iterable[EnvVar],
-    harness_root: Path,
+    coboose_root: Path,
     *,
     workspace_id: str | None = None,
     extra_names: Iterable[str] | None = None,
     source: Path | None = None,
 ) -> dict[str, Any]:
-    file_keys = env_file_keys(harness_root / ".env")
+    file_keys = env_file_keys(coboose_root / ".env")
     selected = vars_for(variables, workspace_id, extra_names)
     rows = [var_status(variable, file_keys) for variable in selected]
     missing = [
@@ -284,7 +284,7 @@ def list_env(
 
 def set_env_value(
     variable: EnvVar,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     from_env: bool = False,
     clear_env: bool = True,
@@ -292,22 +292,22 @@ def set_env_value(
     secret_fn: Callable[[str], str] | None = None,
     stdin_isatty: bool | None = None,
 ) -> dict[str, Any]:
-    env_path = harness_root / ".env"
+    env_path = coboose_root / ".env"
     if from_env:
         value, source = resolve_var(variable)
         if source != SOURCE_ENV or not value:
-            raise HarnessError(
+            raise CobooseError(
                 f"No {variable.name} in the environment or .env. "
-                f"Run `uv run harness env set {variable.name}` in your own terminal"
+                f"Run `uv run coboose env set {variable.name}` in your own terminal"
                 + (f", or see {variable.docs}." if variable.docs else ".")
             )
     else:
         if stdin_isatty is None:
             stdin_isatty = sys.stdin.isatty()
         if not stdin_isatty:
-            raise HarnessError(
+            raise CobooseError(
                 "Refusing interactive env set without a TTY. Run this in your own "
-                f"terminal, or use `harness env set {variable.name} --from-env` "
+                f"terminal, or use `coboose env set {variable.name} --from-env` "
                 "if the value is already in .env."
             )
         value = _prompt_value(variable, prompt_fn=prompt_fn, secret_fn=secret_fn)
@@ -346,7 +346,7 @@ def set_env_value(
 
 def unset_env_value(
     variable: EnvVar,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     clear_env: bool = False,
 ) -> dict[str, Any]:
@@ -357,11 +357,11 @@ def unset_env_value(
             removed = delete_stored_secret(variable.name) or removed
     cleared_env = False
     if clear_env or not variable.secret:
-        cleared_env = _clear_env_names(harness_root / ".env", variable.names)
+        cleared_env = _clear_env_names(coboose_root / ".env", variable.names)
     return {
         "removed": removed,
         "cleared_env": cleared_env,
-        **var_status(variable, env_file_keys(harness_root / ".env")),
+        **var_status(variable, env_file_keys(coboose_root / ".env")),
         "keychain_guide": storage_guides(),
     }
 
@@ -385,7 +385,7 @@ def _prompt_value(
     else:
         value = (prompt_fn or input)(f"{label}: ").strip()
     if not value:
-        raise HarnessError(f"A non-empty value is required for {variable.name}")
+        raise CobooseError(f"A non-empty value is required for {variable.name}")
     return value
 
 
@@ -406,7 +406,7 @@ def _parse_var(item: Any, source: Path) -> EnvVar:
         _require_name(name, source)
         return EnvVar(name=name)
     if not isinstance(item, dict):
-        raise HarnessError(f"{source} each variable must be a mapping or a name")
+        raise CobooseError(f"{source} each variable must be a mapping or a name")
     name = str(item.get("name") or "").strip()
     _require_name(name, source)
     aliases = tuple(
@@ -431,7 +431,7 @@ def _parse_var(item: Any, source: Path) -> EnvVar:
 
 def _require_name(name: str, source: Path) -> str:
     if not name or not _ENV_NAME.match(name):
-        raise HarnessError(
+        raise CobooseError(
             f"{source} env name {name!r} must look like JIRA_API_TOKEN"
         )
     return name

@@ -10,20 +10,20 @@ clone:
 	./scripts/clone-repos.sh
 
 templates:
-	uv run harness templates
+	uv run coboose templates
 
 bootstrap:
 	@test -n "$(TEMPLATE)" && test -n "$(NAME)" || (echo "Usage: make bootstrap TEMPLATE=spartan-stack NAME=my-app" >&2; exit 2)
-	uv run harness bootstrap --template $(TEMPLATE) --name $(NAME)
+	uv run coboose bootstrap --template $(TEMPLATE) --name $(NAME)
 
 workspaces:
-	uv run harness workspace generate
+	uv run coboose workspace generate
 
 create-workspace:
-	uv run harness workspace create
+	uv run coboose workspace create
 
 doctor:
-	uv run harness doctor
+	uv run coboose doctor
 
 init:
-	uv run harness init
+	uv run coboose init

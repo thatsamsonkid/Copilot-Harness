@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from harness import HarnessError
-from harness.catalog import load_catalog
-from harness.cli import main
-from harness.envspec import (
+from coboose import CobooseError
+from coboose.catalog import load_catalog
+from coboose.cli import main
+from coboose.envspec import (
     EnvVar,
     find_var,
     list_env,
@@ -17,8 +17,8 @@ from harness.envspec import (
     set_env_value,
     vars_for,
 )
-from harness.keychain import SOURCE_ENV, SOURCE_KEYCHAIN, SOURCE_MISSING, SERVICE
-from tests.helpers import write_harness_config
+from coboose.keychain import SOURCE_ENV, SOURCE_KEYCHAIN, SOURCE_MISSING, SERVICE
+from tests.helpers import write_coboose_config
 
 
 def test_defaults_when_env_yaml_missing(tmp_path: Path):
@@ -55,8 +55,8 @@ def test_workspace_scoped_and_workspace_env_list(
         },
     ]
     sample_catalog_data["workspaces"][0]["env"] = ["BACKEND_API_TOKEN"]
-    root = tmp_path / "harness"
-    write_harness_config(root, sample_catalog_data)
+    root = tmp_path / "coboose"
+    write_coboose_config(root, sample_catalog_data)
     catalog = load_catalog(root)
     names = {item.name for item in catalog.env_vars}
     assert "BACKEND_API_TOKEN" in names
@@ -77,14 +77,14 @@ def test_rejects_unknown_workspace_scope(
         {"name": "JIRA_API_TOKEN", "secret": True},
         {"name": "NOPE_TOKEN", "secret": True, "workspaces": ["missing-ws"]},
     ]
-    root = tmp_path / "harness"
-    write_harness_config(root, sample_catalog_data)
-    with pytest.raises(HarnessError, match="unknown workspace"):
+    root = tmp_path / "coboose"
+    write_coboose_config(root, sample_catalog_data)
+    with pytest.raises(CobooseError, match="unknown workspace"):
         load_catalog(root)
 
 
 def test_set_secret_uses_keychain_and_list_omits_value(
-    harness_root: Path, isolated_keychain, monkeypatch
+    coboose_root: Path, isolated_keychain, monkeypatch
 ):
     monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
     monkeypatch.delenv("JIRA_TOKEN", raising=False)
@@ -95,7 +95,7 @@ def test_set_secret_uses_keychain_and_list_omits_value(
         account="jira-api-token",
     )
     monkeypatch.setenv("JIRA_API_TOKEN", "ATLASSIAN-SECRET")
-    payload = set_env_value(variable, harness_root, from_env=True)
+    payload = set_env_value(variable, coboose_root, from_env=True)
     assert payload["stored"] is True
     assert payload["source"] == SOURCE_KEYCHAIN
     assert "ATLASSIAN-SECRET" not in json.dumps(payload)
@@ -106,7 +106,7 @@ def test_set_secret_uses_keychain_and_list_omits_value(
     assert value == "ATLASSIAN-SECRET"
     assert source == SOURCE_KEYCHAIN
 
-    listing = list_env([variable], harness_root)
+    listing = list_env([variable], coboose_root)
     assert listing["variables"][0]["present"] is True
     assert listing["variables"][0]["source"] == SOURCE_KEYCHAIN
     assert listing["missing"] == []
@@ -115,24 +115,24 @@ def test_set_secret_uses_keychain_and_list_omits_value(
 
 
 def test_cli_env_list_and_set(
-    harness_root: Path, isolated_keychain, monkeypatch, capsys
+    coboose_root: Path, isolated_keychain, monkeypatch, capsys
 ):
     for name in ("JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN", "JIRA_TOKEN"):
         monkeypatch.delenv(name, raising=False)
-    (harness_root / ".env").write_text(
+    (coboose_root / ".env").write_text(
         "JIRA_BASE_URL=https://acme.atlassian.net\n"
         "JIRA_EMAIL=ada@acme.test\n"
         "JIRA_API_TOKEN=ATLASSIAN-SECRET\n",
         encoding="utf-8",
     )
-    monkeypatch.chdir(harness_root)
-    assert main(["--root", str(harness_root), "env", "set", "JIRA_API_TOKEN", "--from-env"]) == 0
+    monkeypatch.chdir(coboose_root)
+    assert main(["--root", str(coboose_root), "env", "set", "JIRA_API_TOKEN", "--from-env"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["stored"] is True
     assert payload["source"] == SOURCE_KEYCHAIN
     assert "ATLASSIAN-SECRET" not in json.dumps(payload)
 
-    assert main(["--root", str(harness_root), "env", "list"]) == 0
+    assert main(["--root", str(coboose_root), "env", "list"]) == 0
     listing = json.loads(capsys.readouterr().out)
     by_name = {row["name"]: row for row in listing["variables"]}
     assert by_name["JIRA_BASE_URL"]["present"] is True
@@ -142,7 +142,7 @@ def test_cli_env_list_and_set(
     assert "ATLASSIAN-SECRET" not in json.dumps(listing)
 
 
-def test_set_non_secret_writes_env_file(harness_root: Path, monkeypatch):
+def test_set_non_secret_writes_env_file(coboose_root: Path, monkeypatch):
     monkeypatch.delenv("JIRA_BASE_URL", raising=False)
     variable = EnvVar(
         name="JIRA_BASE_URL",
@@ -150,11 +150,11 @@ def test_set_non_secret_writes_env_file(harness_root: Path, monkeypatch):
     )
     payload = set_env_value(
         variable,
-        harness_root,
+        coboose_root,
         prompt_fn=lambda _msg: "https://acme.atlassian.net",
         stdin_isatty=True,
     )
     assert payload["source"] == SOURCE_ENV
     assert "JIRA_BASE_URL=https://acme.atlassian.net" in (
-        harness_root / ".env"
+        coboose_root / ".env"
     ).read_text(encoding="utf-8")

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from harness import HarnessError
+from coboose import CobooseError
 
 REPOS_RELATIVE = Path("repositories.yml")
 STACK_RELATIVE = Path("catalog") / "stack.yaml"
@@ -13,17 +13,17 @@ WORKSPACES_DIR = Path("workspaces")
 PERSONAL_WORKSPACES_DIR = WORKSPACES_DIR / "personal"
 
 
-def is_harness_root(path: Path) -> bool:
+def is_coboose_root(path: Path) -> bool:
     return (path / REPOS_RELATIVE).exists() or (path / STACK_RELATIVE).exists()
 
 
-def find_harness_root(start: Path | None = None) -> Path:
-    env = os.environ.get("HARNESS_ROOT")
+def find_coboose_root(start: Path | None = None) -> Path:
+    env = os.environ.get("COBOOSE_ROOT")
     if env:
         root = Path(env).expanduser().resolve()
-        if not is_harness_root(root):
-            raise HarnessError(
-                f"HARNESS_ROOT={root} does not contain {REPOS_RELATIVE} "
+        if not is_coboose_root(root):
+            raise CobooseError(
+                f"COBOOSE_ROOT={root} does not contain {REPOS_RELATIVE} "
                 f"or {STACK_RELATIVE}"
             )
         return root
@@ -40,12 +40,12 @@ def find_harness_root(start: Path | None = None) -> Path:
             if path in seen:
                 continue
             seen.add(path)
-            if is_harness_root(path):
+            if is_coboose_root(path):
                 return path
 
-    raise HarnessError(
-        f"Could not find harness root ({REPOS_RELATIVE}). "
-        "Run from the harness repo or set HARNESS_ROOT."
+    raise CobooseError(
+        f"Could not find Coboose root ({REPOS_RELATIVE}). "
+        "Run from the Coboose repo or set COBOOSE_ROOT."
     )
 
 

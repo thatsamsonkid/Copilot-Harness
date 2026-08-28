@@ -4,11 +4,11 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from harness import HarnessError
+from coboose import CobooseError
 
-HARNESS_ENV_REPO = "HARNESS_ENV_REPO"
-HARNESS_ENV_CONFIGURATION = "HARNESS_ENV_CONFIGURATION"
-_HARNESS_MARKERS = (HARNESS_ENV_REPO, HARNESS_ENV_CONFIGURATION)
+COBOOSE_ENV_REPO = "COBOOSE_ENV_REPO"
+COBOOSE_ENV_CONFIGURATION = "COBOOSE_ENV_CONFIGURATION"
+_COBOOSE_MARKERS = (COBOOSE_ENV_REPO, COBOOSE_ENV_CONFIGURATION)
 _PREFIX = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -22,7 +22,7 @@ def normalize_env_prefix(prefix: str | None) -> str:
     if not text:
         return ""
     if not _PREFIX.match(text):
-        raise HarnessError(
+        raise CobooseError(
             "Env --prefix must be a shell identifier "
             f"(letters, digits, underscore), got {prefix!r}"
         )
@@ -54,8 +54,8 @@ def apply_project_env(
     """Merge launch/env-file keys into a parent environment without printing values.
 
     Launch values overwrite the parent unless ``keep_existing`` is set.
-    Harness marker keys are always stamped so a terminal can show which
-    project env is active. Those markers are prefixed already (`HARNESS_ENV_`).
+    Coboose marker keys are always stamped so a terminal can show which
+    project env is active. Those markers are prefixed already (`COBOOSE_ENV_`).
     """
     prefix_text = normalize_env_prefix(prefix)
     env = {str(key): str(value) for key, value in parent.items()}
@@ -79,9 +79,9 @@ def apply_project_env(
         env[key] = text
         applied[key] = text
 
-    markers: dict[str, str] = {HARNESS_ENV_REPO: repo_name}
+    markers: dict[str, str] = {COBOOSE_ENV_REPO: repo_name}
     if configuration:
-        markers[HARNESS_ENV_CONFIGURATION] = configuration
+        markers[COBOOSE_ENV_CONFIGURATION] = configuration
     for key, text in markers.items():
         if key in env and env.get(key) != text and key not in overwritten:
             overwritten.append(key)

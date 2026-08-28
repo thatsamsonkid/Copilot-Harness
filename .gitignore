@@ -14,6 +14,6 @@ build/
 .DS_Store
 .uv/
 
-# Local-only workspaces from `harness workspace create --personal`
+# Local-only workspaces from `coboose workspace create --personal`
 workspaces/personal/*
 !workspaces/personal/README.md

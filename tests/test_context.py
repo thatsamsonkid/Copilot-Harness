@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from harness.cli import main
-from harness.context import collect_context
-from tests.helpers import write_harness_config
+from coboose.cli import main
+from coboose.context import collect_context
+from tests.helpers import write_coboose_config
 
 
-def _write_sibling(harness_root: Path, name: str) -> Path:
-    repo = harness_root.parent / name
+def _write_sibling(coboose_root: Path, name: str) -> Path:
+    repo = coboose_root.parent / name
     (repo / ".github" / "instructions").mkdir(parents=True)
     (repo / "graphify-out").mkdir(parents=True)
     (repo / ".github" / "copilot-instructions.md").write_text(
@@ -36,9 +36,9 @@ def _write_sibling(harness_root: Path, name: str) -> Path:
     return repo
 
 
-def test_context_discovers_graphify_and_standards(harness_root: Path, catalog):
-    _write_sibling(harness_root, "frontend")
-    payload = collect_context(catalog, harness_root, only=["frontend"])
+def test_context_discovers_graphify_and_standards(coboose_root: Path, catalog):
+    _write_sibling(coboose_root, "frontend")
+    payload = collect_context(catalog, coboose_root, only=["frontend"])
     repo = payload["repos"][0]
     assert repo["cloned"] is True
     assert repo["graphify"]["present"] is True
@@ -52,21 +52,21 @@ def test_context_discovers_graphify_and_standards(harness_root: Path, catalog):
     assert repo["knowledge"]["template"] == "templates/feature-note.md"
 
 
-def test_context_cli_skips_missing_clone(harness_root: Path, capsys, monkeypatch):
-    monkeypatch.chdir(harness_root)
-    assert main(["--root", str(harness_root), "context", "--repo", "backend"]) == 0
+def test_context_cli_skips_missing_clone(coboose_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(coboose_root)
+    assert main(["--root", str(coboose_root), "context", "--repo", "backend"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["repos"][0]["cloned"] is False
     assert payload["repos"][0]["graphify"]["detail"] == "repo is not cloned"
 
 
-def test_graphify_can_be_disabled(sample_catalog_data: dict, harness_root: Path):
+def test_graphify_can_be_disabled(sample_catalog_data: dict, coboose_root: Path):
     sample_catalog_data["repos"][0]["graphify"] = False
-    write_harness_config(harness_root, sample_catalog_data)
-    from harness.catalog import load_catalog
+    write_coboose_config(coboose_root, sample_catalog_data)
+    from coboose.catalog import load_catalog
 
-    catalog = load_catalog(harness_root)
-    _write_sibling(harness_root, "frontend")
-    payload = collect_context(catalog, harness_root, only=["frontend"])
+    catalog = load_catalog(coboose_root)
+    _write_sibling(coboose_root, "frontend")
+    payload = collect_context(catalog, coboose_root, only=["frontend"])
     assert payload["repos"][0]["graphify"]["enabled"] is False
     assert payload["repos"][0]["graphify"]["present"] is False

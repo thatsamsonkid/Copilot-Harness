@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from harness.catalog import Catalog, Workspace
+from coboose.catalog import Catalog, Workspace
 
 
 def match_workspaces(

@@ -1,53 +1,53 @@
-# Copilot Harness
+# Coboose
 
 This repository is tooling only. Application code lives in **git clones next to this repo** (flat siblings or grouped folders under `parent_dir`), never inside it.
 
 ## First-run and vague prompts
 
-- First time in this repo, missing Jira auth, or "how do I set this up?": load `.github/skills/get-started/SKILL.md` and run `uv run harness init --format json`. Never collect the API token in chat.
-- Vague, broad, or no-ticket prompts in a large workspace: load `.github/skills/workspace-context/SKILL.md` and run `uv run harness context --format json`. Read each cloned repo's Graphify `GRAPH_REPORT.md` before grepping.
-- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run harness start --format json`. That command is a plan only. Prefer a saved `workspaces/<id>.start.yml` when `plan_source` is `saved`; pin a first good plan with `--save`. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening. If `run_via` is `harness`, run `harness start run --repo <name>` instead of reconstructing launch.json env/args. To inspect or apply one repo's launch env without starting it, use `harness start env --repo <name>` (add `--shell` to exec a terminal that has the values). Never read sibling `.vscode/launch.json` or product `.env` files.
+- First time in this repo, missing Jira auth, or "how do I set this up?": load `.github/skills/get-started/SKILL.md` and run `uv run coboose init --format json`. Never collect the API token in chat.
+- Vague, broad, or no-ticket prompts in a large workspace: load `.github/skills/workspace-context/SKILL.md` and run `uv run coboose context --format json`. Read each cloned repo's Graphify `GRAPH_REPORT.md` before grepping.
+- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run coboose start --format json`. That command is a plan only. Prefer a saved `workspaces/<id>.start.yml` when `plan_source` is `saved`; pin a first good plan with `--save`. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening. If `run_via` is `coboose`, run `coboose start run --repo <name>` instead of reconstructing launch.json env/args. To inspect or apply one repo's launch env without starting it, use `coboose start env --repo <name>` (add `--shell` to exec a terminal that has the values). Never read sibling `.vscode/launch.json` or product `.env` files.
 
 ## Default ticket workflow
 
 When the user gives a Jira key or browse URL, load the **jira-cli** skill (`.github/skills/jira-cli/SKILL.md`) and follow it.
 
-1. Run `uv run harness prepare <KEY> --format json` from this repo (first workspace folder). If cwd is a sibling clone, `uv run harness` cannot spawn — use `uv run --project "$HARNESS_ROOT" harness prepare <KEY> --format json` or `./scripts/harness.sh`.
+1. Run `uv run coboose prepare <KEY> --format json` from this repo (first workspace folder). If cwd is a sibling clone, `uv run coboose` cannot spawn — use `uv run --project "$COBOOSE_ROOT" coboose prepare <KEY> --format json` or `./scripts/coboose.sh`.
 2. Use that CLI JSON as the only ticket source. It is already field-filtered. Do not ask Jira for more.
 3. Tell the user to open `routing.open_command` so the feature workspace loads the right roots. Do not assume sibling repos are already in the current window.
-4. If `routing.missing_repos` is non-empty, recommend `routing.clone_command`. Never `git clone` into this harness folder.
+4. If `routing.missing_repos` is non-empty, recommend `routing.clone_command`. Never `git clone` into this coboose folder.
 5. Write a plan covering impacted repos, likely files, risks, and tests. Do not implement until the user asks.
 
-`harness` stdout is JSON by default. Read stdout. Errors are JSON on stderr with a non-zero exit code.
+`coboose` stdout is JSON by default. Read stdout. Errors are JSON on stderr with a non-zero exit code.
 
 ## Jira access (hard rules)
 
 This workspace has **no Jira MCP server**. The API token must never enter the chat or a shell command. These rules apply even if the jira-cli skill is not loaded.
 
-- Only talk to Jira through `uv run harness jira …`, `uv run harness prepare …`, or `uv run harness init` / `doctor`.
+- Only talk to Jira through `uv run coboose jira …`, `uv run coboose prepare …`, or `uv run coboose init` / `doctor`.
 - Do **not** curl, fetch, or browse `*.atlassian.net` or `/rest/api/`.
 - Do **not** read `.env`, print `env`, or expand `$JIRA_API_TOKEN` / `$JIRA_TOKEN`.
-- Do **not** read sibling `.vscode/launch.json` env/args or product `.env` / `envFile` values. Use `harness start` (redacted keys), `harness start run`, and `harness start env`.
+- Do **not** read sibling `.vscode/launch.json` env/args or product `.env` / `envFile` values. Use `coboose start` (redacted keys), `coboose start run`, and `coboose start env`.
 - Do **not** configure or call an MCP Jira tool.
-- If credentials are missing, tell the user to set `JIRA_BASE_URL` / `JIRA_EMAIL` in `.env` and run `uv run harness jira login` in their own terminal (macOS Keychain or Windows Credential Manager). Never ask them to paste a token into chat.
+- If credentials are missing, tell the user to set `JIRA_BASE_URL` / `JIRA_EMAIL` in `.env` and run `uv run coboose jira login` in their own terminal (macOS Keychain or Windows Credential Manager). Never ask them to paste a token into chat.
 
 ## Repo layout
 
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/harness` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context, start.
-- Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this harness. Personal/local mixes live in `workspaces/personal/` (gitignored, not in `catalog/stack.yaml`).
-- Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `harness env set NAME` / `harness jira login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
+- CLI: `src/coboose` — clone, template bootstrap, Jira basic auth, workspace create/generate/match, prepare, init, context, start.
+- Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this Coboose repo. Personal/local mixes live in `workspaces/personal/` (gitignored, not in `catalog/stack.yaml`).
+- Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `coboose env set NAME` / `coboose jira login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run harness <command>` **from this harness repo**, or `uv run --project "$HARNESS_ROOT" harness <command>` / `./scripts/harness.sh` (Windows: `.\scripts\harness.ps1`) from any cwd. Sibling clones are not a uv project; `uv run harness` fails there with Failed to spawn. Jira command choice, flags, and output shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start.
+Prefer `uv` for Python. Run the CLI as `uv run coboose <command>` **from this Coboose repo**, or `uv run --project "$COBOOSE_ROOT" coboose <command>` / `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`) from any cwd. Sibling clones are not a uv project; `uv run coboose` fails there with Failed to spawn. Jira command choice, flags, and output shapes live in the jira-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start.
 
 ```bash
-uv run harness templates
-uv run harness templates --tag mobile
-uv run harness bootstrap --template <name> --name <folder>
+uv run coboose templates
+uv run coboose templates --tag mobile
+uv run coboose bootstrap --template <name> --name <folder>
 ```
 
 If `uv` is missing, follow `docs/install-uv.md` for the user's OS. macOS/Linux: `./scripts/setup.sh`. Windows: `.\scripts\setup.ps1`. Do not use pip to install this repo. Do not tell Windows users to run the bash setup script.
@@ -56,11 +56,11 @@ If `uv` is missing, follow `docs/install-uv.md` for the user's OS. macOS/Linux: 
 
 When the user asks to create, scaffold, or bootstrap a new project:
 
-1. Run `uv run harness templates --format json` and treat that list as the source of truth.
+1. Run `uv run coboose templates --format json` and treat that list as the source of truth.
 2. If they named a listed template (or one clearly matches), run
-   `uv run harness bootstrap --template <name> --name <folder>` (add `--group frontend` to organize under `parent_dir`).
+   `uv run coboose bootstrap --template <name> --name <folder>` (add `--group frontend` to organize under `parent_dir`).
 3. If they did not name one, show the listed templates and ask which to use. Do not invent a scaffold when a listed template fits.
-4. Put the new project under `parent_dir` (a sibling folder, or `frontend/<name>` via `--group` / a nested `--name`). Never `git clone` into this harness directory.
+4. Put the new project under `parent_dir` (a sibling folder, or `frontend/<name>` via `--group` / a nested `--name`). Never `git clone` into this coboose directory.
 5. Ask before `--register` (adds the project to `repositories.yml`) or `--fresh-git`.
 6. After bootstrap, follow the CLI `next_steps` and the new repo's own conventions.
 
@@ -68,9 +68,9 @@ When the user asks to create, scaffold, or bootstrap a new project:
 
 - Keep clones outside this repo (`../<path>` or `../frontend/<name>`). Do not add git submodules or nest repos here.
 - Prefer the matched workspace repos. Only load extra roots when the ticket clearly needs them.
-- After catalog edits, run `harness workspace generate`. To add a workspace, prefer `/new-workspace` or the **Workspace Creator** agent so chat can collect shared vs personal, id, and `repositories.yml` projects, then run `harness workspace create <id> --projects … --no-prompt` (add `--personal` for local-only). In a terminal the same command prompts. Never hand-edit `catalog/stack.yaml` or run the interactive CLI from chat.
-- When coding in a sibling repo, follow that repo's conventions. This harness does not override product architecture.
-- Before editing a sibling, read the instruction files `harness context` lists for it (`AGENTS.md`, `.github/copilot-instructions.md`, path-specific instructions, skills).
+- After catalog edits, run `coboose workspace generate`. To add a workspace, prefer `/new-workspace` or the **Workspace Creator** agent so chat can collect shared vs personal, id, and `repositories.yml` projects, then run `coboose workspace create <id> --projects … --no-prompt` (add `--personal` for local-only). In a terminal the same command prompts. Never hand-edit `catalog/stack.yaml` or run the interactive CLI from chat.
+- When coding in a sibling repo, follow that repo's conventions. This coboose does not override product architecture.
+- Before editing a sibling, read the instruction files `coboose context` lists for it (`AGENTS.md`, `.github/copilot-instructions.md`, path-specific instructions, skills).
 - After editing a sibling, run that repo's `tooling.suggested_verify`. Do not skip a failing lint/test command from the product repo.
-- Do not copy product standards into this harness. Do not rebuild a Graphify graph unless the user asked, and never extract an entire monorepo unprompted.
-- Product knowledge (feature notes, ADRs) lives in the sibling repo. Discover it via `harness context` `knowledge`. Do not start a second wiki here.
+- Do not copy product standards into this coboose. Do not rebuild a Graphify graph unless the user asked, and never extract an entire monorepo unprompted.
+- Product knowledge (feature notes, ADRs) lives in the sibling repo. Discover it via `coboose context` `knowledge`. Do not start a second wiki here.

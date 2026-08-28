@@ -11,11 +11,11 @@ from typing import Any, Callable
 
 import yaml
 
-from harness import HarnessError
-from harness.catalog import Catalog, Repo, as_list
-from harness.envapply import applied_env_preview, apply_project_env
-from harness.invoke import invoke_spec
-from harness.launch import load_launch_runtime, summarize_launch
+from coboose import CobooseError
+from coboose.catalog import Catalog, Repo, as_list
+from coboose.envapply import applied_env_preview, apply_project_env
+from coboose.invoke import invoke_spec
+from coboose.launch import load_launch_runtime, summarize_launch
 
 RunFn = Callable[[str, Path, dict[str, str]], int]
 
@@ -59,7 +59,7 @@ _SERVER_PORT_PROP = re.compile(
 
 def collect_start_plan(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     workspace_id: str | None = None,
     only: list[str] | None = None,
@@ -67,17 +67,17 @@ def collect_start_plan(
     refresh: bool = False,
 ) -> dict[str, Any]:
     if save and not workspace_id:
-        raise HarnessError(
+        raise CobooseError(
             "--save requires --workspace so the plan can sit next to that "
             "workspace file (workspaces/<id>.start.yml)."
         )
     if save and only:
-        raise HarnessError(
+        raise CobooseError(
             "--save writes the full workspace sequence. Do not combine it with --repo."
         )
 
     repos = _selected_repos(catalog, workspace_id=workspace_id, only=only)
-    services = [inspect_start(catalog, harness_root, repo) for repo in repos]
+    services = [inspect_start(catalog, coboose_root, repo) for repo in repos]
     backends = [item["name"] for item in services if item.get("role") == "backend"]
     for item in services:
         if item.get("role") in {"frontend", "mobile"} and backends:
@@ -86,18 +86,18 @@ def collect_start_plan(
             item.setdefault("depends_on", [])
     services.sort(key=_service_sort_key)
     plan_file = (
-        catalog.workspace_start_file(harness_root, workspace_id)
+        catalog.workspace_start_file(coboose_root, workspace_id)
         if workspace_id
         else None
     )
     payload = {
         "workspace": workspace_id,
-        "sibling_root": str(catalog.sibling_root(harness_root)),
+        "sibling_root": str(catalog.sibling_root(coboose_root)),
         "order": [item["name"] for item in services],
         "services": services,
         "blocked": _blocked_entries(services),
-        "harness_root": str(Path(harness_root).resolve()),
-        "invoke": invoke_spec(harness_root),
+        "coboose_root": str(Path(coboose_root).resolve()),
+        "invoke": invoke_spec(coboose_root),
         "plan_file": str(plan_file) if plan_file else None,
         "plan_exists": bool(plan_file and plan_file.is_file()),
         "plan_source": "discovered",
@@ -110,7 +110,7 @@ def collect_start_plan(
             payload,
             saved,
             catalog,
-            harness_root,
+            coboose_root,
             only=only,
         )
     if save:
@@ -120,10 +120,10 @@ def collect_start_plan(
     return payload
 
 
-def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dict[str, Any]:
+def inspect_start(catalog: Catalog, coboose_root: Path, repo: Repo | str) -> dict[str, Any]:
     if isinstance(repo, str):
         repo = catalog.repo(repo)
-    path = catalog.repo_path(harness_root, repo)
+    path = catalog.repo_path(coboose_root, repo)
     payload = _empty_service(repo, path)
     if not path.exists():
         payload["blocked"] = "repo is not cloned"
@@ -132,7 +132,7 @@ def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dic
 
     discovered = discover_start(path, repo)
     payload.update(discovered)
-    _attach_launch(payload, repo, path, harness_root)
+    _attach_launch(payload, repo, path, coboose_root)
     if not payload.get("command"):
         if payload.get("run_via") == "vscode" and payload.get("launch"):
             payload["notes"].append(
@@ -161,9 +161,9 @@ def inspect_start(catalog: Catalog, harness_root: Path, repo: Repo | str) -> dic
 
 SAVED_PLAN_HEADER = """\
 # Saved start sequence for the {workspace} workspace.
-# Written by: harness start --workspace {workspace} --save
+# Written by: coboose start --workspace {workspace} --save
 # Edit this file when the boot order or commands change.
-# harness start prefers this over rediscovery.
+# coboose start prefers this over rediscovery.
 """
 
 
@@ -171,27 +171,27 @@ def load_saved_start_plan(path: Path) -> dict[str, Any]:
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
-        raise HarnessError(f"Invalid YAML in saved start plan {path}: {exc}") from exc
+        raise CobooseError(f"Invalid YAML in saved start plan {path}: {exc}") from exc
     except OSError as exc:
-        raise HarnessError(f"Cannot read saved start plan {path}: {exc}") from exc
+        raise CobooseError(f"Cannot read saved start plan {path}: {exc}") from exc
     if raw is None:
         raw = {}
     if not isinstance(raw, dict):
-        raise HarnessError(f"Saved start plan must be a mapping: {path}")
+        raise CobooseError(f"Saved start plan must be a mapping: {path}")
     services_raw = raw.get("services") or []
     if not isinstance(services_raw, list):
-        raise HarnessError(f"Saved start plan services must be a list: {path}")
+        raise CobooseError(f"Saved start plan services must be a list: {path}")
     services: list[dict[str, Any]] = []
     for item in services_raw:
         if not isinstance(item, dict) or not item.get("name"):
-            raise HarnessError(f"Each saved start service needs a name: {path}")
+            raise CobooseError(f"Each saved start service needs a name: {path}")
         entry: dict[str, Any] = {"name": str(item["name"])}
         command = str(item.get("command") or "").strip()
         if command:
             entry["command"] = command
         port = _as_port(item.get("port"))
         if item.get("port") not in (None, "") and port is None:
-            raise HarnessError(
+            raise CobooseError(
                 f"Saved start plan {path} service {entry['name']} port must be an integer"
             )
         if port:
@@ -214,10 +214,10 @@ def load_saved_start_plan(path: Path) -> dict[str, Any]:
                 f"Saved start plan {path} env_file", env_file
             )
         method = str(item.get("method") or "").strip().lower()
-        if method and method not in {"terminal", "vscode", "harness"}:
-            raise HarnessError(
+        if method and method not in {"terminal", "vscode", "coboose"}:
+            raise CobooseError(
                 f"Saved start plan {path} service {entry['name']} "
-                "method must be terminal, vscode, or harness"
+                "method must be terminal, vscode, or coboose"
             )
         if method:
             entry["method"] = method
@@ -242,7 +242,7 @@ def apply_saved_start_plan(
     payload: dict[str, Any],
     saved: dict[str, Any],
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     only: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -271,13 +271,13 @@ def apply_saved_start_plan(
             continue
         if wanted is not None and name not in wanted:
             continue
-        item = discovered.get(name) or inspect_start(catalog, harness_root, name)
+        item = discovered.get(name) or inspect_start(catalog, coboose_root, name)
         services.append(
             _apply_saved_service(
                 item,
                 pins.get(name) or {},
                 catalog.repo(name),
-                harness_root,
+                coboose_root,
             )
         )
     unplanned_items: list[dict[str, Any]] = []
@@ -368,7 +368,7 @@ def _apply_saved_service(
     discovered: dict[str, Any],
     pin: dict[str, Any],
     repo: Repo,
-    harness_root: Path,
+    coboose_root: Path,
 ) -> dict[str, Any]:
     merged = dict(discovered)
     applied = False
@@ -402,7 +402,7 @@ def _apply_saved_service(
             merged,
             repo,
             Path(str(merged.get("path") or merged.get("cwd"))),
-            harness_root,
+            coboose_root,
             configuration=pin.get("launch"),
             env_file=pin.get("env_file"),
             method=pin.get("method") or "",
@@ -438,7 +438,7 @@ def _saved_relative_cwd(item: dict[str, Any]) -> str | None:
 def _relative_cwd(label: str, value: str) -> str:
     path = Path(value)
     if path.is_absolute() or ".." in path.parts:
-        raise HarnessError(f"{label} must be a relative path inside the repo: {value}")
+        raise CobooseError(f"{label} must be a relative path inside the repo: {value}")
     return value
 
 
@@ -462,14 +462,14 @@ def _plan_guidance(payload: dict[str, Any]) -> list[str]:
         "working tree. Do not commit that change unless the user asked.",
         "If discovery is wrong, edit workspaces/<id>.start.yml or rerun with "
         "--save after you have the right commands.",
-        "Run this CLI from the harness repo (invoke.cwd). After cd into a "
-        "sibling, `uv run harness` cannot spawn. Re-run with invoke.command "
-        "or scripts/harness.sh; do not reuse an app terminal for harness.",
+        "Run this CLI from the coboose repo (invoke.cwd). After cd into a "
+        "sibling, `uv run coboose` cannot spawn. Re-run with invoke.command "
+        "or scripts/coboose.sh; do not reuse an app terminal for coboose.",
     ]
     services = payload.get("services") or []
     if any((item.get("launch") or {}).get("secret_risk") for item in services):
         lines.append(
-            "When run_via is harness or launch.secret_risk is true, start that "
+            "When run_via is coboose or launch.secret_risk is true, start that "
             "app with invoke.command plus `start run --repo <name>` (or the "
             "service `copilot_command`) or VS Code Run Without Debugging. "
             "start run applies env to the child process only. Use "
@@ -499,7 +499,7 @@ def _plan_guidance(payload: dict[str, Any]) -> list[str]:
     elif workspace:
         lines.append(
             "This workspace has no saved start sequence yet. When the order "
-            f"looks right, run `harness start --workspace {workspace} --save` "
+            f"looks right, run `coboose start --workspace {workspace} --save` "
             "to write workspaces/<id>.start.yml and skip rediscovery next time."
         )
     unplanned = payload.get("unplanned") or []
@@ -572,7 +572,7 @@ def _selected_repos(
             return catalog.enabled_repos(only=only)
         unknown = wanted.difference(repo.name for repo in catalog.repos)
         if unknown:
-            raise HarnessError("Unknown repo name(s): " + ", ".join(sorted(unknown)))
+            raise CobooseError("Unknown repo name(s): " + ", ".join(sorted(unknown)))
         names = [name for name in names if name in wanted]
     if names is None:
         return catalog.enabled_repos()
@@ -1026,7 +1026,7 @@ def _attach_launch(
     payload: dict[str, Any],
     repo: Repo,
     repo_path: Path,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     configuration: str | None = None,
     env_file: str | None = None,
@@ -1042,7 +1042,7 @@ def _attach_launch(
     payload["launch"] = launch
     payload["run_via"] = _run_via(payload.get("command"), method, launch)
     payload["copilot_command"] = _copilot_command(
-        repo.name, payload["run_via"], launch, harness_root
+        repo.name, payload["run_via"], launch, coboose_root
     )
     if not launch:
         return
@@ -1061,7 +1061,7 @@ def _attach_launch(
         else:
             payload["notes"].append(
                 f"This app has launch.json env/args. Start with "
-                f"`{invoke_spec(harness_root)['command']} start run --repo {repo.name}` "
+                f"`{invoke_spec(coboose_root)['command']} start run --repo {repo.name}` "
                 "or VS Code Run "
                 f"Without Debugging on {config!r}. Do not read launch.json or "
                 "reconstruct env in the terminal."
@@ -1079,14 +1079,14 @@ def _run_via(
         return "vscode"
     if method == "vscode":
         return "vscode"
-    if method == "harness" and command:
-        return "harness"
+    if method == "coboose" and command:
+        return "coboose"
     if method == "terminal" and secret_risk:
-        return "harness" if command else "vscode"
+        return "coboose" if command else "vscode"
     if method == "terminal":
         return "terminal"
     if secret_risk and command:
-        return "harness"
+        return "coboose"
     if secret_risk:
         return "vscode"
     return "terminal"
@@ -1096,36 +1096,36 @@ def _copilot_command(
     repo_name: str,
     run_via: str,
     launch: dict[str, Any] | None,
-    harness_root: Path,
+    coboose_root: Path,
 ) -> str | None:
-    if run_via != "harness":
+    if run_via != "coboose":
         return None
-    command = f"{invoke_spec(harness_root)['command']} start run --repo {repo_name}"
+    command = f"{invoke_spec(coboose_root)['command']} start run --repo {repo_name}"
     config = (launch or {}).get("configuration")
     if isinstance(config, str) and config:
         command += f" --configuration {shlex.quote(config)}"
     return command
 
 
-def workspace_folder_map(catalog: Catalog, harness_root: Path) -> dict[str, Path]:
+def workspace_folder_map(catalog: Catalog, coboose_root: Path) -> dict[str, Path]:
     folders = {
-        repo.name: catalog.repo_path(harness_root, repo) for repo in catalog.repos
+        repo.name: catalog.repo_path(coboose_root, repo) for repo in catalog.repos
     }
-    folders["harness"] = Path(harness_root).resolve()
+    folders["coboose"] = Path(coboose_root).resolve()
     return folders
 
 
 def prepare_project_env(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     repo_name: str,
     *,
     configuration: str | None = None,
 ) -> dict[str, Any]:
     """Load launch.json / envFile keys in-process. No start command required."""
-    service = inspect_start(catalog, harness_root, repo_name)
+    service = inspect_start(catalog, coboose_root, repo_name)
     if service.get("blocked") == "repo is not cloned":
-        raise HarnessError(f"Repository {repo_name} is not cloned")
+        raise CobooseError(f"Repository {repo_name} is not cloned")
     launch = service.get("launch")
     if isinstance(configuration, str) and configuration.strip():
         launch = summarize_launch(
@@ -1141,10 +1141,10 @@ def prepare_project_env(
         launch if isinstance(launch, dict) else None,
         configuration=configuration,
         environ=os.environ.copy(),
-        workspace_folders=workspace_folder_map(catalog, harness_root),
+        workspace_folders=workspace_folder_map(catalog, coboose_root),
     )
     if runtime.get("uses_vscode_inputs"):
-        raise HarnessError(
+        raise CobooseError(
             "launch.json env/args use VS Code input variables. "
             "Use Run Without Debugging on "
             f"{(launch or {}).get('configuration')!r}; "
@@ -1165,25 +1165,25 @@ def prepare_project_env(
         "vm_args": runtime.get("vm_args"),
         "applied_args": bool(runtime.get("args")),
         "applied_vm_args": bool(runtime.get("vm_args")),
-        "run_via": "harness",
+        "run_via": "coboose",
     }
 
 
 def prepare_start_run(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     repo_name: str,
     *,
     configuration: str | None = None,
 ) -> dict[str, Any]:
     """Build a redacted start-run payload and the in-process env/args."""
     prepared = prepare_project_env(
-        catalog, harness_root, repo_name, configuration=configuration
+        catalog, coboose_root, repo_name, configuration=configuration
     )
     command = prepared.get("command")
     if not command:
         config = prepared.get("launch_configuration")
-        raise HarnessError(
+        raise CobooseError(
             "No shell start command for "
             f"{repo_name}. Use VS Code Run Without Debugging on {config!r}."
         )
@@ -1202,7 +1202,7 @@ def prepare_start_run(
         "exec_command": exec_command,
         "env": env,
         "env_keys": sorted(env),
-        "run_via": "harness",
+        "run_via": "coboose",
     }
 
 
@@ -1229,7 +1229,7 @@ def start_run_preview(
         "launch_configuration": prepared.get("launch_configuration"),
         "applied_args": bool(prepared.get("applied_args")),
         "applied_vm_args": bool(prepared.get("applied_vm_args")),
-        "run_via": "harness",
+        "run_via": "coboose",
         "dry_run": True,
     }
     if applied is not None:
@@ -1239,7 +1239,7 @@ def start_run_preview(
 
 def execute_start_run(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     repo_name: str,
     *,
     configuration: str | None = None,
@@ -1249,7 +1249,7 @@ def execute_start_run(
     run: RunFn | None = None,
 ) -> dict[str, Any]:
     prepared = prepare_start_run(
-        catalog, harness_root, repo_name, configuration=configuration
+        catalog, coboose_root, repo_name, configuration=configuration
     )
     applied = apply_project_env(
         prepared["env"],
@@ -1292,7 +1292,7 @@ def start_env_preview(
         "command": prepared.get("command"),
         "env_file": prepared.get("env_file"),
         "launch_configuration": prepared.get("launch_configuration"),
-        "run_via": "harness",
+        "run_via": "coboose",
         "shell": False,
         **applied_env_preview(applied),
     }
@@ -1300,7 +1300,7 @@ def start_env_preview(
 
 def execute_start_env(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     repo_name: str,
     *,
     configuration: str | None = None,
@@ -1311,7 +1311,7 @@ def execute_start_env(
 ) -> dict[str, Any]:
     """Apply one repo's launch env in-process, or exec a shell that has it."""
     prepared = prepare_project_env(
-        catalog, harness_root, repo_name, configuration=configuration
+        catalog, coboose_root, repo_name, configuration=configuration
     )
     applied = apply_project_env(
         prepared["env"],

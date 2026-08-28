@@ -2,42 +2,42 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Harness: setup",
+      "label": "Coboose: setup",
       "type": "shell",
       "command": "./scripts/setup.sh",
       "problemMatcher": [],
       "presentation": { "reveal": "always" }
     },
     {
-      "label": "Harness: clone sibling repos",
+      "label": "Coboose: clone sibling repos",
       "type": "shell",
       "command": "./scripts/clone-repos.sh",
       "problemMatcher": [],
       "presentation": { "reveal": "always" }
     },
     {
-      "label": "Harness: list templates",
+      "label": "Coboose: list templates",
       "type": "shell",
-      "command": "uv run harness templates --format text",
+      "command": "uv run coboose templates --format text",
       "problemMatcher": []
     },
     {
-      "label": "Harness: generate workspaces",
+      "label": "Coboose: generate workspaces",
       "type": "shell",
-      "command": "uv run harness workspace generate",
+      "command": "uv run coboose workspace generate",
       "problemMatcher": []
     },
     {
-      "label": "Harness: create workspace",
+      "label": "Coboose: create workspace",
       "type": "shell",
-      "command": "uv run harness workspace create",
+      "command": "uv run coboose workspace create",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "Harness: doctor",
+      "label": "Coboose: doctor",
       "type": "shell",
-      "command": "uv run harness doctor",
+      "command": "uv run coboose doctor",
       "problemMatcher": []
     }
   ]

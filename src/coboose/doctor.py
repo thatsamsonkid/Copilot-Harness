@@ -5,13 +5,13 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from harness import HarnessError
-from harness.catalog import Catalog
-from harness.context import inspect_repo
-from harness.envspec import list_env
-from harness.invoke import invoke_spec
-from harness.jira_client import JiraClient, jira_settings_from_env
-from harness.keychain import (
+from coboose import CobooseError
+from coboose.catalog import Catalog
+from coboose.context import inspect_repo
+from coboose.envspec import list_env
+from coboose.invoke import invoke_spec
+from coboose.jira_client import JiraClient, jira_settings_from_env
+from coboose.keychain import (
     SOURCE_ENV,
     SOURCE_KEYCHAIN,
     backend_display_name,
@@ -19,14 +19,14 @@ from harness.keychain import (
     resolve_token,
     storage_guides,
 )
-from harness.onboard import onboarding_steps
-from harness.uv_check import detect_uv, uv_missing_action
-from harness.workspace import generate_workspaces
+from coboose.onboard import onboarding_steps
+from coboose.uv_check import detect_uv, uv_missing_action
+from coboose.workspace import generate_workspaces
 
 
 def run_doctor(
     catalog: Catalog,
-    harness_root: Path,
+    coboose_root: Path,
     *,
     ping_jira: bool = False,
 ) -> dict[str, Any]:
@@ -105,21 +105,21 @@ def run_doctor(
         )
 
     try:
-        sibling_root = catalog.require_safe_sibling_root(harness_root)
+        sibling_root = catalog.require_safe_sibling_root(coboose_root)
         checks.append(
             _check(
                 "sibling_root",
-                sibling_root != harness_root.resolve(),
+                sibling_root != coboose_root.resolve(),
                 f"siblings clone to {sibling_root}",
             )
         )
-    except HarnessError as exc:
-        sibling_root = catalog.sibling_root(harness_root)
+    except CobooseError as exc:
+        sibling_root = catalog.sibling_root(coboose_root)
         checks.append(_check("sibling_root", False, str(exc)))
 
     repos = []
     for repo in catalog.enabled_repos():
-        path = catalog.repo_path(harness_root, repo)
+        path = catalog.repo_path(coboose_root, repo)
         cloned = path.exists()
         repos.append(
             {
@@ -140,7 +140,7 @@ def run_doctor(
             )
         )
         if cloned:
-            snapshot = inspect_repo(catalog, harness_root, repo)
+            snapshot = inspect_repo(catalog, coboose_root, repo)
             graphify = snapshot["graphify"]
             checks.append(
                 _check(
@@ -164,7 +164,7 @@ def run_doctor(
                 )
             )
 
-    generated = generate_workspaces(catalog, harness_root)
+    generated = generate_workspaces(catalog, coboose_root)
     checks.append(
         _check(
             "workspaces",
@@ -192,7 +192,7 @@ def run_doctor(
             _check(
                 "jira_token_store",
                 False,
-                "Jira token is in .env; prefer `uv run harness jira login --from-env`",
+                "Jira token is in .env; prefer `uv run coboose jira login --from-env`",
                 ok_when_false=True,
             )
         )
@@ -226,7 +226,7 @@ def run_doctor(
 
     env_payload = list_env(
         catalog.env_vars,
-        harness_root,
+        coboose_root,
         source=catalog.env_source,
     )
     for row in env_payload["variables"]:
@@ -246,10 +246,10 @@ def run_doctor(
         )
 
     ok = all(item["ok"] or item.get("advisory") for item in checks)
-    steps = onboarding_steps(catalog, harness_root, uv=uv)
+    steps = onboarding_steps(catalog, coboose_root, uv=uv)
     return {
         "ok": ok,
-        "harness_root": str(harness_root),
+        "coboose_root": str(coboose_root),
         "sibling_root": str(sibling_root),
         "repos": repos,
         "templates": [
@@ -268,7 +268,7 @@ def run_doctor(
         "keychain_guide": storage_guides(),
         "env": env_payload,
         "uv": uv,
-        "invoke": invoke_spec(harness_root),
+        "invoke": invoke_spec(coboose_root),
         "checks": checks,
         "onboarding": steps,
     }
