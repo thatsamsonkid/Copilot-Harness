@@ -103,9 +103,22 @@ def test_get_issue_normalizes_adf_and_links():
     assert payload["parent"]["key"] == "WEB-1"
     assert payload["issuelinks"][0]["key"] == "API-9"
     assert payload["story_points"] == 3
+    assert payload["parent"] == {
+        "key": "WEB-1",
+        "summary": "Checkout",
+        "status": "To Do",
+    }
+    assert payload["issuelinks"][0] == {
+        "type": "Blocks",
+        "direction": "blocks",
+        "key": "API-9",
+        "summary": "Price API",
+    }
     assert "reporter" not in payload
     assert "id" not in payload
     assert "custom" not in payload
+    assert "created" not in payload
+    assert "watchers" not in payload
 
 
 def test_search_falls_back_to_legacy_endpoint():
@@ -138,6 +151,72 @@ def test_search_falls_back_to_legacy_endpoint():
     issues = client.search("project = API")
     assert issues[0]["key"] == "API-1"
     assert issues[0]["summary"] == "Add endpoint"
+    assert "labels" not in issues[0]
+    assert "components" not in issues[0]
+
+
+def test_get_comments_uses_configured_shape():
+    http = FakeHttp(
+        {
+            ("GET", "https://acme.atlassian.net/rest/api/3/issue/WEB-42/comment"): _json(
+                {
+                    "comments": [
+                        {
+                            "id": "9",
+                            "author": {"displayName": "Ada"},
+                            "created": "2026-01-01T00:00:00.000+0000",
+                            "updated": "2026-01-02T00:00:00.000+0000",
+                            "body": {
+                                "type": "doc",
+                                "content": [
+                                    {
+                                        "type": "paragraph",
+                                        "content": [{"type": "text", "text": "Ship it"}],
+                                    }
+                                ],
+                            },
+                        }
+                    ]
+                }
+            )
+        }
+    )
+    client = JiraClient("https://acme.atlassian.net", "a@b.com", "token", http=http)
+    comments = client.get_comments("WEB-42")
+    assert comments == [
+        {"author": "Ada", "created": "2026-01-01T00:00:00.000+0000", "body": "Ship it"}
+    ]
+
+
+def test_yaml_toggle_exposes_known_optional_field():
+    issue = {
+        "id": "100",
+        "key": "WEB-42",
+        "self": "https://acme.atlassian.net/rest/api/3/issue/100",
+        "fields": {
+            "summary": "Fix button",
+            "created": "2026-01-01T00:00:00.000+0000",
+            "status": {"name": "To Do"},
+            "issuetype": {"name": "Bug"},
+            "project": {"key": "WEB", "name": "Web"},
+        },
+    }
+    http = FakeHttp(
+        {("GET", "https://acme.atlassian.net/rest/api/3/issue/WEB-42"): _json(issue)}
+    )
+    client = JiraClient("https://acme.atlassian.net", "a@b.com", "token", http=http)
+    settings = JiraSettings(
+        fields=["key", "summary", "created"],
+        include_comments=False,
+    )
+    payload = client.get_issue("WEB-42", settings=settings)
+    assert payload == {
+        "key": "WEB-42",
+        "summary": "Fix button",
+        "created": "2026-01-01T00:00:00.000+0000",
+    }
+    assert "fields=" in http.calls[0][1]
+    assert "created" in http.calls[0][1]
 
 
 def test_auth_error_mentions_keychain_or_env():

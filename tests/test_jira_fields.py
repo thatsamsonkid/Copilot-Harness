@@ -45,3 +45,48 @@ def test_comments_omitted_when_disabled():
         settings,
     )
     assert "comments" not in projected
+
+
+def test_shapes_clip_nested_objects_and_drop_empty():
+    settings = JiraSettings(
+        fields=["key", "project", "parent", "comments", "labels"],
+        shapes={
+            "project": ["key"],
+            "parent": ["key", "summary"],
+            "comments": ["author", "body"],
+        },
+        include_comments=True,
+        drop_empty=True,
+    )
+    projected = project_issue(
+        {
+            "key": "WEB-1",
+            "project": {"key": "WEB", "name": "Web", "id": "10000"},
+            "parent": None,
+            "labels": [],
+            "comments": [
+                {
+                    "id": "1",
+                    "author": "Ada",
+                    "created": "2026-01-01",
+                    "updated": "2026-01-02",
+                    "body": "Ship it",
+                }
+            ],
+            "custom": {},
+        },
+        settings,
+    )
+    assert projected == {
+        "key": "WEB-1",
+        "project": {"key": "WEB"},
+        "comments": [{"author": "Ada", "body": "Ship it"}],
+    }
+
+
+def test_schema_exposes_projection_config():
+    schema = JiraSettings(fields=["key", "summary"], include_comments=False).schema()
+    assert schema["fields"] == ["key", "summary"]
+    assert "project" in schema["shapes"]
+    assert "key" in schema["search_fields"]
+    assert schema["drop_empty"] is True

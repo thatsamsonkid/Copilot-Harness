@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from coboose import CobooseError
-from coboose.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
+from coboose.jira_fields import (
+    DEFAULT_OUTPUT_FIELDS,
+    DEFAULT_SEARCH_FIELDS,
+    DEFAULT_SHAPES,
+    JiraSettings,
+)
 from coboose.paths import (
     ENV_RELATIVE,
     PERSONAL_WORKSPACES_DIR,
@@ -44,6 +49,17 @@ def read_yaml(path: Path) -> Any:
 
 _as_list = as_list
 _read_yaml = read_yaml
+
+
+def _as_shapes(value: Any) -> dict[str, list[str]]:
+    shapes = {key: list(items) for key, items in DEFAULT_SHAPES.items()}
+    if value is None:
+        return shapes
+    if not isinstance(value, dict):
+        raise CobooseError("jira.shapes must be a mapping of field name to nested keys")
+    for key, items in value.items():
+        shapes[str(key)] = _as_list(items)
+    return shapes
 
 
 @dataclass(frozen=True)
@@ -518,12 +534,18 @@ def load_stack(
     if not isinstance(aliases, dict):
         raise CobooseError("jira.field_aliases must be a mapping")
     configured_fields = _as_list(jira_raw.get("fields"))
+    search_raw = jira_raw.get("search_fields")
     jira = JiraSettings(
         fields=configured_fields or list(DEFAULT_OUTPUT_FIELDS),
         extra_fields=_as_list(jira_raw.get("extra_fields")),
         field_aliases={str(key): str(value) for key, value in aliases.items()},
         include_comments=bool(jira_raw.get("include_comments", True)),
         max_comments=int(jira_raw.get("max_comments") or 15),
+        shapes=_as_shapes(jira_raw.get("shapes")),
+        search_fields=(
+            _as_list(search_raw) if search_raw is not None else list(DEFAULT_SEARCH_FIELDS)
+        ),
+        drop_empty=bool(jira_raw.get("drop_empty", True)),
     )
 
     fallbacks = [workspace.id for workspace in workspaces if workspace.fallback]
