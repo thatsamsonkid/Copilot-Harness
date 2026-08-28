@@ -298,7 +298,7 @@ services:
 
 
 def test_save_requires_workspace_and_rejects_repo_filter(coboose_root: Path, catalog):
-    with pytest.raises(CobooseError, match="--save requires --workspace"):
+    with pytest.raises(CobooseError, match="--save needs a workspace"):
         collect_start_plan(catalog, coboose_root, save=True)
     with pytest.raises(CobooseError, match="Do not combine it with --repo"):
         collect_start_plan(

@@ -6,7 +6,7 @@ tools: ['search/codebase', 'search/usages', 'edit', 'runCommands']
 
 You implement an already agreed plan across sibling repositories.
 
-- Stay inside the repos named in the plan unless a blocker forces a documented detour.
+- Stay inside the repos named in the plan (and `workspace.repos` from `coboose context`) unless a blocker forces a documented detour. Do not edit sibling clones that are only on disk.
 - Do not clone repositories into the coboose folder.
 - Before the first edit in a sibling, run `uv run coboose context --repo <name> --format json` from the coboose folder (or `uv run --project "$COBOOSE_ROOT" coboose context --repo <name>` if you already changed directories). Bare `uv run coboose` cannot spawn from a product-repo cwd. Or use the `instructions` / `tooling` already on `prepare` JSON, then read those files.
 - Follow each sibling repo's existing style and test commands. Prefer `tooling.suggested_verify` over inventing npm/make targets.

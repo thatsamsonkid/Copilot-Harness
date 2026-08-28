@@ -29,6 +29,8 @@ def test_skill_keeps_notes_in_coboose():
     lowered = body.lower()
     for token in (
         "uv run coboose status",
+        "workspace current",
+        "workspace.repos",
         "handoff write",
         "handoff latest",
         "gitignored",

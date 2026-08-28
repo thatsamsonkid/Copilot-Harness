@@ -15,9 +15,10 @@ Java apps often keep args and environment variables in `.vscode/launch.json`. Th
 
 | User intent | Command |
 | --- | --- |
-| Plan for every enabled repo | `uv run coboose start --format json` |
-| Plan for the open feature workspace | `uv run coboose start --workspace <id> --format json` |
-| Pin the current sequence next to the workspace | `uv run coboose start --workspace <id> --save --format json` |
+| Plan for the open feature workspace | `uv run coboose start --format json` (uses `COBOOSE_WORKSPACE`) |
+| Plan for one catalog workspace | `uv run coboose start --workspace <id> --format json` |
+| Plan for every enabled repo | `uv run coboose start --all --format json` (only if the user asked) |
+| Pin the current sequence next to the workspace | `uv run coboose start --save --format json` |
 | Rediscover and overwrite the saved plan | `uv run coboose start --workspace <id> --refresh --save --format json` |
 | One or more repos | `uv run coboose start --repo frontend,backend --format json` |
 | Human-readable plan | `uv run coboose start --workspace <id> --format markdown` |
@@ -26,7 +27,7 @@ Java apps often keep args and environment variables in `.vscode/launch.json`. Th
 | Inspect one repo's launch env (keys + collisions) | `uv run coboose start env --repo <name> --format json` |
 | Apply that env in a dedicated terminal | `uv run coboose start env --repo <name> --shell` |
 
-`coboose start` (no `run`) never launches processes. Do not invent a second supervisor. `--save` requires `--workspace` and writes the full workspace sequence; do not combine it with `--repo`.
+`coboose start` (no `run`) never launches processes. Do not invent a second supervisor. `--save` writes the full workspace sequence (needs `--workspace` or `COBOOSE_WORKSPACE`); do not combine it with `--repo`. Stay inside `workspace.repos`. Do not start clones that are only on disk.
 
 `start run --dry-run` prints `exec_command` with launch `args` / `vmArgs` replaced by `<redacted>`, plus `arg_count` and `vm_arg_count`. Use that to confirm extras were applied. Values stay hidden.
 
@@ -44,7 +45,7 @@ Always do one of:
 
 ## Walkthrough order
 
-1. Run `coboose start` for the workspace the user has open (or `--repo` if they named apps). Use the coboose cwd or `invoke.command` — do not `cd` into a product repo first.
+1. Run `coboose start` for the workspace the user has open (or `--repo` if they named apps). Use the coboose cwd or `invoke.command` — do not `cd` into a product repo first. If `workspace_scope.detected` is false, pass `--workspace <id>` or ask which feature workspace is open. Never plan every `parent_dir` clone just because they exist.
 2. If `plan_source` is `saved`, follow that sequence. Do not rediscover or re-plan. Mention `unplanned` or `stale` names if present.
 3. If `plan_source` is `discovered` and the order looks right, save it once with `--save` so later starts skip rediscovery. Show the plan: order, `run_via`, command, `port_hint`, proxy files, launch configuration name / env keys, and anything in `blocked`. Do not open `launch.json` to "confirm" env values.
 4. If a service is blocked (`not cloned` or `no start command`), stop that item. Clone first, or inspect that repo's README / `package.json` / `pom.xml` and ask before guessing. If `run_via` is `vscode` and there is no shell command, ask the user to **Run Without Debugging** on `launch.configuration`.

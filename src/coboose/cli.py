@@ -27,6 +27,7 @@ from coboose.status import collect_status
 from coboose.templates import get_template, template_to_dict, templates_payload
 from coboose.workspace import generate_workspaces, list_workspaces, open_workspace
 from coboose.workspace_create import create_workspace
+from coboose.workspace_detect import current_workspace_payload, resolve_workspace_scope
 
 JIRA_MINE_JQL = "assignee = currentUser() AND resolution = EMPTY ORDER BY updated DESC"
 
@@ -152,6 +153,12 @@ def build_parser() -> argparse.ArgumentParser:
     env_list.add_argument(
         "--workspace",
         help="Limit to shared vars plus names scoped to this workspace id",
+    )
+    env_list.add_argument(
+        "--all",
+        dest="all_repos",
+        action="store_true",
+        help="List every catalog/env.yaml name (ignore the open workspace)",
     )
     env_set = env_sub.add_parser(
         "set",
@@ -282,6 +289,17 @@ def build_parser() -> argparse.ArgumentParser:
         "path", parents=[shared], help="Print a workspace file path"
     )
     workspace_path.add_argument("id")
+    workspace_current = workspace_sub.add_parser(
+        "current",
+        parents=[shared],
+        help="Detect the open feature workspace (COBOOSE_WORKSPACE / workspace file)",
+    )
+    workspace_current.add_argument(
+        "--file",
+        dest="workspace_file",
+        type=Path,
+        help="Read the workspace id from a .code-workspace file",
+    )
 
     prepare = sub.add_parser(
         "prepare",
@@ -306,6 +324,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Check catalog, clones, and Jira configuration",
     )
     doctor.add_argument("--ping-jira", action="store_true")
+    _add_scope_flags(doctor)
 
     init = sub.add_parser(
         "init",
@@ -325,6 +344,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Discover Graphify graphs, instruction files, and verify commands in sibling repos",
     )
     context.add_argument("--repo", help="Comma-separated repository names")
+    _add_scope_flags(context)
 
     status = sub.add_parser(
         "status",
@@ -332,6 +352,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Read-only git snapshot of sibling clones (branch, dirty, ahead/behind)",
     )
     status.add_argument("--repo", help="Comma-separated repository names")
+    _add_scope_flags(status)
 
     branch = sub.add_parser(
         "branch",
@@ -340,6 +361,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     branch.add_argument("issue", help="Jira issue key or browse URL")
     branch.add_argument("--repo", help="Comma-separated repository names")
+    _add_scope_flags(branch)
     branch.add_argument(
         "--create",
         action="store_true",
@@ -358,6 +380,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     handoff_write.add_argument("--issue", help="Jira issue key to tag the note")
     handoff_write.add_argument("--note", help="What the next chat should resume")
+    _add_scope_flags(handoff_write)
     handoff_sub.add_parser("list", parents=[shared], help="List handoff notes")
     handoff_sub.add_parser("latest", parents=[shared], help="Show the newest handoff note")
 
@@ -380,13 +403,19 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     start.add_argument("--workspace", help="Limit the plan to a catalog workspace id")
+    start.add_argument(
+        "--all",
+        dest="all_repos",
+        action="store_true",
+        help="Plan every enabled repo (ignore the open workspace)",
+    )
     start.add_argument("--repo", help="Comma-separated repository names")
     start.add_argument(
         "--save",
         action="store_true",
         help=(
             "Write the current sequence to workspaces/<id>.start.yml "
-            "(requires --workspace)"
+            "(needs --workspace or COBOOSE_WORKSPACE)"
         ),
     )
     start.add_argument(
@@ -546,7 +575,13 @@ def dispatch(args: argparse.Namespace) -> Any:
             generate=not args.no_generate,
         )
     if args.command == "doctor":
-        payload = run_doctor(catalog, coboose_root, ping_jira=args.ping_jira)
+        payload = run_doctor(
+            catalog,
+            coboose_root,
+            ping_jira=args.ping_jira,
+            workspace_id=args.workspace,
+            all_repos=bool(getattr(args, "all_repos", False)),
+        )
         if not payload.get("ok"):
             raise _payload_error("Doctor found blocking issues.", payload)
         return payload
@@ -562,6 +597,8 @@ def dispatch(args: argparse.Namespace) -> Any:
             catalog,
             coboose_root,
             only=_split_ids(args.repo),
+            workspace_id=args.workspace,
+            all_repos=bool(args.all_repos),
         )
     if args.command == "status":
         return collect_status(
@@ -569,6 +606,8 @@ def dispatch(args: argparse.Namespace) -> Any:
             coboose_root,
             only=_split_ids(args.repo),
             cwd=Path.cwd(),
+            workspace_id=args.workspace,
+            all_repos=bool(args.all_repos),
         )
     if args.command == "branch":
         return align_branches(
@@ -578,6 +617,8 @@ def dispatch(args: argparse.Namespace) -> Any:
             only=_split_ids(args.repo),
             create=args.create,
             dry_run=args.dry_run,
+            workspace_id=args.workspace,
+            all_repos=bool(args.all_repos),
         )
     if args.command == "handoff":
         return _dispatch_handoff(args, catalog, coboose_root)
@@ -628,6 +669,7 @@ def dispatch(args: argparse.Namespace) -> Any:
             only=_split_ids(args.repo),
             save=args.save,
             refresh=args.refresh,
+            all_repos=bool(getattr(args, "all_repos", False)),
         )
     if args.command == "catalog":
         return catalog_to_dict(catalog, coboose_root)
@@ -682,16 +724,22 @@ def _dispatch_jira(args: argparse.Namespace, catalog: Any, coboose_root: Path) -
 
 def _dispatch_env(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
     if args.env_command == "list":
-        extra = None
-        if args.workspace:
-            extra = catalog.workspace(args.workspace).env
-        return list_env(
-            catalog.env_vars,
+        scope = resolve_workspace_scope(
+            catalog,
             coboose_root,
             workspace_id=args.workspace,
+            all_repos=bool(getattr(args, "all_repos", False)),
+        )
+        extra = catalog.workspace(scope.id).env if scope.id else None
+        payload = list_env(
+            catalog.env_vars,
+            coboose_root,
+            workspace_id=scope.id,
             extra_names=extra,
             source=catalog.env_source,
         )
+        payload["workspace_scope"] = scope.as_payload()
+        return payload
     variable = find_var(catalog.env_vars, args.name)
     if args.env_command == "set":
         return set_env_value(
@@ -751,6 +799,12 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, coboose_root: Pa
     if args.workspace_command == "path":
         path = catalog.workspace_file(coboose_root, args.id)
         return {"id": args.id, "file": str(path), "exists": path.exists()}
+    if args.workspace_command == "current":
+        return current_workspace_payload(
+            catalog,
+            coboose_root,
+            workspace_file=getattr(args, "workspace_file", None),
+        )
     raise CobooseError(f"Unknown workspace command: {args.workspace_command}")
 
 
@@ -761,7 +815,12 @@ def _dispatch_handoff(args: argparse.Namespace, catalog: Any, coboose_root: Path
         return latest_handoff(coboose_root)
     if args.handoff_command == "write":
         issue = parse_issue_key(args.issue) if args.issue else None
-        status = collect_status(catalog, coboose_root)
+        status = collect_status(
+            catalog,
+            coboose_root,
+            workspace_id=getattr(args, "workspace", None),
+            all_repos=bool(getattr(args, "all_repos", False)),
+        )
         return write_handoff(
             coboose_root,
             issue=issue,
@@ -832,6 +891,19 @@ def _apply_leading_globals(args: argparse.Namespace, argv: list[str]) -> None:
             setattr(args, key, value)
     if "--format" in leading:
         args.format = parsed.format
+
+
+def _add_scope_flags(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--workspace",
+        help="Feature workspace id (overrides COBOOSE_WORKSPACE)",
+    )
+    parser.add_argument(
+        "--all",
+        dest="all_repos",
+        action="store_true",
+        help="Include every enabled repositories.yml repo (ignore the open workspace)",
+    )
 
 
 def _split_ids(value: str | None) -> list[str] | None:

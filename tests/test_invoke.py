@@ -47,6 +47,7 @@ def test_terminal_env_uses_named_coboose_folder():
         "terminal.integrated.env.windows",
     ):
         assert settings[key]["COBOOSE_ROOT"] == "${workspaceFolder:coboose}"
+        assert "COBOOSE_WORKSPACE" not in settings[key]
         assert "HARNESS_ROOT" not in settings[key]
 
 
@@ -55,6 +56,14 @@ def test_terminal_env_single_root_folder():
     assert settings["terminal.integrated.env.linux"]["COBOOSE_ROOT"] == "${workspaceFolder}"
     assert "HARNESS_ROOT" not in settings["terminal.integrated.env.linux"]
     assert "UV_PROJECT" not in settings["terminal.integrated.env.linux"]
+
+
+def test_terminal_env_stamps_workspace_id():
+    settings = terminal_env_settings(workspace_id="frontend")
+    env = settings["terminal.integrated.env.linux"]
+    assert env["COBOOSE_ROOT"] == "${workspaceFolder:coboose}"
+    assert env["COBOOSE_WORKSPACE"] == "frontend"
+    assert env["COBOOSE_WORKSPACE_FILE"] == "${workspaceFile}"
 
 
 @pytest.mark.skipif(shutil.which("uv") is None, reason="uv is required for spawn check")

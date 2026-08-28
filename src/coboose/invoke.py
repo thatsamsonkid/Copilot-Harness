@@ -26,10 +26,20 @@ def invoke_spec(root: Path) -> dict[str, str]:
     }
 
 
-def terminal_env_settings(*, folder_name: str | None = COBOOSE_FOLDER_NAME) -> dict[str, Any]:
-    """VS Code terminal env so COBOOSE_ROOT survives a cd into a product repo."""
-    value = f"${{workspaceFolder:{folder_name}}}" if folder_name else "${workspaceFolder}"
-    env = {"COBOOSE_ROOT": value}
+def terminal_env_settings(
+    *,
+    folder_name: str | None = COBOOSE_FOLDER_NAME,
+    workspace_id: str | None = None,
+    include_root: bool = True,
+) -> dict[str, Any]:
+    """VS Code terminal env so the open workspace survives a cd into a product repo."""
+    env: dict[str, str] = {}
+    if include_root:
+        value = f"${{workspaceFolder:{folder_name}}}" if folder_name else "${workspaceFolder}"
+        env["COBOOSE_ROOT"] = value
+    if workspace_id:
+        env["COBOOSE_WORKSPACE"] = workspace_id
+        env["COBOOSE_WORKSPACE_FILE"] = "${workspaceFile}"
     return {
         "terminal.integrated.env.linux": dict(env),
         "terminal.integrated.env.osx": dict(env),

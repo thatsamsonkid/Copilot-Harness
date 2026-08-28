@@ -58,6 +58,7 @@ Use these objects only:
 - `routing.open_command` — tell the user to run this so sibling repos become workspace roots
 - `routing.missing_repos` / `routing.clone_command`
 - `routing.repos` — inspect only these folders unless the ticket clearly needs more
+- `current_workspace` — the open window, when `COBOOSE_WORKSPACE` is set. If it differs from `routing.workspace_id`, tell the user to open `routing.open_command`
 - `routing.repos[].graphify` / `instructions` / `tooling` — use these before grepping or inventing verify commands
 - `routing.suggested_branch`
 - `done_when` — stop condition (ticket AC + repo verify + coboose invariants)

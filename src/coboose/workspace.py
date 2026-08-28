@@ -38,8 +38,13 @@ def workspace_document(catalog: Catalog, coboose_root: Path, workspace: Workspac
         "github.copilot.chat.codeGeneration.useInstructionFiles": True,
         "chat.useCustomizationsInParentRepositories": True,
     }
-    if workspace.include_coboose:
-        settings.update(terminal_env_settings(folder_name=COBOOSE_FOLDER_NAME))
+    settings.update(
+        terminal_env_settings(
+            folder_name=COBOOSE_FOLDER_NAME if workspace.include_coboose else None,
+            workspace_id=workspace.id,
+            include_root=workspace.include_coboose,
+        )
+    )
     return {
         "folders": folders,
         "settings": settings,
@@ -48,6 +53,15 @@ def workspace_document(catalog: Catalog, coboose_root: Path, workspace: Workspac
                 "GitHub.copilot",
                 "GitHub.copilot-chat",
             ]
+        },
+        "coboose": {
+            "id": workspace.id,
+            "name": workspace.name,
+            "description": workspace.description,
+            "personal": workspace.personal,
+            "folders": catalog.workspace_repo_names(workspace),
+            "tags": workspace.tags,
+            "include_coboose": workspace.include_coboose,
         },
     }
 
@@ -58,16 +72,6 @@ def write_workspace_file(
     path = catalog.workspace_file(coboose_root, workspace)
     path.parent.mkdir(parents=True, exist_ok=True)
     document = workspace_document(catalog, coboose_root, workspace)
-    if workspace.personal:
-        document["coboose"] = {
-            "id": workspace.id,
-            "name": workspace.name,
-            "description": workspace.description,
-            "personal": True,
-            "folders": catalog.workspace_repo_names(workspace),
-            "tags": workspace.tags,
-            "include_coboose": workspace.include_coboose,
-        }
     path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     return {
         "id": workspace.id,

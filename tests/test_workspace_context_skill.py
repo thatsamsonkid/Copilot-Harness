@@ -35,6 +35,8 @@ def test_skill_covers_graphify_and_standards():
     lowered = body.lower()
     for token in (
         "uv run coboose context",
+        "workspace current",
+        "workspace.repos",
         "graphify.report",
         "suggested_verify",
         "do not copy",

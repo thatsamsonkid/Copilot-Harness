@@ -11,6 +11,7 @@ from coboose.done import build_done_when
 from coboose.jira_client import JiraClient
 from coboose.routing import recommend_workspace
 from coboose.workspace import generate_workspaces, open_command
+from coboose.workspace_detect import resolve_workspace_scope
 
 
 def prepare_issue(
@@ -90,8 +91,20 @@ def prepare_issue(
             f"Clone missing repos: coboose clone --only {ids}",
         )
 
+    current = resolve_workspace_scope(catalog, coboose_root)
+    if current.detected and current.id != workspace.id:
+        next_steps.insert(
+            1,
+            (
+                f"This window is workspace {current.id}. "
+                f"Open the recommended workspace before planning: "
+                f"{open_command(workspace_file)}"
+            ),
+        )
+
     return {
         "issue": issue,
+        "current_workspace": current.as_payload(),
         "routing": {
             "workspace_id": workspace.id,
             "workspace_name": workspace.name,

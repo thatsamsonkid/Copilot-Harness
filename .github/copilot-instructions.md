@@ -5,8 +5,8 @@ This repository is tooling only. Application code lives in **git clones next to 
 ## First-run and vague prompts
 
 - First time in this repo, missing Jira auth, or "how do I set this up?": load `.github/skills/get-started/SKILL.md` and run `uv run coboose init --format json`. Never collect the API token in chat.
-- Vague, broad, or no-ticket prompts in a large workspace: load `.github/skills/workspace-context/SKILL.md` and run `uv run coboose context --format json`. Read each cloned repo's Graphify `GRAPH_REPORT.md` before grepping.
-- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run coboose start --format json`. That command is a plan only. Prefer a saved `workspaces/<id>.start.yml` when `plan_source` is `saved`; pin a first good plan with `--save`. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening. If `run_via` is `coboose`, run `coboose start run --repo <name>` instead of reconstructing launch.json env/args. To inspect or apply one repo's launch env without starting it, use `coboose start env --repo <name>` (add `--shell` to exec a terminal that has the values). Never read sibling `.vscode/launch.json` or product `.env` files.
+- Vague, broad, or no-ticket prompts in a large workspace: load `.github/skills/workspace-context/SKILL.md` and run `uv run coboose context --format json`. Stay inside `workspace.repos`. If `workspace_scope.detected` is false, run `coboose workspace current` and ask which feature workspace to open — do not treat every clone under `parent_dir` as in scope. Read each listed repo's Graphify `GRAPH_REPORT.md` before grepping.
+- "Start the apps / run the local stack": load `.github/skills/workspace-start/SKILL.md` and run `uv run coboose start --format json`. That command is a plan only and follows the open workspace (`COBOOSE_WORKSPACE`). Prefer a saved `workspaces/<id>.start.yml` when `plan_source` is `saved`; pin a first good plan with `--save`. Start one process at a time, one VS Code terminal per app (reuse that app’s terminal if it already exists); rewrite Angular proxies after backends are listening. If `run_via` is `coboose`, run `coboose start run --repo <name>` instead of reconstructing launch.json env/args. To inspect or apply one repo's launch env without starting it, use `coboose start env --repo <name>` (add `--shell` to exec a terminal that has the values). Never read sibling `.vscode/launch.json` or product `.env` files. Never start repos that are not in `workspace.repos`.
 
 ## Default ticket workflow
 
@@ -67,7 +67,7 @@ When the user asks to create, scaffold, or bootstrap a new project:
 ## Constraints
 
 - Keep clones outside this repo (`../<path>` or `../frontend/<name>`). Do not add git submodules or nest repos here.
-- Prefer the matched workspace repos. Only load extra roots when the ticket clearly needs them.
+- Prefer the matched / open workspace repos (`workspace.repos` or `routing.repos`). Only load extra roots when the ticket clearly needs them. Do not flag, inspect, or start sibling clones that are merely present on disk.
 - After catalog edits, run `coboose workspace generate`. To add a workspace, prefer `/new-workspace` or the **Workspace Creator** agent so chat can collect shared vs personal, id, and `repositories.yml` projects, then run `coboose workspace create <id> --projects … --no-prompt` (add `--personal` for local-only). In a terminal the same command prompts. Never hand-edit `catalog/stack.yaml` or run the interactive CLI from chat.
 - When coding in a sibling repo, follow that repo's conventions. This coboose does not override product architecture.
 - Before editing a sibling, read the instruction files `coboose context` lists for it (`AGENTS.md`, `.github/copilot-instructions.md`, path-specific instructions, skills).
@@ -87,7 +87,7 @@ These stay few and stable. Everything else lives in the product repo.
 
 ## Status, branches, and handoff
 
-- Before planning or pausing, run `uv run coboose status --format json`.
+- Before planning or pausing, run `uv run coboose status --format json`. It follows the open workspace; pass `--all` only if the user asked for every clone.
 - Assigned work: `uv run coboose jira mine --format json`.
 - Pause / next chat: `/handoff` or `uv run coboose handoff write --issue <KEY> --note "..."`.
 - Review a diff: `/review` or the **Reviewer** agent. Do not implement while reviewing.

@@ -16,9 +16,10 @@ uv run coboose bootstrap --template <name> --name <folder> --format json
 To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through shared vs personal, id, and `repositories.yml` projects, then run `uv run coboose workspace create <id> --projects … --no-prompt` (add `--personal` for a local-only file under `workspaces/personal/`). In a terminal, `coboose workspace create` prompts on its own.
 
 First-run setup: `.github/skills/get-started/SKILL.md` (`uv run coboose init`).
-Vague or large-repo prompts: `.github/skills/workspace-context/SKILL.md` (`uv run coboose context`).
+Vague or large-repo prompts: `.github/skills/workspace-context/SKILL.md` (`uv run coboose context`). Those commands follow the open feature workspace (`COBOOSE_WORKSPACE`). Do not inspect sibling clones that are only on disk; pass `--workspace <id>` or `--all` only when asked.
 Sibling git snapshot / pause a session: `uv run coboose status` and `.github/skills/handoff/SKILL.md`.
 Local stack start: `.github/skills/workspace-start/SKILL.md` (`uv run coboose start`). Pin a workspace sequence with `--save` (`workspaces/<id>.start.yml`). If a service has launch.json env/args, start it with `uv run coboose start run --repo <name>` or VS Code Run Without Debugging; never read launch.json. To apply that env in a terminal without starting the app, use `uv run coboose start env --repo <name> --shell` (or omit `--shell` for keys and collisions only).
+Detect the open window: `uv run coboose workspace current`.
 For any Jira key, follow `.github/skills/jira-cli/SKILL.md`:
 
 ```bash

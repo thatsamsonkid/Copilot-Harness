@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from coboose.catalog import Catalog
 from coboose.context import inspect_repo
 from coboose.gitinfo import inspect_git
+from coboose.workspace_detect import resolve_workspace_scope, scoped_repos
 
 
 def collect_status(
@@ -14,11 +15,21 @@ def collect_status(
     *,
     only: list[str] | None = None,
     cwd: Path | None = None,
+    workspace_id: str | None = None,
+    all_repos: bool = False,
+    environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
+    scope = resolve_workspace_scope(
+        catalog,
+        coboose_root,
+        workspace_id=workspace_id,
+        all_repos=all_repos,
+        environ=environ,
+    )
     repos = []
     dirty = []
     behind = []
-    for repo in catalog.enabled_repos(only=only):
+    for repo in scoped_repos(catalog, scope, only=only):
         snapshot = inspect_repo(catalog, coboose_root, repo)
         git = inspect_git(
             catalog.repo_path(coboose_root, repo),
@@ -31,19 +42,27 @@ def collect_status(
         if (git.get("behind") or 0) > 0:
             behind.append(repo.name)
 
+    guidance = [
+        "Stay inside workspace.repos. Dirty clones that are not in this "
+        "feature workspace are out of scope.",
+        "Use this snapshot before planning or handing off. Do not assume siblings are clean.",
+        "Create one branch and one pull request per sibling. Do not squash unrelated repos.",
+        "If graphify.stale is true, offer a scoped refresh in that repo after the user agrees.",
+        "Do not hand-edit files listed under tooling.generated.",
+    ]
+    if not scope.detected:
+        guidance.insert(0, scope.detail)
+
     return {
         "coboose_root": str(coboose_root),
         "sibling_root": str(catalog.sibling_root(coboose_root)),
+        "workspace": scope.id,
+        "workspace_scope": scope.as_payload(),
         "cwd_hint": _cwd_hint(catalog, coboose_root, cwd or Path.cwd()),
         "dirty_repos": dirty,
         "behind_repos": behind,
         "repos": repos,
-        "guidance": [
-            "Use this snapshot before planning or handing off. Do not assume siblings are clean.",
-            "Create one branch and one pull request per sibling. Do not squash unrelated repos.",
-            "If graphify.stale is true, offer a scoped refresh in that repo after the user agrees.",
-            "Do not hand-edit files listed under tooling.generated.",
-        ],
+        "guidance": guidance,
     }
 
 

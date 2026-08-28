@@ -171,6 +171,14 @@ def _prepare_markdown(payload: dict[str, Any]) -> str:
 
 def _status_text(payload: dict[str, Any]) -> str:
     lines = ["Sibling status", ""]
+    workspace = payload.get("workspace")
+    scope = payload.get("workspace_scope") or {}
+    if workspace:
+        lines.append(f"Workspace: {workspace}")
+        lines.append("")
+    elif scope.get("detail"):
+        lines.append(str(scope["detail"]))
+        lines.append("")
     hint = (payload.get("cwd_hint") or {}).get("detail")
     if hint:
         lines.append(hint)
@@ -268,6 +276,10 @@ def _templates_markdown(payload: dict[str, Any]) -> str:
 def _start_text(payload: dict[str, Any]) -> str:
     workspace = payload.get("workspace") or "all enabled repos"
     lines = [f"Start plan ({workspace})", ""]
+    scope = payload.get("workspace_scope") or {}
+    if scope.get("detected") is False and scope.get("source") == "none":
+        lines.append(str(scope.get("detail") or ""))
+        lines.append("")
     source = payload.get("plan_source")
     plan_file = payload.get("plan_file")
     if source == "saved" and plan_file:
