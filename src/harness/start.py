@@ -1211,10 +1211,19 @@ def start_run_preview(
     applied: Any | None = None,
 ) -> dict[str, Any]:
     """JSON-safe view of a prepared run. No env/arg values."""
+    command = str(prepared.get("command") or "")
     payload = {
         "name": prepared["name"],
         "cwd": prepared["cwd"],
         "command": prepared["command"],
+        "exec_command": redacted_exec_command(
+            command,
+            prepared.get("args"),
+            prepared.get("vm_args"),
+        ),
+        "arg_count": _cli_token_count(prepared.get("args")),
+        "vm_arg_count": _cli_token_count(prepared.get("vm_args")),
+        "java_tool_options": _uses_java_tool_options(command, prepared.get("vm_args")),
         "env_keys": list(prepared.get("env_keys") or []),
         "env_file": prepared.get("env_file"),
         "launch_configuration": prepared.get("launch_configuration"),
@@ -1339,6 +1348,9 @@ def _print_run_banner(preview: dict[str, Any], *, action: str = "Starting") -> N
     if prefix:
         parts.append(f"prefix={prefix}")
     print(" ".join(parts), file=sys.stderr)
+    exec_command = preview.get("exec_command")
+    if exec_command:
+        print(f"exec_command {exec_command}", file=sys.stderr)
 
 
 def _run_foreground(command: str, cwd: Path, env: dict[str, str]) -> int:
@@ -1363,6 +1375,14 @@ def _exec_login_shell(env: dict[str, str], cwd: Path) -> None:
     os.execvpe(shell, [shell], env)
 
 
+REDACTED_ARG = "<redacted>"
+
+
+def redacted_exec_command(command: str, args: Any, vm_args: Any) -> str:
+    """Same argv shape as the real exec, with launch arg values hidden."""
+    return _assemble_exec_command(command, args, vm_args, redact=True)
+
+
 def _command_with_launch_args(
     command: str,
     kind: str,
@@ -1371,25 +1391,57 @@ def _command_with_launch_args(
     env: dict[str, str],
 ) -> str:
     del kind
+    if _uses_java_tool_options(command, vm_args):
+        existing = env.get("JAVA_TOOL_OPTIONS", "")
+        env["JAVA_TOOL_OPTIONS"] = f"{existing} {_join_cli_args(vm_args)}".strip()
+    return _assemble_exec_command(command, args, vm_args, redact=False)
+
+
+def _assemble_exec_command(
+    command: str,
+    args: Any,
+    vm_args: Any,
+    *,
+    redact: bool,
+) -> str:
     args_str = _join_cli_args(args)
     vm_str = _join_cli_args(vm_args)
-    if vm_str and "spring-boot:run" not in command:
-        existing = env.get("JAVA_TOOL_OPTIONS", "")
-        env["JAVA_TOOL_OPTIONS"] = f"{existing} {vm_str}".strip()
+    args_out = REDACTED_ARG if redact and args_str else args_str
+    vm_out = REDACTED_ARG if redact and vm_str else vm_str
     if not args_str and not (vm_str and "spring-boot:run" in command):
         return command
     if "spring-boot:run" in command:
         extra: list[str] = []
         if args_str:
-            extra.append(f"-Dspring-boot.run.arguments={shlex.quote(args_str)}")
+            extra.append(
+                f"-Dspring-boot.run.arguments={args_out if redact else shlex.quote(args_str)}"
+            )
         if vm_str:
-            extra.append(f"-Dspring-boot.run.jvmArguments={shlex.quote(vm_str)}")
+            extra.append(
+                f"-Dspring-boot.run.jvmArguments={vm_out if redact else shlex.quote(vm_str)}"
+            )
         return f"{command} {' '.join(extra)}"
     if "bootRun" in command and args_str:
-        return f"{command} --args={shlex.quote(args_str)}"
+        suffix = args_out if redact else shlex.quote(args_str)
+        return f"{command} --args={suffix}"
     if args_str:
-        return f"{command} {args_str}".strip()
+        return f"{command} {args_out}".strip()
     return command
+
+
+def _uses_java_tool_options(command: str, vm_args: Any) -> bool:
+    return bool(_join_cli_args(vm_args)) and "spring-boot:run" not in command
+
+
+def _cli_token_count(value: Any) -> int:
+    if value is None or value == "" or value == []:
+        return 0
+    if isinstance(value, list):
+        return len([part for part in value if part is not None and part != ""])
+    text = str(value).strip()
+    if not text:
+        return 0
+    return len(shlex.split(text))
 
 
 def _join_cli_args(value: Any) -> str:

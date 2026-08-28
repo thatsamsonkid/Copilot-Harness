@@ -204,7 +204,7 @@ uv run harness jira search 'project = PROJ AND status != Done'
 uv run harness prepare PROJ-123
 uv run harness context
 uv run harness start --workspace frontend
-uv run harness start run --repo backend --dry-run
+uv run harness start run --repo backend --dry-run   # keys + redacted exec_command
 uv run harness start env --repo backend
 uv run harness start env --repo backend --shell
 ```

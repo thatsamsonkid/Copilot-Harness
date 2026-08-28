@@ -22,11 +22,13 @@ Java apps often keep args and environment variables in `.vscode/launch.json`. Th
 | One or more repos | `uv run harness start --repo frontend,backend --format json` |
 | Human-readable plan | `uv run harness start --workspace <id> --format markdown` |
 | Start one repo with launch.json env/args (no leak) | `uv run harness start run --repo <name>` |
-| Preview that run (keys only) | `uv run harness start run --repo <name> --dry-run --format json` |
+| Preview that run (keys + redacted `exec_command`) | `uv run harness start run --repo <name> --dry-run --format json` |
 | Inspect one repo's launch env (keys + collisions) | `uv run harness start env --repo <name> --format json` |
 | Apply that env in a dedicated terminal | `uv run harness start env --repo <name> --shell` |
 
 `harness start` (no `run`) never launches processes. Do not invent a second supervisor. `--save` requires `--workspace` and writes the full workspace sequence; do not combine it with `--repo`.
+
+`start run --dry-run` prints `exec_command` with launch `args` / `vmArgs` replaced by `<redacted>`, plus `arg_count` and `vm_arg_count`. Use that to confirm extras were applied. Values stay hidden.
 
 ## How to run the CLI
 
