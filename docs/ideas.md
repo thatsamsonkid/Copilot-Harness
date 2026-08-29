@@ -14,12 +14,16 @@ What we should **not** do: copy product architecture or style guides into this r
 - `jira login` stores the API token in macOS Keychain or Windows Credential Manager. `.env` is a fallback.
 - `doctor` warns when `.env` is older than ~10 months (Atlassian tokens die in ≤ 1 year). That age is advisory: tokens in the OS keychain are not dated by the file. Doctor does not read token expiry from Atlassian.
 - Two token profiles in `docs/jira-api-token.md` (planning vs later write).
-- VS Code `chat.promptFilesRecommendations` includes `/get-started`, `/handoff`, `/review`.
+- VS Code `chat.promptFilesRecommendations` includes `/get-started`, `/handoff`, `/review`, `/skills-install`.
 - README "New laptop" is five commands.
 
 **Worth adding next**
 
 - Nothing urgent here. A VS Code welcome walkthrough page is optional polish.
+
+**Temporary VS Code Agents shim**
+
+- Agents does not scan multi-root child skills. `coboose skills list` / `lift` / `pull` copy selected `SKILL.md` folders into this coboose `.github/skills` (or `parent_dir/.github/skills` with `--parent`). `init`, `prepare`, and `workspace generate` already lift coboose + in-scope siblings. Remove the overlay when Agents grows real multi-root support.
 
 ## 2. Large repos and Graphify
 

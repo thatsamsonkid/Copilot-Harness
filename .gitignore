@@ -19,3 +19,8 @@ handoffs/*.md
 # Local-only workspaces from `coboose workspace create --personal`
 workspaces/personal/*
 !workspaces/personal/README.md
+
+# Lifted / pulled agent skills (VS Code Agents multi-root shim)
+.coboose/
+.github/skills/.gitignore
+.github/skills/*/.coboose-source.json

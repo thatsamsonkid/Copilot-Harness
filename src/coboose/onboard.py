@@ -28,6 +28,7 @@ from coboose.keychain import (
     storage_guides,
     token_source,
 )
+from coboose.skills import sync_root_skills
 from coboose.uv_check import UV_DOC, detect_uv, uv_missing_action
 
 TOKEN_DOC = "docs/jira-api-token.md"
@@ -79,6 +80,36 @@ def run_init(
     elif ping_jira:
         _set_step(steps, "jira_auth", False, "Cannot ping Jira until credentials are complete")
 
+    skills = sync_root_skills(catalog, coboose_root, all_repos=True)
+    copied = len(skills.get("copied") or [])
+    updated = len(skills.get("updated") or [])
+    available = len(skills.get("available") or [])
+    native = len(skills.get("native") or [])
+    if skills.get("error"):
+        steps.append(
+            _step(
+                "skills",
+                False,
+                f"Could not lift agent skills: {skills['error']}",
+                action="uv run coboose skills list",
+                optional=True,
+            )
+        )
+    else:
+        steps.append(
+            _step(
+                "skills",
+                True,
+                (
+                    f"agent skills ready in .github/skills "
+                    f"({native} coboose, {copied} lifted, {updated} updated, "
+                    f"{available} discovered)"
+                ),
+                action=None if available else "uv run coboose skills list",
+                optional=True,
+            )
+        )
+
     ready = all(step["ok"] or step.get("optional") for step in steps)
     return {
         "ready": ready,
@@ -100,6 +131,7 @@ def run_init(
             source=catalog.env_source,
         ),
         "steps": steps,
+        "skills": skills,
         "next_commands": _next_commands(steps, uv=uv, variables=catalog.env_vars),
     }
 
@@ -305,4 +337,5 @@ def _next_commands(
     if missing_clones:
         commands.append("./scripts/clone-repos.sh")
     commands.append("uv run coboose workspace generate")
+    commands.append("uv run coboose skills lift")
     return commands

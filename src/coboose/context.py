@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from coboose.catalog import Catalog, Repo
 from coboose.gitinfo import last_commit_unix
+from coboose.skills import list_skills
 from coboose.workspace_detect import resolve_workspace_scope, scoped_repos
 
 INSTRUCTION_FILES = (
@@ -89,6 +90,9 @@ def collect_context(
         "(see the workspace-start skill). That command prints a plan; "
         "it does not launch processes. Save the sequence once with "
         "`coboose start --save` when a workspace is detected.",
+        "VS Code Agents does not scan multi-root child skills. Use "
+        "`coboose skills list` / `skills lift` (see the skills-install skill) "
+        "to copy sibling or remote skills into this coboose .github/skills.",
     ]
     if not scope.detected:
         guidance.insert(
@@ -100,6 +104,14 @@ def collect_context(
         "workspace": scope.id,
         "workspace_scope": scope.as_payload(),
         "repos": repos,
+        "skills": list_skills(
+            catalog,
+            coboose_root,
+            only=only,
+            workspace_id=workspace_id,
+            all_repos=all_repos,
+            environ=environ,
+        ),
         "guidance": guidance,
     }
 

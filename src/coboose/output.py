@@ -43,6 +43,8 @@ def to_text(payload: Any) -> str:
         return _figma_comments_text(payload)
     if _is_figma_nodes(payload):
         return _figma_nodes_text(payload)
+    if _is_skills(payload):
+        return _skills_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -77,6 +79,8 @@ def to_markdown(payload: Any) -> str:
         return _figma_comments_markdown(payload)
     if _is_figma_nodes(payload):
         return _figma_nodes_markdown(payload)
+    if _is_skills(payload):
+        return _skills_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -621,6 +625,83 @@ def _start_run_markdown(payload: dict[str, Any]) -> str:
     keys = payload.get("env_keys") or []
     if keys:
         lines.append("- **env_keys:** " + ", ".join(f"`{key}`" for key in keys))
+    return "\n".join(lines).strip() + "\n"
+
+
+def _is_skills(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and "dest" in payload
+        and "available" in payload
+        and ("copied" in payload or "installed" in payload)
+        and "issue" not in payload
+        and "services" not in payload
+    )
+
+
+def _skills_text(payload: dict[str, Any]) -> str:
+    lines = [
+        f"Agent skills ({payload.get('dest_kind') or 'workspace'})",
+        f"Dest: {payload.get('dest')}",
+        "",
+    ]
+    if payload.get("url"):
+        lines.append(f"Remote: {payload['url']}")
+    if payload.get("needs_selection"):
+        lines.append(payload.get("detail") or "Pick skills, then rerun with --only.")
+        if payload.get("install_command"):
+            lines.append(payload["install_command"])
+        lines.append("")
+    available = payload.get("available") or []
+    if available:
+        lines.append("Available:")
+        for skill in available:
+            pick = skill.get("pick") or skill.get("name")
+            desc = f" — {skill['description']}" if skill.get("description") else ""
+            lines.append(f"- {pick} ({skill.get('source_id')}){desc}")
+        lines.append("")
+    for label, key in (
+        ("Copied", "copied"),
+        ("Updated", "updated"),
+        ("Native", "native"),
+        ("Conflicts", "conflicts"),
+    ):
+        items = payload.get(key) or []
+        if not items:
+            continue
+        lines.append(f"{label}:")
+        for item in items:
+            name = item.get("installed_as") or item.get("name")
+            lines.append(f"- {name} ({item.get('source_id')})")
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _skills_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        "# Agent skills",
+        "",
+        f"- **Dest:** `{payload.get('dest')}`",
+        f"- **Kind:** {payload.get('dest_kind') or 'workspace'}",
+        "",
+    ]
+    if payload.get("url"):
+        lines.append(f"- **Remote:** {payload['url']}")
+        lines.append("")
+    if payload.get("needs_selection"):
+        lines.append(payload.get("detail") or "Pick skills, then rerun with `--only`.")
+        lines.append("")
+        if payload.get("install_command"):
+            lines.append(f"`{payload['install_command']}`")
+            lines.append("")
+    available = payload.get("available") or []
+    if available:
+        lines.extend(["## Available", ""])
+        for skill in available:
+            pick = skill.get("pick") or skill.get("name")
+            desc = f" — {skill['description']}" if skill.get("description") else ""
+            lines.append(f"- `{pick}` ({skill.get('source_id')}){desc}")
+        lines.append("")
     return "\n".join(lines).strip() + "\n"
 
 
