@@ -624,6 +624,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_scope_flags(skills_list)
     skills_list.add_argument("--repo", help="Comma-separated repository names")
+    skills_list.add_argument(
+        "--brief",
+        action="store_true",
+        help="Only name, description, source, and pick for each skill",
+    )
     _add_skills_dest_flag(skills_list)
     skills_lift = skills_sub.add_parser(
         "lift",
@@ -635,6 +640,17 @@ def build_parser() -> argparse.ArgumentParser:
     skills_lift.add_argument(
         "--only",
         help="Comma-separated skill names or source:name picks from skills list",
+    )
+    skills_lift.add_argument(
+        "--all-skills",
+        dest="all_skills",
+        action="store_true",
+        help="Lift every discovered skill without prompting (init/prepare already do this)",
+    )
+    skills_lift.add_argument(
+        "--brief",
+        action="store_true",
+        help="Keep JSON to name + description (and lift results)",
     )
     _add_skills_dest_flag(skills_lift)
     skills_lift.add_argument(
@@ -1118,6 +1134,7 @@ def _dispatch_skills(args: argparse.Namespace, catalog: Any, coboose_root: Path)
             workspace_id=getattr(args, "workspace", None),
             all_repos=bool(getattr(args, "all_repos", False)),
             parent=parent,
+            brief=bool(getattr(args, "brief", False)),
         )
     if args.skills_command == "lift":
         return lift_skills(
@@ -1127,9 +1144,12 @@ def _dispatch_skills(args: argparse.Namespace, catalog: Any, coboose_root: Path)
             names=_split_ids(getattr(args, "only", None)),
             workspace_id=getattr(args, "workspace", None),
             all_repos=bool(getattr(args, "all_repos", False)),
+            all_skills=bool(getattr(args, "all_skills", False)),
             parent=parent,
             force=bool(getattr(args, "force", False)),
             dry_run=bool(getattr(args, "dry_run", False)),
+            brief=bool(getattr(args, "brief", False)),
+            prompt=PromptSession(),
         )
     if args.skills_command == "pull":
         prompt = PromptSession()
