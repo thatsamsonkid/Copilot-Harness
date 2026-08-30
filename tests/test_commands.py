@@ -138,6 +138,9 @@ def test_usage_includes_positionals():
     assert by_name["commands"]["usage"] == "coboose commands [GROUP]"
     assert by_name["workspace create"]["usage"] == "coboose workspace create [ID]"
     assert "--from-env" in {arg["name"] for arg in by_name["jira login"]["arguments"]}
+    assert by_name["start"]["help"] == "Print a workspace start plan (does not launch)"
+    assert "in-process" in by_name["start run"]["help"]
+    assert "keys only" in by_name["start env"]["help"]
 
 
 def test_markdown_and_text_are_scannable():

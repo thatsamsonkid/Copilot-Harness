@@ -7,6 +7,12 @@ from coboose import CobooseError
 
 SHARED_DESTS = frozenset({"format", "catalog", "repos", "templates", "root"})
 
+EXPANDED_HELPS = {
+    "start": "Print a workspace start plan (does not launch)",
+    "start run": "Start one repo with launch.json env loaded in-process",
+    "start env": "List or apply one repo's launch env (keys only on stdout)",
+}
+
 GROUP_ORDER = (
     "commands",
     "init",
@@ -148,14 +154,21 @@ def _expand_optional_choices(item: dict[str, Any]) -> list[dict[str, Any]]:
         return [item]
     choice_arg = choice_args[0]
     rest = [arg for arg in arguments if arg is not choice_arg]
-    base = {**item, "arguments": rest, "usage": _usage(item["command"], rest)}
+    base_command = item["command"]
+    base = {
+        **item,
+        "help": EXPANDED_HELPS.get(base_command, item["help"]),
+        "arguments": rest,
+        "usage": _usage(base_command, rest),
+    }
     extras = []
     for choice in choice_arg["choices"]:
-        command = f"{item['command']} {choice}"
+        command = f"{base_command} {choice}"
         extras.append(
             {
                 **item,
                 "command": command,
+                "help": EXPANDED_HELPS.get(command, item["help"]),
                 "arguments": rest,
                 "usage": _usage(command, rest),
             }
