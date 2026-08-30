@@ -45,6 +45,8 @@ def to_text(payload: Any) -> str:
         return _figma_nodes_text(payload)
     if _is_skills(payload):
         return _skills_text(payload)
+    if _is_commands(payload):
+        return _commands_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -81,6 +83,8 @@ def to_markdown(payload: Any) -> str:
         return _figma_nodes_markdown(payload)
     if _is_skills(payload):
         return _skills_markdown(payload)
+    if _is_commands(payload):
+        return _commands_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -637,6 +641,74 @@ def _is_skills(payload: Any) -> bool:
         and "issue" not in payload
         and "services" not in payload
     )
+
+
+def _is_commands(payload: Any) -> bool:
+    return isinstance(payload, dict) and payload.get("kind") == "command_reference"
+
+
+def _commands_text(payload: dict[str, Any]) -> str:
+    commands = payload.get("commands") or []
+    width = max((len(item.get("usage") or "") for item in commands), default=0)
+    lines = [
+        f"Coboose CLI ({payload.get('count', len(commands))} commands)",
+        "",
+    ]
+    shared = payload.get("shared") or []
+    if shared:
+        names = ", ".join(item.get("name") or "" for item in shared)
+        lines.append(f"Shared flags: {names}")
+        lines.append("")
+    current_group = None
+    for item in commands:
+        group = item.get("group")
+        if group != current_group:
+            if current_group is not None:
+                lines.append("")
+            lines.append(f"{group}")
+            current_group = group
+        usage = item.get("usage") or f"coboose {item.get('command')}"
+        help_text = item.get("help") or ""
+        lines.append(f"  {usage.ljust(width)}  {help_text}".rstrip())
+    lines.append("")
+    lines.append("More detail: coboose <command> --help")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _commands_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        "# Coboose CLI",
+        "",
+        "Run from this repo: `uv run coboose <command>`. After `cd` into a sibling, "
+        "use `uv run --project \"$COBOOSE_ROOT\" coboose …` or `./scripts/coboose.sh`.",
+        "",
+        "Stdout is JSON by default. Use `--format markdown` or `text` for a human view.",
+        "",
+    ]
+    shared = payload.get("shared") or []
+    if shared:
+        names = ", ".join(f"`{item.get('name')}`" for item in shared)
+        lines.extend([f"Shared flags (every command): {names}", ""])
+    current_group = None
+    for item in payload.get("commands") or []:
+        group = item.get("group")
+        if group != current_group:
+            if current_group is not None:
+                lines.append("")
+            lines.extend(
+                [
+                    f"## `{group}`",
+                    "",
+                    "| Command | What it does |",
+                    "| --- | --- |",
+                ]
+            )
+            current_group = group
+        usage = item.get("usage") or f"coboose {item.get('command')}"
+        help_text = (item.get("help") or "").replace("|", "\\|")
+        lines.append(f"| `{usage}` | {help_text} |")
+    lines.extend(["", "For flags, run `coboose <command> --help`.", ""])
+    return "\n".join(lines).strip() + "\n"
 
 
 def _skills_text(payload: dict[str, Any]) -> str:

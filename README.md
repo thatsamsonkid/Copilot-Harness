@@ -66,10 +66,13 @@ Then:
 
 ```bash
 uv run coboose doctor
+uv run coboose commands --format markdown         # every command
 uv run --project "$COBOOSE_ROOT" coboose doctor   # any cwd
 ./scripts/coboose.sh doctor                       # macOS / Linux, any cwd
 .\scripts\coboose.ps1 doctor                      # Windows, any cwd
 ```
+
+A human cheat sheet of every command lives in [docs/cli.md](docs/cli.md). `coboose help` is an alias for `coboose commands`.
 
 ## Repository manifest
 
@@ -279,6 +282,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/skills-install/SKILL.md` | Lift sibling or remote skills into this coboose for VS Code Agents (`/skills-install`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
+| `docs/cli.md` | Human cheat sheet of every `coboose` command (`coboose commands`) |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
 | `.github/prompts/figma-frame.prompt.md` | `/figma-frame` |
 | `.github/prompts/new-workspace.prompt.md` | `/new-workspace` |
@@ -316,6 +320,18 @@ Typical loop:
 7. Pause with `/handoff`. Review with `/review` against `done_when`.
 
 To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.
+
+## CLI quick reference
+
+`coboose commands` walks the parser and prints every command. Copilot should keep JSON. Humans can use markdown or the static cheat sheet.
+
+```bash
+uv run coboose commands --format markdown
+uv run coboose commands jira
+uv run coboose help start
+```
+
+See [docs/cli.md](docs/cli.md) for the grouped list (setup, workspaces, Jira, Figma, day-to-day, skills). Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`, `--root`. For one command's flags, run `coboose <command> --help`.
 
 ## Tests
 
