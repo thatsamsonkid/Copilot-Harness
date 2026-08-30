@@ -143,3 +143,4 @@ This file is the boot **sequence** (order, command, port, wait, optional `launch
 - First-run setup: get-started skill or `/get-started`
 - Ticket routing: jira-cli skill or `/jira-ticket`
 - Figma frames: figma-cli skill or `/figma-frame`
+- Sibling / remote agent skills: skills-install skill or `/skills-install`

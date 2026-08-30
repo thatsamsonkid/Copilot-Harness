@@ -21,6 +21,7 @@ Run these from the coboose repo. After `cd` into a sibling, `uv run coboose` can
 | Store a declared secret | Tell them to run `uv run coboose env set NAME` themselves |
 | Live Jira ping | `uv run coboose doctor --ping-jira` or `uv run coboose jira whoami` |
 | Live Figma ping (optional) | `uv run coboose doctor --ping-figma` or `uv run coboose figma whoami` |
+| Lift sibling skills into this coboose (VS Code Agents) | `uv run coboose skills lift` (see the skills-install skill) |
 
 ## Walkthrough order
 
@@ -37,6 +38,7 @@ Run these from the coboose repo. After `cd` into a sibling, `uv run coboose` can
 7. Any other `env.variables` row from `coboose init` / `catalog/env.yaml` where `ok` is false. Non-secrets: edit `.env`. Secrets: `uv run coboose env set NAME` in their terminal. Do not put values in `.code-workspace` files.
 8. `repositories.yml` — replace `YOUR_ORG` placeholder remotes.
 9. `./scripts/clone-repos.sh` then `uv run coboose workspace generate`. `setup.sh` / `setup.ps1` already end by running `coboose init`.
+10. `init`, `workspace generate`, and `doctor` lift coboose + cloned sibling skills into this repo's `.github/skills` so the VS Code Agents window can see them (child folders are not scanned). Confirm the `skills` step. Use `uv run coboose skills list` / `skills lift` or the skills-install skill if they want a subset or a remote skills git repo.
 
 ## Hard rules
 

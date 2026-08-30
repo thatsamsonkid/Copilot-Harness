@@ -90,3 +90,29 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, coboose_root: Pa
     assert payload["routing"]["suggested_branch"] == "WEB-42"
     assert any(item["source"] == "coboose" for item in payload["done_when"])
     assert any("WEB-42" in step for step in payload["next_steps"])
+    assert "skills" in payload
+
+
+def test_prepare_lifts_sibling_skills(catalog, coboose_root: Path):
+    frontend = coboose_root.parent / "frontend"
+    skill = frontend / ".github" / "skills" / "checkout"
+    skill.mkdir(parents=True)
+    skill.joinpath("SKILL.md").write_text(
+        "---\nname: checkout\ndescription: Checkout flow\n---\n\n# checkout\n",
+        encoding="utf-8",
+    )
+    http = FakeHttp(
+        {
+            ("GET", "https://acme.atlassian.net/rest/api/3/issue/WEB-42"): _json(
+                _issue_payload()
+            ),
+            ("GET", "https://acme.atlassian.net/rest/api/3/issue/WEB-42/comment"): _json(
+                {"comments": []}
+            ),
+        }
+    )
+    client = JiraClient("https://acme.atlassian.net", "a@b.com", "token", http=http)
+    payload = prepare_issue(catalog, coboose_root, client, "WEB-42")
+    assert any(item["name"] == "checkout" for item in payload["skills"]["copied"])
+    assert (coboose_root / ".github" / "skills" / "checkout" / "SKILL.md").is_file()
+    assert any("skills" in step.lower() for step in payload["next_steps"])

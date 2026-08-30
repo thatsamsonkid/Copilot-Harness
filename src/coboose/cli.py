@@ -23,6 +23,7 @@ from coboose.paths import find_coboose_root, load_dotenv_files
 from coboose.prepare import prepare_issue
 from coboose.prompt import PromptSession
 from coboose.routing import recommend_workspace
+from coboose.skills import lift_skills, list_skills, pull_skills, sync_root_skills
 from coboose.start import collect_start_plan, execute_start_env, execute_start_run
 from coboose.status import collect_status
 from coboose.templates import get_template, template_to_dict, templates_payload
@@ -73,8 +74,9 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Clone product git repos under parent_dir, bootstrap projects from "
             "listed templates, query Jira Cloud with basic auth, export Figma "
-            "frame images, inspect clone git status, and create or select a "
-            "feature VS Code workspace."
+            "frame images, inspect clone git status, create or select a "
+            "feature VS Code workspace, and lift agent skills into the root "
+            "workspace for the VS Code Agents window."
         ),
         parents=[shared],
     )
@@ -606,6 +608,67 @@ def build_parser() -> argparse.ArgumentParser:
     bootstrap.add_argument("--https", action="store_true", help="Rewrite git@github.com URLs to HTTPS")
     bootstrap.add_argument("--dry-run", action="store_true")
 
+    skills = sub.add_parser(
+        "skills",
+        parents=[shared],
+        help=(
+            "List sibling agent skills and copy them into this Coboose "
+            ".github/skills folder so VS Code Agents can load them"
+        ),
+    )
+    skills_sub = skills.add_subparsers(dest="skills_command", required=True)
+    skills_list = skills_sub.add_parser(
+        "list",
+        parents=[shared],
+        help="Discover skills in this coboose and cloned sibling repos",
+    )
+    _add_scope_flags(skills_list)
+    skills_list.add_argument("--repo", help="Comma-separated repository names")
+    _add_skills_dest_flag(skills_list)
+    skills_lift = skills_sub.add_parser(
+        "lift",
+        parents=[shared],
+        help="Copy discovered skills into the root workspace .github/skills",
+    )
+    _add_scope_flags(skills_lift)
+    skills_lift.add_argument("--repo", help="Comma-separated repository names")
+    skills_lift.add_argument(
+        "--only",
+        help="Comma-separated skill names or source:name picks from skills list",
+    )
+    _add_skills_dest_flag(skills_lift)
+    skills_lift.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an already-lifted copy from a different source",
+    )
+    skills_lift.add_argument("--dry-run", action="store_true")
+    skills_pull = skills_sub.add_parser(
+        "pull",
+        parents=[shared],
+        help="Clone a git repo of skills temporarily and install selected ones",
+    )
+    skills_pull.add_argument("url", help="Git URL of a skills repository")
+    skills_pull.add_argument("--ref", help="Branch, tag, or commit to clone")
+    skills_pull.add_argument(
+        "--only",
+        help="Comma-separated skill names to install from the cloned repo",
+    )
+    skills_pull.add_argument(
+        "--all",
+        dest="all_skills",
+        action="store_true",
+        help="Install every SKILL.md folder found in the cloned repo",
+    )
+    _add_skills_dest_flag(skills_pull)
+    skills_pull.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an already-lifted copy from a different source",
+    )
+    skills_pull.add_argument("--https", action="store_true", help="Rewrite git@github.com URLs to HTTPS")
+    skills_pull.add_argument("--dry-run", action="store_true")
+
     sub.add_parser("catalog", parents=[shared], help="Show the resolved catalog")
     sub.add_parser("repos", parents=[shared], help="Show the repositories.yml manifest")
     return parser
@@ -651,6 +714,8 @@ def dispatch(args: argparse.Namespace) -> Any:
         return _dispatch_env(args, catalog, coboose_root)
     if args.command == "workspace":
         return _dispatch_workspace(args, catalog, coboose_root)
+    if args.command == "skills":
+        return _dispatch_skills(args, catalog, coboose_root)
     if args.command == "prepare":
         return prepare_issue(
             catalog,
@@ -899,7 +964,11 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, coboose_root: Pa
     if args.workspace_command == "list":
         return {"workspaces": list_workspaces(catalog, coboose_root)}
     if args.workspace_command == "generate":
-        return {"workspaces": generate_workspaces(catalog, coboose_root)}
+        workspaces = generate_workspaces(catalog, coboose_root)
+        return {
+            "workspaces": workspaces,
+            "skills": sync_root_skills(catalog, coboose_root),
+        }
     if args.workspace_command == "create":
         prompt = PromptSession(interactive=False if args.no_prompt else None)
         return create_workspace(
@@ -1037,6 +1106,58 @@ def _apply_leading_globals(args: argparse.Namespace, argv: list[str]) -> None:
             setattr(args, key, value)
     if "--format" in leading:
         args.format = parsed.format
+
+
+def _dispatch_skills(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
+    parent = bool(getattr(args, "parent", False))
+    if args.skills_command == "list":
+        return list_skills(
+            catalog,
+            coboose_root,
+            only=_split_ids(getattr(args, "repo", None)),
+            workspace_id=getattr(args, "workspace", None),
+            all_repos=bool(getattr(args, "all_repos", False)),
+            parent=parent,
+        )
+    if args.skills_command == "lift":
+        return lift_skills(
+            catalog,
+            coboose_root,
+            only=_split_ids(getattr(args, "repo", None)),
+            names=_split_ids(getattr(args, "only", None)),
+            workspace_id=getattr(args, "workspace", None),
+            all_repos=bool(getattr(args, "all_repos", False)),
+            parent=parent,
+            force=bool(getattr(args, "force", False)),
+            dry_run=bool(getattr(args, "dry_run", False)),
+        )
+    if args.skills_command == "pull":
+        prompt = PromptSession()
+        return pull_skills(
+            catalog,
+            coboose_root,
+            args.url,
+            ref=getattr(args, "ref", None),
+            names=_split_ids(getattr(args, "only", None)),
+            all_skills=bool(getattr(args, "all_skills", False)),
+            parent=parent,
+            force=bool(getattr(args, "force", False)),
+            dry_run=bool(getattr(args, "dry_run", False)),
+            https=bool(getattr(args, "https", False)),
+            prompt=prompt,
+        )
+    raise CobooseError(f"Unknown skills command: {args.skills_command}")
+
+
+def _add_skills_dest_flag(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--parent",
+        action="store_true",
+        help=(
+            "Copy into parent_dir/.github/skills instead of this Coboose repo "
+            "(for a single-folder window on the sibling root)"
+        ),
+    )
 
 
 def _add_scope_flags(parser: argparse.ArgumentParser) -> None:

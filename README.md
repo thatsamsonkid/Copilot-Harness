@@ -60,7 +60,7 @@ Then:
 6. Or create a new feature workspace and pick projects from `repositories.yml`:
    `coboose workspace create` (or `/new-workspace` in chat). Choose **shared** for the team catalog, or **personal** for a local-only file under `workspaces/personal/` (gitignored).
 7. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/orient`, `/jira-cli`, or `/bootstrap-project`
+8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
 
 `setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, and install this package in editable mode. Prefer `uv` over pip. Run the CLI from this repo. After `cd` into a sibling clone, `uv run coboose` cannot spawn — use `--project` or the wrapper script:
 
@@ -276,6 +276,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
 | `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images / comments / nodes CLI contract (`/figma-frame`) |
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
+| `.github/skills/skills-install/SKILL.md` | Lift sibling or remote skills into this coboose for VS Code Agents (`/skills-install`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
@@ -290,12 +291,15 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
 | `.github/prompts/handoff.prompt.md` | `/handoff` |
 | `.github/prompts/review.prompt.md` | `/review` |
+| `.github/prompts/skills-install.prompt.md` | `/skills-install` |
 
 The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
 
 `/get-started` is the human onboarding path. It runs `coboose init` and points at the token doc. Copilot must never ask anyone to paste the API token into chat.
 
 `/orient` is for vague prompts against large repos. It runs `coboose context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
+
+`/skills-install` is a temporary shim for the VS Code Agents window, which does not scan skills in multi-root child folders. `coboose init`, `prepare`, and `workspace generate` copy coboose + in-scope sibling `SKILL.md` folders into this repo's `.github/skills`. `coboose skills list` shows what exists; `skills lift --only` copies a subset; `skills pull <git-url>` clones a skills repo in a temp dir so you can pick names to install. Those copies are local-only — do not commit them.
 
 `/start-workspace` is for booting the local apps in the open feature workspace. It runs `coboose start`, prefers a saved `workspaces/<id>.start.yml` when present, then starts one process at a time in **one VS Code terminal per app** (reuse that app’s terminal if it is already running) so Angular proxies can point at live backend ports. Apps with launch.json env/args are started through `coboose start run` or Run Without Debugging so Copilot never sees those values. Use `coboose start env --repo <name>` to inspect keys/collisions, or `--shell` to apply them in a terminal without starting the app.
 

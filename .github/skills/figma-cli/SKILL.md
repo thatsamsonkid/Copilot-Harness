@@ -109,3 +109,4 @@ Do not try to reconstruct the screen from JSON. The Images payload is only ids a
 - Vague / large-repo orientation: workspace-context skill or `/orient`
 - Implement an agreed plan: Implementer agent
 - Review a diff: Reviewer agent or `/review`
+- Sibling / remote agent skills: skills-install skill or `/skills-install`

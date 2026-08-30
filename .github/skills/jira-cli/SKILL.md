@@ -99,3 +99,4 @@ This skill is the CLI contract, not an implementer.
 - Implement an agreed plan: Implementer agent
 - Review a diff: Reviewer agent or `/review`
 - Pause / resume: handoff skill or `/handoff`
+- Sibling / remote agent skills: skills-install skill or `/skills-install`

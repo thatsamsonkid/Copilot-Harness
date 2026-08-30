@@ -23,6 +23,7 @@ from coboose.keychain import (
     storage_guides,
 )
 from coboose.onboard import onboarding_steps
+from coboose.skills import sync_root_skills
 from coboose.uv_check import detect_uv, uv_missing_action
 from coboose.workspace import generate_workspaces
 from coboose.workspace_detect import resolve_workspace_scope, scoped_repos
@@ -206,6 +207,28 @@ def run_doctor(
             f"generated {len(generated)} workspace file(s)",
         )
     )
+    skills = sync_root_skills(
+        catalog,
+        coboose_root,
+        workspace_id=scope.id,
+        all_repos=all_repos,
+        environ=environ,
+    )
+    skill_error = skills.get("error")
+    checks.append(
+        _check(
+            "skills",
+            not skill_error,
+            skill_error
+            or (
+                "agent skills in .github/skills: "
+                f"{len(skills.get('native') or [])} coboose, "
+                f"{len(skills.get('copied') or [])} lifted, "
+                f"{len(skills.get('installed') or [])} installed copies"
+            ),
+            ok_when_false=True,
+        )
+    )
 
     base_url = os.environ.get("JIRA_BASE_URL")
     email = os.environ.get("JIRA_EMAIL") or os.environ.get("JIRA_USERNAME")
@@ -362,6 +385,7 @@ def run_doctor(
             for template in catalog.templates
         ],
         "workspaces": generated,
+        "skills": skills,
         "jira": jira,
         "jira_token_source": source,
         "figma": figma,

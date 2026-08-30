@@ -15,6 +15,7 @@ from coboose.catalog import (
 )
 from coboose.paths import PERSONAL_WORKSPACES_DIR
 from coboose.prompt import PromptSession
+from coboose.skills import sync_root_skills
 from coboose.stack_edit import upsert_workspace_in_stack
 from coboose.workspace import open_command, write_workspace_file
 
@@ -257,7 +258,7 @@ def create_workspace(
     if generate:
         written = write_workspace_file(refreshed, coboose_root, persisted)
 
-    return _payload(
+    payload = _payload(
         refreshed,
         coboose_root,
         persisted,
@@ -270,6 +271,12 @@ def create_workspace(
         + refreshed.workspace_repo_names(persisted),
         file=(written or {}).get("file"),
     )
+    payload["skills"] = sync_root_skills(
+        refreshed,
+        coboose_root,
+        workspace_id=persisted.id,
+    )
+    return payload
 
 
 def _existing_workspace(

@@ -43,5 +43,7 @@ def test_skill_keeps_tokens_out_of_chat():
         "windows",
         "setup.ps1",
         "cannot spawn",
+        "skills lift",
+        "skills-install",
     ):
         assert token in lowered

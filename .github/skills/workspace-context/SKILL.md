@@ -20,6 +20,7 @@ Run these from the coboose repo. After `cd` into a sibling, use `uv run --projec
 | Every enabled repo | `uv run coboose context --all --format json` (only if the user asked for the full catalog) |
 | Ticket plus routing | `uv run coboose prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`) |
 | Local stack start plan | `uv run coboose start --format json` (see the workspace-start skill). Saved sequences live in `workspaces/<id>.start.yml`. |
+| Sibling / remote agent skills | `uv run coboose skills list` then `skills lift` or `skills pull <url>` (see the skills-install skill). VS Code Agents does not scan multi-root child folders. |
 
 ## Vague or low-context prompts
 

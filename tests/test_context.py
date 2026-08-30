@@ -55,6 +55,8 @@ def test_context_discovers_graphify_and_standards(coboose_root: Path, catalog):
     assert repo["knowledge"]["template"] == "templates/feature-note.md"
     assert repo["tooling"]["generated"]["markers"] == []
     assert repo["graphify"]["stale"] in (None, False)
+    assert payload["skills"]["dest"].endswith(".github/skills")
+    assert "available" in payload["skills"]
 
 
 def test_context_cli_skips_missing_clone(coboose_root: Path, capsys, monkeypatch):

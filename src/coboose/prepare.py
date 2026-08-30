@@ -10,6 +10,7 @@ from coboose.context import inspect_repo
 from coboose.done import build_done_when
 from coboose.jira_client import JiraClient
 from coboose.routing import recommend_workspace
+from coboose.skills import sync_root_skills
 from coboose.workspace import generate_workspaces, open_command
 from coboose.workspace_detect import resolve_workspace_scope
 
@@ -83,6 +84,7 @@ def prepare_issue(
         "Treat done_when as the stop condition. Do not declare the ticket done until those items are checked.",
         "Write an implementation plan covering impacted repos, files, risks, and test strategy.",
         "Do not start coding until the plan is agreed, unless the user asks to implement immediately.",
+        "If VS Code Agents cannot see sibling skills, use routing.skills or `coboose skills list` / `skills lift`.",
     ]
     if missing:
         ids = ",".join(item["id"] for item in missing)
@@ -124,5 +126,10 @@ def prepare_issue(
             "suggested_branch": suggested_branch(issue["key"]),
         },
         "done_when": build_done_when(issue, repos),
+        "skills": sync_root_skills(
+            catalog,
+            coboose_root,
+            workspace_id=workspace.id,
+        ),
         "next_steps": next_steps,
     }

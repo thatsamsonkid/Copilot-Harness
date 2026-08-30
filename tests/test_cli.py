@@ -155,6 +155,8 @@ def test_catalog_and_workspace_generate(coboose_root: Path, capsys, monkeypatch)
     generated = json.loads(capsys.readouterr().out)
     assert len(generated["workspaces"]) == 2
     assert (coboose_root / "workspaces" / "backend.code-workspace").exists()
+    assert "skills" in generated
+    assert generated["skills"]["dest"].endswith(".github/skills")
 
 
 def test_clone_dry_run_and_doctor(coboose_root: Path, capsys, monkeypatch):
