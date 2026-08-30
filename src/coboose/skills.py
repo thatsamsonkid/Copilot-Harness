@@ -51,6 +51,7 @@ SKIP_DIR_NAMES = {
     "build",
 }
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_RANGE = re.compile(r"^(\d+)\s*-\s*(\d+)$")
 
 RunFn = Callable[..., Any]
 
@@ -69,6 +70,7 @@ def list_skills(
     workspace_id: str | None = None,
     all_repos: bool = False,
     parent: bool = False,
+    brief: bool = False,
     environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     dest = skills_dest(coboose_root, catalog, parent=parent)
@@ -89,21 +91,34 @@ def list_skills(
     )
     installed = _installed_skills(dest)
     available = _flatten_available(sources)
-    return {
+    payload: dict[str, Any] = {
         "dest": str(dest),
         "dest_kind": "parent" if parent else "workspace",
         "workspace": scope.id,
-        "workspace_scope": scope.as_payload(),
-        "sources": sources,
+        "brief": brief,
         "available": available,
         "installed": installed,
-        "guidance": _guidance(parent=parent),
-        "next_commands": [
-            "uv run coboose skills lift",
-            "uv run coboose skills lift --only <name,name>",
-            "uv run coboose skills pull <git-url>",
-        ],
+        "count": len(available),
     }
+    if brief:
+        payload["available"] = brief_skills(available)
+        payload["installed"] = brief_skills(installed)
+        payload["skills"] = payload["available"]
+        return payload
+    payload.update(
+        {
+            "workspace_scope": scope.as_payload(),
+            "sources": sources,
+            "guidance": _guidance(parent=parent),
+            "next_commands": [
+                "uv run coboose skills lift",
+                "uv run coboose skills lift --only <name,name>",
+                "uv run coboose skills lift --all-skills",
+                "uv run coboose skills pull <git-url>",
+            ],
+        }
+    )
+    return payload
 
 
 def lift_skills(
@@ -114,9 +129,12 @@ def lift_skills(
     names: list[str] | None = None,
     workspace_id: str | None = None,
     all_repos: bool = False,
+    all_skills: bool = False,
     parent: bool = False,
     force: bool = False,
     dry_run: bool = False,
+    brief: bool = False,
+    prompt: PromptSession | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     payload = list_skills(
@@ -129,7 +147,40 @@ def lift_skills(
         environ=environ,
     )
     dest = Path(payload["dest"])
-    selected = _select_available(payload["available"], names)
+    available = payload["available"]
+    selected = _resolve_lift_selection(
+        available,
+        names=names,
+        all_skills=all_skills,
+        parent=parent,
+        prompt=prompt,
+        dest=str(dest),
+    )
+    if selected is None:
+        slim = brief_skills(_liftable_skills(available, parent=parent))
+        payload.update(
+            {
+                "needs_selection": True,
+                "brief": True,
+                "available": slim,
+                "skills": slim,
+                "count": len(slim),
+                "detail": (
+                    "Pick skills from available[] (name + description), then "
+                    "rerun with --only name,name or --all-skills. "
+                    "In a terminal, coboose skills lift prompts."
+                ),
+                "install_command": "uv run coboose skills lift --only <name,name>",
+                "dry_run": dry_run,
+                "ok": True,
+                **_empty_results(),
+            }
+        )
+        payload.pop("sources", None)
+        payload.pop("workspace_scope", None)
+        payload.pop("guidance", None)
+        payload.pop("next_commands", None)
+        return payload
     results = _install_records(
         dest,
         coboose_root,
@@ -141,9 +192,19 @@ def lift_skills(
     if not dry_run and (results["copied"] or results["updated"]):
         _write_manifest(coboose_root, dest, results)
         _ignore_installed(coboose_root, dest, results)
+    if brief:
+        payload = {
+            "dest": payload["dest"],
+            "dest_kind": payload["dest_kind"],
+            "brief": True,
+            "available": brief_skills(available),
+            "skills": brief_skills(available),
+            "count": len(available),
+        }
     payload.update(results)
     payload["dry_run"] = dry_run
     payload["ok"] = not results["conflicts"]
+    payload["needs_selection"] = False
     return payload
 
 
@@ -245,7 +306,11 @@ def pull_skills(
             selected_names = None
         elif not selected_names:
             if prompt.can_prompt():
-                selected_names = _prompt_skill_names(prompt, available)
+                selected_names = _prompt_skill_names(
+                    prompt,
+                    available,
+                    heading="Skills in the cloned repository:",
+                )
             else:
                 payload["needs_selection"] = True
                 payload["install_command"] = _pull_install_command(url, ref, None)
@@ -276,6 +341,98 @@ def pull_skills(
         payload.update(results)
         payload["ok"] = not results["conflicts"]
         return payload
+
+
+def brief_skills(skills: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Name + description (+ source) for a compact catalog."""
+    return [
+        {
+            "name": item.get("name") or "",
+            "description": item.get("description") or "",
+            "source_id": item.get("source_id") or "",
+            "pick": item.get("pick") or item.get("name") or "",
+        }
+        for item in skills
+    ]
+
+
+def format_skill_menu(
+    available: list[dict[str, Any]],
+    *,
+    heading: str | None = None,
+) -> str:
+    if not available:
+        return "No skills found.\n"
+    lines = [heading or "Skills:\n", ""]
+    for index, skill in enumerate(available, start=1):
+        name = skill.get("name") or skill.get("pick") or "?"
+        source = skill.get("source_id")
+        label = f"{name} ({source})" if source else name
+        lines.append(f"  {index}. {label}")
+        description = _first_sentence(skill.get("description") or "")
+        if description:
+            lines.append(f"     {description}")
+    lines.append("")
+    lines.append("Enter numbers, names, ranges (1-3), or all.")
+    return "\n".join(lines) + "\n"
+
+
+def parse_skill_selection(text: str, available: list[dict[str, Any]]) -> list[str]:
+    text = text.strip()
+    if not text:
+        raise CobooseError("Pick at least one skill, or all")
+    if text.lower() in {"all", "*"}:
+        return [_skill_pick(skill) for skill in available]
+
+    by_index = {str(index): _skill_pick(skill) for index, skill in enumerate(available, start=1)}
+    by_name: dict[str, str] = {}
+    for skill in available:
+        pick = _skill_pick(skill)
+        by_name[_normalize_pick(skill["name"])] = pick
+        by_name[_normalize_pick(pick)] = pick
+        if skill.get("source_id"):
+            by_name[_normalize_pick(f"{skill['source_id']}:{skill['name']}")] = pick
+    selected: list[str] = []
+    for token in re.split(r"[,\s]+", text):
+        if not token:
+            continue
+        lowered = token.lower()
+        if lowered in {"all", "*"}:
+            for skill in available:
+                _append_unique(selected, _skill_pick(skill))
+            continue
+        range_match = _RANGE.match(token)
+        if range_match:
+            start = int(range_match.group(1))
+            stop = int(range_match.group(2))
+            if start > stop:
+                start, stop = stop, start
+            for index in range(start, stop + 1):
+                pick = by_index.get(str(index))
+                if pick is None:
+                    raise CobooseError(
+                        f"Skill number {index} is out of range (1-{len(available)})."
+                    )
+                _append_unique(selected, pick)
+            continue
+        if token.isdigit():
+            pick = by_index.get(token)
+            if pick is None:
+                raise CobooseError(
+                    f"Skill number {token} is out of range (1-{len(available)})."
+                )
+            _append_unique(selected, pick)
+            continue
+        pick = by_name.get(_normalize_pick(token))
+        if pick:
+            _append_unique(selected, pick)
+            continue
+        raise CobooseError(
+            f"Unknown skill {token!r}. Use a listed name, number, range, or all."
+        )
+    if not selected:
+        raise CobooseError("Pick at least one skill, or all")
+    return selected
 
 
 def discover_skills_in_tree(
@@ -790,41 +947,82 @@ def _run_git(command: list[str], cwd: Path) -> Any:
         ) from exc
 
 
-def _prompt_skill_names(prompt: PromptSession, available: list[dict[str, Any]]) -> list[str]:
-    if not available:
-        raise CobooseError("That repository has no SKILL.md folders")
-    lines = ["Skills in the cloned repository:\n"]
-    for index, skill in enumerate(available, start=1):
-        detail = f" — {skill['description']}" if skill.get("description") else ""
-        lines.append(f"  {index}. {skill['name']}{detail}\n")
-    prompt.write("".join(lines))
-    raw = prompt.ask("Install which skills? (comma-separated names/numbers, or all)")
-    return _parse_skill_selection(raw, available)
-
-
-def _parse_skill_selection(text: str, available: list[dict[str, Any]]) -> list[str]:
-    text = text.strip()
-    if not text:
-        raise CobooseError("Pick at least one skill, or all")
-    if text.lower() in {"all", "*"}:
-        return [skill["name"] for skill in available]
-    by_index = {str(index): skill["name"] for index, skill in enumerate(available, start=1)}
-    by_name = {skill["name"].lower(): skill["name"] for skill in available}
-    selected: list[str] = []
-    for token in re.split(r"[,\s]+", text):
-        if not token:
-            continue
-        if token in by_index:
-            _append_unique(selected, by_index[token])
-            continue
-        lowered = token.lower()
-        if lowered in by_name:
-            _append_unique(selected, by_name[lowered])
-            continue
-        raise CobooseError(
-            f"Unknown skill {token!r}. Use a listed name, number, or all."
+def _resolve_lift_selection(
+    available: list[dict[str, Any]],
+    *,
+    names: list[str] | None,
+    all_skills: bool,
+    parent: bool,
+    prompt: PromptSession | None,
+    dest: str,
+) -> list[dict[str, Any]] | None:
+    if names and len(names) == 1 and names[0].lower() in {"all", "*"}:
+        all_skills = True
+        names = None
+    if names:
+        return _select_available(available, names)
+    if all_skills or prompt is None:
+        return list(available)
+    liftables = _liftable_skills(available, parent=parent)
+    if not liftables:
+        return list(available)
+    if prompt.can_prompt():
+        picks = _prompt_skill_names(
+            prompt,
+            liftables,
+            heading=f"Skills to lift into {dest}:",
+            empty_message="No sibling skills to lift",
         )
-    return selected
+        return _select_available(available, picks)
+    return None
+
+
+def _liftable_skills(
+    available: list[dict[str, Any]], *, parent: bool
+) -> list[dict[str, Any]]:
+    if parent:
+        return list(available)
+    return [
+        skill
+        for skill in available
+        if skill.get("source_id") != COBOOSE_SOURCE_ID
+    ]
+
+
+def _prompt_skill_names(
+    prompt: PromptSession,
+    available: list[dict[str, Any]],
+    *,
+    heading: str | None = None,
+    empty_message: str = "That repository has no SKILL.md folders",
+) -> list[str]:
+    if not available:
+        raise CobooseError(empty_message)
+    prompt.write(format_skill_menu(available, heading=heading))
+    raw = prompt.ask("Lift which skills?")
+    return parse_skill_selection(raw, available)
+
+
+def _skill_pick(skill: dict[str, Any]) -> str:
+    return str(skill.get("pick") or skill.get("name") or "")
+
+
+def _first_sentence(text: str, limit: int = 120) -> str:
+    text = " ".join(text.split())
+    if not text:
+        return ""
+    for sep in (". ", "? ", "! "):
+        if sep in text:
+            text = text.split(sep, 1)[0] + sep.strip()
+            break
+    if len(text) > limit:
+        return text[: limit - 1].rstrip() + "…"
+    return text
+
+
+def _append_unique(values: list[str], value: str) -> None:
+    if value not in values:
+        values.append(value)
 
 
 def _pull_install_command(url: str, ref: str | None, names: list[str] | None) -> str:

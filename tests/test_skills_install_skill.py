@@ -46,15 +46,18 @@ def test_skill_body_is_the_cli_contract():
     lowered = body.lower()
     for token in (
         "uv run coboose skills list",
+        "--brief",
         "skills lift",
         "skills pull",
         "--only",
+        "--all-skills",
         "needs_selection",
         "do not commit",
         "failed to spawn",
         "--project",
         "do not `git clone`",
         "first-party",
+        "all",
     ):
         assert token in lowered
 
@@ -65,5 +68,7 @@ def test_prompt_points_at_the_skill():
     lowered = body.lower()
     assert "skills-install/skill.md" in lowered
     assert "skills list" in lowered
+    assert "--brief" in lowered
     assert "skills lift" in lowered
+    assert "--all-skills" in lowered
     assert "skills pull" in lowered
