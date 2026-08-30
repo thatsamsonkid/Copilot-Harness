@@ -1,11 +1,23 @@
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
 
+import pytest
+
+from coboose import CobooseError
 from coboose.cli import main
 from coboose.onboard import run_init
-from coboose.skills import lift_skills, list_skills, pull_skills, sync_root_skills
+from coboose.prompt import PromptSession
+from coboose.skills import (
+    format_skill_menu,
+    lift_skills,
+    list_skills,
+    parse_skill_selection,
+    pull_skills,
+    sync_root_skills,
+)
 
 
 def _write_skill(
@@ -46,6 +58,27 @@ def test_list_finds_coboose_and_sibling_skills(catalog, coboose_root: Path):
     assert ("frontend", "lint") in names
     assert payload["dest"].endswith(".github/skills")
     assert payload["dest_kind"] == "workspace"
+    assert "sources" in payload
+
+
+def test_list_brief_is_name_and_description(catalog, coboose_root: Path):
+    _write_skill(coboose_root, "get-started", "First run")
+    frontend = _sibling(coboose_root, "frontend")
+    _write_skill(frontend, "checkout", "Checkout flow")
+
+    payload = list_skills(catalog, coboose_root, all_repos=True, brief=True)
+    assert payload["brief"] is True
+    assert "sources" not in payload
+    assert "workspace_scope" not in payload
+    assert "guidance" not in payload
+    checkout = next(item for item in payload["skills"] if item["name"] == "checkout")
+    assert checkout == {
+        "name": "checkout",
+        "description": "Checkout flow",
+        "source_id": "frontend",
+        "pick": "frontend:checkout",
+    }
+    assert set(checkout) == {"name", "description", "source_id", "pick"}
 
 
 def test_lift_copies_sibling_and_skips_native_coboose(catalog, coboose_root: Path):
@@ -197,10 +230,98 @@ def test_cli_skills_list_and_lift(catalog, coboose_root: Path, capsys, monkeypat
     listed = json.loads(capsys.readouterr().out)
     assert any(item["name"] == "checkout" for item in listed["available"])
 
-    assert main(["--root", str(coboose_root), "skills", "lift", "--all"]) == 0
+    assert main(["--root", str(coboose_root), "skills", "list", "--all", "--brief"]) == 0
+    brief = json.loads(capsys.readouterr().out)
+    assert brief["brief"] is True
+    assert "sources" not in brief
+    checkout = next(item for item in brief["skills"] if item["name"] == "checkout")
+    assert set(checkout) == {"name", "description", "source_id", "pick"}
+
+    assert main(["--root", str(coboose_root), "skills", "lift", "--all", "--all-skills"]) == 0
     lifted = json.loads(capsys.readouterr().out)
     assert any(item["name"] == "checkout" for item in lifted["copied"])
     assert (coboose_root / ".github" / "skills" / "checkout" / "SKILL.md").is_file()
+
+
+def test_cli_lift_without_selection_asks(catalog, coboose_root: Path, capsys, monkeypatch):
+    frontend = _sibling(coboose_root, "frontend")
+    _write_skill(frontend, "checkout", "Checkout")
+    monkeypatch.chdir(coboose_root)
+    assert main(["--root", str(coboose_root), "skills", "lift", "--all"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["needs_selection"] is True
+    assert payload["brief"] is True
+    assert any(item["name"] == "checkout" for item in payload["available"])
+    assert not (coboose_root / ".github" / "skills" / "checkout").exists()
+
+
+def test_lift_prompts_in_a_terminal(catalog, coboose_root: Path):
+    frontend = _sibling(coboose_root, "frontend")
+    _write_skill(frontend, "checkout", "Checkout flow")
+    _write_skill(frontend, "lint", "Lint the UI")
+    stderr = io.StringIO()
+    prompt = PromptSession(stdin=io.StringIO("1\n"), stderr=stderr, interactive=True)
+    payload = lift_skills(catalog, coboose_root, all_repos=True, prompt=prompt)
+    assert {item["name"] for item in payload["copied"]} == {"checkout"}
+    menu = stderr.getvalue()
+    assert "1. checkout (frontend)" in menu
+    assert "2. lint (frontend)" in menu
+    assert "or all" in menu
+    assert not (coboose_root / ".github" / "skills" / "lint").exists()
+
+
+def test_lift_prompt_all_copies_siblings(catalog, coboose_root: Path):
+    _write_skill(coboose_root, "get-started", "First run")
+    frontend = _sibling(coboose_root, "frontend")
+    _write_skill(frontend, "checkout", "Checkout")
+    _write_skill(frontend, "lint", "Lint")
+    prompt = PromptSession(
+        stdin=io.StringIO("all\n"),
+        stderr=io.StringIO(),
+        interactive=True,
+    )
+    payload = lift_skills(catalog, coboose_root, all_repos=True, prompt=prompt)
+    assert {item["name"] for item in payload["copied"]} == {"checkout", "lint"}
+    assert not (coboose_root / ".github" / "skills" / "get-started" / ".coboose-source.json").exists()
+
+
+def test_parse_skill_selection_numbers_ranges_and_all():
+    available = [
+        {"name": "checkout", "pick": "frontend:checkout", "source_id": "frontend"},
+        {"name": "lint", "pick": "frontend:lint", "source_id": "frontend"},
+        {"name": "api", "pick": "backend:api", "source_id": "backend"},
+    ]
+    assert parse_skill_selection("1", available) == ["frontend:checkout"]
+    assert parse_skill_selection("1-2", available) == ["frontend:checkout", "frontend:lint"]
+    assert parse_skill_selection("lint, backend:api", available) == [
+        "frontend:lint",
+        "backend:api",
+    ]
+    assert parse_skill_selection("all", available) == [
+        "frontend:checkout",
+        "frontend:lint",
+        "backend:api",
+    ]
+    with pytest.raises(CobooseError, match="out of range"):
+        parse_skill_selection("9", available)
+    with pytest.raises(CobooseError, match="Unknown skill"):
+        parse_skill_selection("missing", available)
+
+
+def test_format_skill_menu_is_name_and_description():
+    menu = format_skill_menu(
+        [
+            {
+                "name": "checkout",
+                "source_id": "frontend",
+                "description": "Checkout flow. Extra detail that should be clipped.",
+            }
+        ]
+    )
+    assert "1. checkout (frontend)" in menu
+    assert "Checkout flow." in menu
+    assert "Extra detail" not in menu
+    assert "or all" in menu
 
 
 def test_init_lifts_sibling_skills(catalog, coboose_root: Path, monkeypatch):

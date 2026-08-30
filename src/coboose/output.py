@@ -712,6 +712,21 @@ def _commands_markdown(payload: dict[str, Any]) -> str:
 
 
 def _skills_text(payload: dict[str, Any]) -> str:
+    brief = bool(payload.get("brief") or payload.get("needs_selection"))
+    skills = payload.get("skills") or payload.get("available") or []
+    if brief and not payload.get("copied") and not payload.get("updated"):
+        lines = []
+        if payload.get("needs_selection"):
+            lines.append(payload.get("detail") or "Pick skills, then rerun with --only.")
+            if payload.get("install_command"):
+                lines.append(payload["install_command"])
+            lines.append("")
+        if not skills:
+            lines.append("No skills found.")
+        for skill in skills:
+            lines.append(_skill_brief_line(skill))
+        return "\n".join(lines).strip() + "\n"
+
     lines = [
         f"Agent skills ({payload.get('dest_kind') or 'workspace'})",
         f"Dest: {payload.get('dest')}",
@@ -724,13 +739,10 @@ def _skills_text(payload: dict[str, Any]) -> str:
         if payload.get("install_command"):
             lines.append(payload["install_command"])
         lines.append("")
-    available = payload.get("available") or []
-    if available:
+    if skills:
         lines.append("Available:")
-        for skill in available:
-            pick = skill.get("pick") or skill.get("name")
-            desc = f" — {skill['description']}" if skill.get("description") else ""
-            lines.append(f"- {pick} ({skill.get('source_id')}){desc}")
+        for skill in skills:
+            lines.append(f"- {_skill_brief_line(skill)}")
         lines.append("")
     for label, key in (
         ("Copied", "copied"),
@@ -749,7 +761,30 @@ def _skills_text(payload: dict[str, Any]) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
+def _skill_brief_line(skill: dict[str, Any]) -> str:
+    name = skill.get("name") or skill.get("pick") or "?"
+    source = skill.get("source_id")
+    label = f"{name} ({source})" if source else name
+    description = skill.get("description") or ""
+    return f"{label} — {description}" if description else label
+
+
 def _skills_markdown(payload: dict[str, Any]) -> str:
+    brief = bool(payload.get("brief") or payload.get("needs_selection"))
+    skills = payload.get("skills") or payload.get("available") or []
+    if brief and not payload.get("copied") and not payload.get("updated"):
+        lines = ["# Agent skills", ""]
+        if payload.get("needs_selection"):
+            lines.append(payload.get("detail") or "Pick skills, then rerun with `--only`.")
+            lines.append("")
+        for skill in skills:
+            name = skill.get("name") or skill.get("pick")
+            source = skill.get("source_id")
+            desc = skill.get("description") or ""
+            title = f"`{name}` ({source})" if source else f"`{name}`"
+            lines.append(f"- {title}" + (f" — {desc}" if desc else ""))
+        return "\n".join(lines).strip() + "\n"
+
     lines = [
         "# Agent skills",
         "",
@@ -766,13 +801,14 @@ def _skills_markdown(payload: dict[str, Any]) -> str:
         if payload.get("install_command"):
             lines.append(f"`{payload['install_command']}`")
             lines.append("")
-    available = payload.get("available") or []
-    if available:
+    if skills:
         lines.extend(["## Available", ""])
-        for skill in available:
-            pick = skill.get("pick") or skill.get("name")
+        for skill in skills:
+            name = skill.get("name") or skill.get("pick")
+            source = skill.get("source_id")
             desc = f" — {skill['description']}" if skill.get("description") else ""
-            lines.append(f"- `{pick}` ({skill.get('source_id')}){desc}")
+            title = f"`{name}` ({source})" if source else f"`{name}`"
+            lines.append(f"- {title}{desc}")
         lines.append("")
     return "\n".join(lines).strip() + "\n"
 
