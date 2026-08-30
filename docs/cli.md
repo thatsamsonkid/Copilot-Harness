@@ -108,7 +108,8 @@ VS Code Agents does not scan multi-root child skills. Lift copies into this cobo
 | Command | What it does |
 | --- | --- |
 | `coboose skills list` | Discover skills in this coboose and cloned siblings |
-| `coboose skills lift` | Copy discovered skills into the root `.github/skills` |
+| `coboose skills list --brief` | Name + description only (no `sources[]` dump) |
+| `coboose skills lift` | In a terminal: numbered picker (`all` is valid). Chat/scripts: `--only` or `--all-skills` |
 | `coboose skills pull URL` | Clone a skills repo temporarily and install selected ones |
 
 `init`, `prepare`, and `workspace generate` already lift coboose + in-scope sibling skills. Do not commit those copies. See `.github/skills/skills-install/SKILL.md`.
