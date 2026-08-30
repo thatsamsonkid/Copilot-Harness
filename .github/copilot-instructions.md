@@ -55,13 +55,13 @@ This workspace has **no Figma MCP server**. The personal access token must never
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/coboose` — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, workspace create/generate/match, prepare, init, context, status, branch, handoff, start, skills list/lift/pull.
+- CLI: `src/coboose` — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, workspace create/generate/match, prepare, init, context, status, branch, handoff, start, skills list/lift/pull. `coboose commands` (alias `help`) is the live catalog; `docs/cli.md` is the human cheat sheet.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this Coboose repo. Personal/local mixes live in `workspaces/personal/` (gitignored, not in `catalog/stack.yaml`).
 - Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `coboose env set NAME` / `coboose jira login` / `coboose figma login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run coboose <command>` **from this Coboose repo**, or `uv run --project "$COBOOSE_ROOT" coboose <command>` / `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`) from any cwd. Sibling clones are not a uv project; `uv run coboose` fails there with Failed to spawn. Jira command choice, flags, and output shapes live in the jira-cli skill. Figma image, comment, and scoped-node exports live in the figma-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start. VS Code Agents skill copies live in skills-install.
+Prefer `uv` for Python. Run the CLI as `uv run coboose <command>` **from this Coboose repo**, or `uv run --project "$COBOOSE_ROOT" coboose <command>` / `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`) from any cwd. Sibling clones are not a uv project; `uv run coboose` fails there with Failed to spawn. For a full command catalog, run `uv run coboose commands --format json` (or read `docs/cli.md`). Jira command choice, flags, and output shapes live in the jira-cli skill. Figma image, comment, and scoped-node exports live in the figma-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start. VS Code Agents skill copies live in skills-install.
 
 ```bash
 uv run coboose templates

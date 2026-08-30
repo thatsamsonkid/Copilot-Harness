@@ -10,6 +10,7 @@ from coboose.bootstrap import bootstrap_project
 from coboose.branch import align_branches
 from coboose.catalog import catalog_to_dict, load_catalog
 from coboose.clone import clone_repos
+from coboose.commands import command_reference
 from coboose.context import collect_context
 from coboose.doctor import run_doctor
 from coboose.envspec import find_var, list_env, set_env_value, unset_env_value
@@ -82,6 +83,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"coboose {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    commands = sub.add_parser(
+        "commands",
+        aliases=["help"],
+        parents=[shared],
+        help="Quick reference of every coboose command",
+    )
+    commands.add_argument(
+        "group",
+        nargs="?",
+        help="Show one group or command (jira, figma, start, …)",
+    )
 
     clone = sub.add_parser(
         "clone",
@@ -675,6 +688,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def dispatch(args: argparse.Namespace) -> Any:
+    if args.command in {"commands", "help"}:
+        return command_reference(build_parser(), group=getattr(args, "group", None))
     coboose_root = Path(args.root).resolve() if args.root else find_coboose_root()
     load_dotenv_files(coboose_root)
     catalog = load_catalog(
