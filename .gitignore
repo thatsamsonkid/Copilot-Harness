@@ -16,11 +16,13 @@ build/
 handoffs/*.md
 !handoffs/.gitkeep
 
-# Local-only workspaces from `coboose workspace create --personal`
+# Local-only workspaces from `goat workspace create --personal`
 workspaces/personal/*
 !workspaces/personal/README.md
 
 # Lifted / pulled agent skills (VS Code Agents multi-root shim)
+.goat/
 .coboose/
 .github/skills/.gitignore
+.github/skills/*/.goat-source.json
 .github/skills/*/.coboose-source.json

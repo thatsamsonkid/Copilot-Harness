@@ -1,0 +1,13 @@
+"""Yard Goat CLI — a Copilot Kit for sibling repos, workspaces, Jira Cloud, Figma, and Bruno."""
+
+__version__ = "0.1.0"
+
+
+class GoatError(Exception):
+    """User-facing failure with an exit code."""
+
+    def __init__(self, message: str, code: int = 1, payload: dict | None = None) -> None:
+        super().__init__(message)
+        self.message = message
+        self.code = code
+        self.payload = payload

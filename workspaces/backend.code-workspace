@@ -1,7 +1,7 @@
 {
   "folders": [
     {
-      "name": "coboose",
+      "name": "goat",
       "path": ".."
     },
     {
@@ -21,19 +21,19 @@
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
     "chat.useCustomizationsInParentRepositories": true,
     "terminal.integrated.env.linux": {
-      "COBOOSE_ROOT": "${workspaceFolder:coboose}",
-      "COBOOSE_WORKSPACE": "backend",
-      "COBOOSE_WORKSPACE_FILE": "${workspaceFile}"
+      "GOAT_ROOT": "${workspaceFolder:goat}",
+      "GOAT_WORKSPACE": "backend",
+      "GOAT_WORKSPACE_FILE": "${workspaceFile}"
     },
     "terminal.integrated.env.osx": {
-      "COBOOSE_ROOT": "${workspaceFolder:coboose}",
-      "COBOOSE_WORKSPACE": "backend",
-      "COBOOSE_WORKSPACE_FILE": "${workspaceFile}"
+      "GOAT_ROOT": "${workspaceFolder:goat}",
+      "GOAT_WORKSPACE": "backend",
+      "GOAT_WORKSPACE_FILE": "${workspaceFile}"
     },
     "terminal.integrated.env.windows": {
-      "COBOOSE_ROOT": "${workspaceFolder:coboose}",
-      "COBOOSE_WORKSPACE": "backend",
-      "COBOOSE_WORKSPACE_FILE": "${workspaceFile}"
+      "GOAT_ROOT": "${workspaceFolder:goat}",
+      "GOAT_WORKSPACE": "backend",
+      "GOAT_WORKSPACE_FILE": "${workspaceFile}"
     }
   },
   "extensions": {
@@ -42,7 +42,7 @@
       "GitHub.copilot-chat"
     ]
   },
-  "coboose": {
+  "goat": {
     "id": "backend",
     "name": "Backend",
     "description": "API, services, and data changes",
@@ -52,6 +52,6 @@
       "api-collections"
     ],
     "tags": [],
-    "include_coboose": true
+    "include_goat": true
   }
 }

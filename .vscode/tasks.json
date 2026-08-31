@@ -2,42 +2,42 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Coboose: setup",
+      "label": "Goat: setup",
       "type": "shell",
       "command": "./scripts/setup.sh",
       "problemMatcher": [],
       "presentation": { "reveal": "always" }
     },
     {
-      "label": "Coboose: clone sibling repos",
+      "label": "Goat: clone sibling repos",
       "type": "shell",
       "command": "./scripts/clone-repos.sh",
       "problemMatcher": [],
       "presentation": { "reveal": "always" }
     },
     {
-      "label": "Coboose: list templates",
+      "label": "Goat: list templates",
       "type": "shell",
-      "command": "uv run coboose templates --format text",
+      "command": "uv run goat templates --format text",
       "problemMatcher": []
     },
     {
-      "label": "Coboose: generate workspaces",
+      "label": "Goat: generate workspaces",
       "type": "shell",
-      "command": "uv run coboose workspace generate",
+      "command": "uv run goat workspace generate",
       "problemMatcher": []
     },
     {
-      "label": "Coboose: create workspace",
+      "label": "Goat: create workspace",
       "type": "shell",
-      "command": "uv run coboose workspace create",
+      "command": "uv run goat workspace create",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "Coboose: doctor",
+      "label": "Goat: doctor",
       "type": "shell",
-      "command": "uv run coboose doctor",
+      "command": "uv run goat doctor",
       "problemMatcher": []
     },
     {

@@ -17,18 +17,18 @@ if [[ ! -f .env && -f .env.example ]]; then
   echo "Created .env from .env.example — fill in Jira values."
 fi
 
-uv run coboose workspace generate
+uv run goat workspace generate
 echo "Setup complete. First-run checklist:"
-uv run coboose init --format text || true
+uv run goat init --format text || true
 echo "Next:"
 echo "  1. Create a Jira API token (docs/jira-api-token.md), set email/URL in .env,"
-echo "     then run: uv run coboose jira login"
-echo "     (or: uv run coboose init --interactive)"
+echo "     then run: uv run goat jira login"
+echo "     (or: uv run goat init --interactive)"
 echo "  2. Edit repositories.yml, then ./scripts/clone-repos.sh"
 echo "  3. In Copilot Chat: /get-started"
-echo "Register coboose on PATH (any cwd):"
-uv run coboose install --format text || true
-echo "Run the CLI with: coboose <command>  (or: uv run coboose <command>)"
-echo "From a sibling clone: coboose <command>"
-echo "  or: uv run --project \"$ROOT\" coboose <command>"
-echo "  or: \"$ROOT/scripts/coboose.sh\" <command>"
+echo "Register goat on PATH (any cwd):"
+uv run goat install --format text || true
+echo "Run the CLI with: goat <command>  (or: uv run goat <command>)"
+echo "From a sibling clone: goat <command>"
+echo "  or: uv run --project \"$ROOT\" goat <command>"
+echo "  or: \"$ROOT/scripts/goat.sh\" <command>"

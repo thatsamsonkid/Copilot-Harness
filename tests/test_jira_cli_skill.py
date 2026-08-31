@@ -26,7 +26,7 @@ def test_skill_description_covers_triggers_and_forbidden_paths():
     description = meta["description"]
     assert 1 <= len(description) <= 1024
     lowered = description.lower()
-    for token in ("jira", "prepare", "coboose", ".env", "mcp"):
+    for token in ("jira", "prepare", "goat", ".env", "mcp"):
         assert token in lowered
     assert meta.get("argument-hint") == "PROJ-123"
 
@@ -35,7 +35,7 @@ def test_skill_body_is_the_cli_contract():
     _, body = _frontmatter_and_body()
     lowered = body.lower()
     for token in (
-        "uv run coboose prepare",
+        "uv run goat prepare",
         "jira get",
         "jira context",
         "jira search",
@@ -44,8 +44,8 @@ def test_skill_body_is_the_cli_contract():
         "jira whoami",
         "jira login",
         "env list",
-        "coboose init",
-        "coboose context",
+        "goat init",
+        "goat context",
         "routing.open_command",
         "jira.fields",
         "do not pass `--clone-missing`",

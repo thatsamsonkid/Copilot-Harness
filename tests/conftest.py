@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from coboose.keychain import MemoryStore, reset_store, set_store
-from tests.helpers import load_test_catalog, write_coboose_config
+from goat.keychain import MemoryStore, reset_store, set_store
+from tests.helpers import load_test_catalog, write_goat_config
 
 
 @pytest.fixture(autouse=True)
@@ -86,12 +86,12 @@ def sample_catalog_data() -> dict:
 
 
 @pytest.fixture
-def coboose_root(tmp_path: Path, sample_catalog_data: dict) -> Path:
-    root = tmp_path / "parent" / "Coboose"
-    write_coboose_config(root, sample_catalog_data)
+def goat_root(tmp_path: Path, sample_catalog_data: dict) -> Path:
+    root = tmp_path / "parent" / "Goat"
+    write_goat_config(root, sample_catalog_data)
     return root
 
 
 @pytest.fixture
-def catalog(coboose_root: Path):
-    return load_test_catalog(coboose_root)
+def catalog(goat_root: Path):
+    return load_test_catalog(goat_root)

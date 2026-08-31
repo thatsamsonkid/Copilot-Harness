@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Idempotent Cloud Agent bootstrap for the Coboose.
+# Idempotent Cloud Agent bootstrap for the Goat.
 # Installs uv (exposed on the system PATH), syncs the locked dependencies,
 # and pre-generates the feature workspace files.
 set -euo pipefail
@@ -28,6 +28,6 @@ export PATH="$HOME/.local/bin:$PATH"
 uv sync --frozen
 
 # Pre-generate the .code-workspace files so they are ready to open.
-uv run coboose workspace generate >/dev/null
+uv run goat workspace generate >/dev/null
 
-echo "Coboose environment ready. Run: uv run coboose <command>"
+echo "Goat environment ready. Run: uv run goat <command>"

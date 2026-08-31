@@ -4,8 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
-from coboose.cli import main
-from coboose.status import collect_status
+from goat.cli import main
+from goat.status import collect_status
 
 
 def _init_git(path: Path, *, branch: str = "main") -> None:
@@ -18,23 +18,23 @@ def _init_git(path: Path, *, branch: str = "main") -> None:
     subprocess.run(["git", "commit", "-m", "init"], cwd=path, check=True, capture_output=True)
 
 
-def test_status_reports_dirty_sibling(catalog, coboose_root: Path):
-    frontend = coboose_root.parent / "frontend"
+def test_status_reports_dirty_sibling(catalog, goat_root: Path):
+    frontend = goat_root.parent / "frontend"
     _init_git(frontend)
     (frontend / "dirty.txt").write_text("nope\n", encoding="utf-8")
-    payload = collect_status(catalog, coboose_root, only=["frontend"], cwd=coboose_root)
+    payload = collect_status(catalog, goat_root, only=["frontend"], cwd=goat_root)
     repo = payload["repos"][0]
     assert repo["git"]["present"] is True
     assert repo["git"]["dirty"] is True
     assert payload["dirty_repos"] == ["frontend"]
-    assert payload["cwd_hint"]["kind"] == "coboose"
+    assert payload["cwd_hint"]["kind"] == "goat"
 
 
-def test_status_cli_and_cwd_sibling_hint(catalog, coboose_root: Path, capsys, monkeypatch):
-    frontend = coboose_root.parent / "frontend"
+def test_status_cli_and_cwd_sibling_hint(catalog, goat_root: Path, capsys, monkeypatch):
+    frontend = goat_root.parent / "frontend"
     _init_git(frontend)
     monkeypatch.chdir(frontend)
-    assert main(["--root", str(coboose_root), "status", "--repo", "frontend", "--format", "json"]) == 0
+    assert main(["--root", str(goat_root), "status", "--repo", "frontend", "--format", "json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["cwd_hint"]["kind"] == "sibling"
     assert payload["cwd_hint"]["repo"] == "frontend"
@@ -42,22 +42,22 @@ def test_status_cli_and_cwd_sibling_hint(catalog, coboose_root: Path, capsys, mo
 
 
 def test_status_cwd_hint_uses_nested_group_path(
-    sample_catalog_data: dict, coboose_root: Path
+    sample_catalog_data: dict, goat_root: Path
 ):
-    from coboose.catalog import load_catalog
-    from tests.helpers import write_coboose_config
+    from goat.catalog import load_catalog
+    from tests.helpers import write_goat_config
 
     sample_catalog_data["repos"][0]["name"] = "shop-web"
     sample_catalog_data["repos"][0]["group"] = "frontend"
     sample_catalog_data["repos"][0].pop("path", None)
     sample_catalog_data["workspaces"][0]["folders"] = ["shop-web", "backend"]
-    write_coboose_config(coboose_root, sample_catalog_data)
-    catalog = load_catalog(coboose_root)
-    clone = coboose_root.parent / "frontend" / "shop-web"
+    write_goat_config(goat_root, sample_catalog_data)
+    catalog = load_catalog(goat_root)
+    clone = goat_root.parent / "frontend" / "shop-web"
     _init_git(clone)
     (clone / "src").mkdir()
 
-    inside = collect_status(catalog, coboose_root, only=["shop-web"], cwd=clone / "src")
+    inside = collect_status(catalog, goat_root, only=["shop-web"], cwd=clone / "src")
     assert inside["cwd_hint"]["kind"] == "sibling"
     assert inside["cwd_hint"]["repo"] == "shop-web"
     assert inside["cwd_hint"]["relpath"] == "frontend/shop-web"
@@ -65,7 +65,7 @@ def test_status_cwd_hint_uses_nested_group_path(
     assert inside["repos"][0]["group"] == "frontend"
 
     group_dir = collect_status(
-        catalog, coboose_root, only=["shop-web"], cwd=coboose_root.parent / "frontend"
+        catalog, goat_root, only=["shop-web"], cwd=goat_root.parent / "frontend"
     )
     assert group_dir["cwd_hint"]["kind"] == "parent_dir"
     assert "group folder" in group_dir["cwd_hint"]["detail"]

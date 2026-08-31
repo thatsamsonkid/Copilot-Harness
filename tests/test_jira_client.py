@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from coboose import CobooseError
-from coboose.http import HttpResponse
-from coboose.jira_client import JiraClient, parse_issue_key
-from coboose.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
+from goat import GoatError
+from goat.http import HttpResponse
+from goat.jira_client import JiraClient, parse_issue_key
+from goat.jira_fields import DEFAULT_OUTPUT_FIELDS, JiraSettings
 
 
 class FakeHttp:
@@ -30,7 +30,7 @@ def _json(payload, status=200) -> HttpResponse:
 def test_parse_issue_key_from_url_and_plain():
     assert parse_issue_key("WEB-42") == "WEB-42"
     assert parse_issue_key("https://acme.atlassian.net/browse/WEB-42") == "WEB-42"
-    with pytest.raises(CobooseError):
+    with pytest.raises(GoatError):
         parse_issue_key("not-a-ticket")
 
 
@@ -228,7 +228,7 @@ def test_auth_error_mentions_keychain_or_env():
         }
     )
     client = JiraClient("https://acme.atlassian.net", "a@b.com", "bad", http=http)
-    with pytest.raises(CobooseError, match="authentication") as exc:
+    with pytest.raises(GoatError, match="authentication") as exc:
         client.myself()
     assert "keychain" in exc.value.message.lower()
     assert ".env" in exc.value.message

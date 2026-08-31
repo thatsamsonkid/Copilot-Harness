@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from coboose import CobooseError
-from coboose.launch import (
+from goat import GoatError
+from goat.launch import (
     load_launch_runtime,
     read_jsonc,
     resolve_launch_value,
@@ -126,7 +126,7 @@ def test_load_launch_runtime_resolves_env_substitutions(tmp_path: Path):
 
 
 def test_select_configuration_requires_known_name():
-    with pytest.raises(CobooseError, match="no configuration named"):
+    with pytest.raises(GoatError, match="no configuration named"):
         select_configuration(
             [{"name": "Launch Backend", "request": "launch"}],
             name="Missing",

@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from coboose import CobooseError
-from coboose.figma_client import FigmaClient, parse_figma_target
-from coboose.figma_fields import FigmaSettings
-from coboose.http import HttpResponse
+from goat import GoatError
+from goat.figma_client import FigmaClient, parse_figma_target
+from goat.figma_fields import FigmaSettings
+from goat.http import HttpResponse
 
 
 class FakeHttp:
@@ -44,7 +44,7 @@ def test_parse_figma_target_from_url_and_key():
     assert key.file_key == "AbCdEfGhIjKlMnOpQr"
     assert key.node_ids == ("12:34", "56:78")
 
-    with pytest.raises(CobooseError):
+    with pytest.raises(GoatError):
         parse_figma_target("not a figma link")
 
 
@@ -85,13 +85,13 @@ def test_get_images_projects_urls_and_drops_failed_nodes():
 
 def test_get_images_requires_node_id():
     client = FigmaClient("figd_test", http=FakeHttp({}))
-    with pytest.raises(CobooseError, match="node id"):
+    with pytest.raises(GoatError, match="node id"):
         client.get_images("AbCdEfGhIjKlMnOpQr")
 
 
 def test_get_images_respects_max_ids():
     client = FigmaClient("figd_test", http=FakeHttp({}))
-    with pytest.raises(CobooseError, match="max is 1"):
+    with pytest.raises(GoatError, match="max is 1"):
         client.get_images(
             "AbCdEfGhIjKlMnOpQr",
             ids=["1:1", "1:2"],
@@ -101,7 +101,7 @@ def test_get_images_respects_max_ids():
 
 def test_get_images_rejects_unknown_format():
     client = FigmaClient("figd_test", http=FakeHttp({}))
-    with pytest.raises(CobooseError, match="format"):
+    with pytest.raises(GoatError, match="format"):
         client.get_images(
             "AbCdEfGhIjKlMnOpQr",
             ids=["1:1"],
@@ -127,7 +127,7 @@ def test_myself_hides_raw_profile_fields():
 
 
 def test_images_markdown_lists_urls():
-    from coboose.output import render
+    from goat.output import render
 
     payload = {
         "file_key": "AbCdEfGhIjKlMnOpQr",
@@ -148,7 +148,7 @@ def test_auth_failure_does_not_echo_token():
     http = FakeHttp(
         {("GET", "https://api.figma.com/v1/me"): _json({"err": "bad"}, status=403)}
     )
-    with pytest.raises(CobooseError, match="denied") as exc:
+    with pytest.raises(GoatError, match="denied") as exc:
         FigmaClient("figd_secret", http=http).myself()
     assert "figd_secret" not in str(exc.value)
 
@@ -276,7 +276,7 @@ def test_comments_403_mentions_file_comments_scope():
             )
         }
     )
-    with pytest.raises(CobooseError, match="file_comments:read") as exc:
+    with pytest.raises(GoatError, match="file_comments:read") as exc:
         FigmaClient("figd_secret", http=http).get_comments("AbCdEfGhIjKlMnOpQr")
     assert "figd_secret" not in str(exc.value)
 
@@ -327,9 +327,9 @@ def test_get_nodes_passes_raw_figma_objects():
 
 def test_get_nodes_requires_node_id_and_caps_depth():
     client = FigmaClient("figd_test", http=FakeHttp({}))
-    with pytest.raises(CobooseError, match="node id"):
+    with pytest.raises(GoatError, match="node id"):
         client.get_nodes("AbCdEfGhIjKlMnOpQr")
-    with pytest.raises(CobooseError, match="max_depth"):
+    with pytest.raises(GoatError, match="max_depth"):
         client.get_nodes(
             "AbCdEfGhIjKlMnOpQr",
             ids=["1:1"],
@@ -339,7 +339,7 @@ def test_get_nodes_requires_node_id_and_caps_depth():
 
 
 def test_nodes_and_comments_markdown():
-    from coboose.output import render
+    from goat.output import render
 
     comments = render(
         {
