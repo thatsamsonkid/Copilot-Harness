@@ -27,10 +27,10 @@ coboose = "goat.cli:main"
 default-groups = ["dev"]
 package = true
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = ["goat"]
+package-dir = {goat = "src"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
 addopts = "-q --import-mode=prepend"

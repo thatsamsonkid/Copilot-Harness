@@ -80,7 +80,7 @@ def test_rejects_slash_in_repo_name(tmp_path: Path, sample_catalog_data: dict):
 
 
 def test_find_goat_root_from_nested_cwd(goat_root: Path, monkeypatch: pytest.MonkeyPatch):
-    nested = goat_root / "src" / "goat"
+    nested = goat_root / "src"
     nested.mkdir(parents=True)
     monkeypatch.chdir(nested)
     monkeypatch.delenv("GOAT_ROOT", raising=False)
