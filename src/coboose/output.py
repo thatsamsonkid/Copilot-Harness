@@ -49,6 +49,8 @@ def to_text(payload: Any) -> str:
         return _commands_text(payload)
     if _is_bruno(payload):
         return _bruno_text(payload)
+    if _is_cli_install(payload):
+        return _cli_install_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -89,6 +91,8 @@ def to_markdown(payload: Any) -> str:
         return _commands_markdown(payload)
     if _is_bruno(payload):
         return _bruno_markdown(payload)
+    if _is_cli_install(payload):
+        return _cli_install_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -645,6 +649,57 @@ def _is_skills(payload: Any) -> bool:
         and "issue" not in payload
         and "services" not in payload
     )
+
+
+def _is_cli_install(payload: Any) -> bool:
+    return isinstance(payload, dict) and payload.get("kind") == "cli_install"
+
+
+def _cli_install_text(payload: dict[str, Any]) -> str:
+    action = payload.get("action") or "install"
+    verb = "Uninstalled" if action == "uninstall" else "Installed"
+    if payload.get("dry_run"):
+        verb = f"Would {action}"
+    lines = [
+        f"{verb} coboose PATH shim",
+        "",
+        f"root: {payload.get('coboose_root')}",
+        f"bin:  {payload.get('bin_dir')}",
+    ]
+    for shim in payload.get("shims") or []:
+        state = []
+        if shim.get("written"):
+            state.append("written")
+        if shim.get("removed"):
+            state.append("removed")
+        if shim.get("would_write"):
+            state.append("would write")
+        if shim.get("would_remove"):
+            state.append("would remove")
+        if not state and shim.get("existed"):
+            state.append("present")
+        extra = f" ({', '.join(state)})" if state else ""
+        lines.append(f"shim: {shim.get('path')}{extra}")
+    if payload.get("on_path"):
+        lines.append(f"on PATH: yes ({payload.get('which') or 'bin dir'})")
+        if payload.get("shadowed_by"):
+            lines.append(f"shadowed by: {payload['shadowed_by']}")
+    else:
+        lines.append("on PATH: no")
+        hint = payload.get("path_hint")
+        if hint:
+            lines.append(hint)
+    next_commands = payload.get("next") or []
+    if next_commands:
+        lines.append("")
+        lines.append("Next:")
+        for command in next_commands:
+            lines.append(f"  {command}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _cli_install_markdown(payload: dict[str, Any]) -> str:
+    return "```text\n" + _cli_install_text(payload) + "```\n"
 
 
 def _is_commands(payload: Any) -> bool:

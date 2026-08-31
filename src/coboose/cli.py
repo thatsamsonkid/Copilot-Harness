@@ -23,6 +23,7 @@ from coboose.doctor import run_doctor
 from coboose.envspec import find_var, list_env, set_env_value, unset_env_value
 from coboose.figma_client import FigmaClient, figma_token_from_env, figma_var
 from coboose.handoff import latest_handoff, list_handoffs, write_handoff
+from coboose.install import install_cli, resolve_install_root, uninstall_cli
 from coboose.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
 from coboose.keychain import login_token, logout_token
 from coboose.onboard import run_init
@@ -524,6 +525,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     init.add_argument("--ping-jira", action="store_true")
 
+    install = sub.add_parser(
+        "install",
+        parents=[shared],
+        help="Register coboose on PATH so it runs from any directory",
+    )
+    _add_install_flags(install)
+
+    uninstall = sub.add_parser(
+        "uninstall",
+        parents=[shared],
+        help="Remove the coboose PATH shim written by coboose install",
+    )
+    _add_install_flags(uninstall)
+
     context = sub.add_parser(
         "context",
         parents=[shared],
@@ -793,6 +808,8 @@ def build_parser() -> argparse.ArgumentParser:
 def dispatch(args: argparse.Namespace) -> Any:
     if args.command in {"commands", "help"}:
         return command_reference(build_parser(), group=getattr(args, "group", None))
+    if args.command in {"install", "uninstall"}:
+        return _dispatch_install(args)
     coboose_root = Path(args.root).resolve() if args.root else find_coboose_root()
     load_dotenv_files(coboose_root)
     catalog = load_catalog(
@@ -1304,6 +1321,32 @@ def _dispatch_skills(args: argparse.Namespace, catalog: Any, coboose_root: Path)
             prompt=prompt,
         )
     raise CobooseError(f"Unknown skills command: {args.skills_command}")
+
+
+def _dispatch_install(args: argparse.Namespace) -> Any:
+    coboose_root = resolve_install_root(getattr(args, "root", None))
+    kwargs = {
+        "bin_dir": getattr(args, "bin_dir", None),
+        "force": bool(getattr(args, "force", False)),
+        "dry_run": bool(getattr(args, "dry_run", False)),
+    }
+    if args.command == "uninstall":
+        return uninstall_cli(coboose_root, **kwargs)
+    return install_cli(coboose_root, **kwargs)
+
+
+def _add_install_flags(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--bin-dir",
+        type=Path,
+        help="Override the user bin directory (default: ~/.local/bin)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite or remove a file that is not a coboose shim",
+    )
+    parser.add_argument("--dry-run", action="store_true")
 
 
 def _add_skills_dest_flag(parser: argparse.ArgumentParser) -> None:

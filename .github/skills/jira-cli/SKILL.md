@@ -85,7 +85,7 @@ This skill is the CLI contract, not an implementer.
 | 401 / 403 from the CLI | Tell them to rotate the Atlassian API token and run `uv run coboose jira login` |
 | Placeholder clone URLs | Tell them to edit `repositories.yml`; do not invent remotes |
 | `uv` missing | `docs/install-uv.md` — macOS/Linux `setup.sh`, Windows `setup.ps1` |
-| `Failed to spawn: coboose` / no `pyproject.toml` | Cwd is a sibling. Re-run from the coboose folder or `uv run --project "$COBOOSE_ROOT" coboose …` |
+| `Failed to spawn: coboose` / no `pyproject.toml` | Cwd is a sibling. Re-run from the coboose folder, `uv run --project "$COBOOSE_ROOT" coboose …`, or `uv run coboose install` so `coboose` is on PATH |
 
 ## Related Copilot customizations
 

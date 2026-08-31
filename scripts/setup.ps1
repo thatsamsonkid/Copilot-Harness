@@ -33,6 +33,13 @@ Write-Host "     then run: uv run coboose jira login"
 Write-Host "     (or: uv run coboose init --interactive)"
 Write-Host "  2. Edit repositories.yml, then ./scripts/clone-repos.sh"
 Write-Host "  3. In Copilot Chat: /get-started"
-Write-Host "Run the CLI with: uv run coboose <command>"
-Write-Host "From a sibling clone: uv run --project `"$Root`" coboose <command>"
+Write-Host "Register coboose on PATH (any cwd):"
+try {
+    uv run coboose install --format text
+} catch {
+    Write-Host "coboose install skipped: $_"
+}
+Write-Host "Run the CLI with: coboose <command>  (or: uv run coboose <command>)"
+Write-Host "From a sibling clone: coboose <command>"
+Write-Host "  or: uv run --project `"$Root`" coboose <command>"
 Write-Host "  or: $Root\scripts\coboose.ps1 <command>"
