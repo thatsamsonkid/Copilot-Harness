@@ -678,6 +678,8 @@ def _cli_install_text(payload: dict[str, Any]) -> str:
         lines.append(f"shim: {shim.get('path')}{extra}")
     if payload.get("on_path"):
         lines.append(f"on PATH: yes ({payload.get('which') or 'bin dir'})")
+        if payload.get("shadowed_by"):
+            lines.append(f"shadowed by: {payload['shadowed_by']}")
     else:
         lines.append("on PATH: no")
         hint = payload.get("path_hint")

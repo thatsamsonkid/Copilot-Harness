@@ -111,6 +111,49 @@ def test_dry_run_does_not_write(tmp_path: Path, coboose_root: Path):
     assert not (bin_dir / "coboose").exists()
 
 
+def test_path_status_prefers_shim_over_venv_which(
+    tmp_path: Path, coboose_root: Path
+):
+    bin_dir = tmp_path / "bin"
+    install_cli(coboose_root, bin_dir=bin_dir, system="Linux")
+    venv = tmp_path / "venv" / "coboose"
+    venv.parent.mkdir()
+    venv.write_text("#!/bin/sh\n", encoding="utf-8")
+    status = cli_path_status(
+        coboose_root,
+        bin_dir=bin_dir,
+        system="Linux",
+        environ={"PATH": str(bin_dir)},
+        which=lambda _name: str(venv),
+    )
+    assert status["on_path"] is True
+    assert status["which"] == str(bin_dir / "coboose")
+    assert status["shadowed_by"] == str(venv)
+    assert str(bin_dir / "coboose") in status["detail"]
+    assert str(venv) in status["detail"]
+
+
+def test_path_status_ignores_kit_venv_shadow(
+    tmp_path: Path, coboose_root: Path
+):
+    bin_dir = tmp_path / "bin"
+    install_cli(coboose_root, bin_dir=bin_dir, system="Linux")
+    venv = coboose_root / ".venv" / "bin" / "coboose"
+    venv.parent.mkdir(parents=True)
+    venv.write_text("#!/bin/sh\n", encoding="utf-8")
+    status = cli_path_status(
+        coboose_root,
+        bin_dir=bin_dir,
+        system="Linux",
+        environ={"PATH": str(bin_dir)},
+        which=lambda _name: str(venv),
+    )
+    assert status["on_path"] is True
+    assert status["which"] == str(bin_dir / "coboose")
+    assert status["shadowed_by"] is None
+    assert ".venv" not in status["detail"]
+
+
 def test_path_status_reports_missing_bin_dir(tmp_path: Path, coboose_root: Path):
     bin_dir = tmp_path / "bin"
     install_cli(coboose_root, bin_dir=bin_dir, system="Linux")

@@ -80,14 +80,29 @@ def cli_path_status(
     which_ours = bool(which_path and is_our_shim(Path(which_path)))
     bin_on_path = _bin_dir_on_path(dest, environ)
     on_path = which_ours or (bool(installed) and bin_on_path)
-    if on_path:
-        shown = which_path or str(installed[0])
+    shadowed_by = None
+    if (
+        which_path
+        and not which_ours
+        and installed
+        and not _is_kit_venv_entry(Path(which_path), coboose_root)
+    ):
+        shadowed_by = which_path
+    if which_ours:
+        shown = which_path
         detail = f"coboose is on PATH ({shown})"
+    elif installed and bin_on_path:
+        shown = str(installed[0])
+        detail = f"coboose is on PATH ({shown})"
+        if shadowed_by:
+            detail = f"{detail}; another coboose is first ({shadowed_by})"
     elif installed:
+        shown = None
         detail = (
             f"shim is installed at {dest} but that directory is not on PATH"
         )
     else:
+        shown = which_path
         detail = "coboose is not registered on PATH"
     return {
         "os": family,
@@ -96,7 +111,8 @@ def cli_path_status(
         "installed": bool(installed),
         "on_path": on_path,
         "bin_dir_on_path": bin_on_path,
-        "which": which_path,
+        "which": shown if on_path else which_path,
+        "shadowed_by": shadowed_by,
         "detail": detail,
         "path_hint": None if on_path else PATH_HINTS[family],
         "shims": [str(path) for path in paths],
@@ -202,6 +218,7 @@ def _apply(
         "on_path": status["on_path"],
         "bin_dir_on_path": status["bin_dir_on_path"],
         "which": status["which"],
+        "shadowed_by": status["shadowed_by"],
         "detail": status["detail"],
         "path_hint": status["path_hint"],
         "next": _next_commands(status, dry_run=dry_run, action=action),
@@ -324,6 +341,15 @@ def _bin_dir_on_path(
         if _norm_dir(Path(part)) == target:
             return True
     return False
+
+
+def _is_kit_venv_entry(path: Path, coboose_root: Path) -> bool:
+    try:
+        resolved = Path(path).resolve()
+        venv = (Path(coboose_root) / ".venv").resolve()
+    except OSError:
+        return False
+    return venv in resolved.parents
 
 
 def _norm_dir(path: Path) -> str:
