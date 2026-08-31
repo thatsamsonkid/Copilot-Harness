@@ -2,7 +2,7 @@
 
 This repo is **Coboose**, a Copilot Kit — not the product codebase.
 
-Application repositories are cloned **next to** this folder (flat siblings, or grouped under `parent_dir` folders such as `frontend/`, `backend/`, `infra/`, `shared/`). The full-app list lives in `repositories.yml`. Starter remotes for new projects live in `templates.yml`. See also `catalog/stack.yaml` and `.github/copilot-instructions.md`.
+Application repositories are cloned **next to** this folder (flat siblings, or grouped under `parent_dir` folders such as `frontend/`, `backend/`, `infra/`, `shared/`). The full-app list lives in `repositories.yml`. Starter remotes for new projects live in `templates.yml`. Feature workspaces and Jira routing live in `catalog/stack.yaml`; `workspaces/*.code-workspace` files are generated from that catalog (`coboose workspace generate`, or `--check` to detect drift). See also `.github/copilot-instructions.md`.
 
 Run `uv run coboose …` from this Coboose repo (or `uv run --project "$COBOOSE_ROOT" coboose …` / `./scripts/coboose.sh`). After `cd` into a sibling clone, bare `uv run coboose` cannot spawn. `uv run coboose install` writes a `~/.local/bin` shim so `coboose` works from any cwd (macOS, Linux, Windows). Full command catalog: `uv run coboose commands --format json` or [docs/cli.md](docs/cli.md).
 

@@ -10,6 +10,7 @@ from coboose import CobooseError
 from coboose.catalog import Catalog, Workspace
 from coboose.envspec import vars_for
 from coboose.invoke import COBOOSE_FOLDER_NAME, terminal_env_settings
+from coboose.paths import WORKSPACES_DIR
 
 
 def workspace_document(catalog: Catalog, coboose_root: Path, workspace: Workspace) -> dict[str, Any]:
@@ -66,19 +67,36 @@ def workspace_document(catalog: Catalog, coboose_root: Path, workspace: Workspac
     }
 
 
+def workspace_file_text(
+    catalog: Catalog, coboose_root: Path, workspace: Workspace
+) -> str:
+    return json.dumps(workspace_document(catalog, coboose_root, workspace), indent=2) + "\n"
+
+
 def write_workspace_file(
     catalog: Catalog, coboose_root: Path, workspace: Workspace
 ) -> dict[str, Any]:
     path = catalog.workspace_file(coboose_root, workspace)
     path.parent.mkdir(parents=True, exist_ok=True)
     document = workspace_document(catalog, coboose_root, workspace)
-    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    text = workspace_file_text(catalog, coboose_root, workspace)
+    existed = path.exists()
+    previous = path.read_text(encoding="utf-8") if existed else None
+    path.write_text(text, encoding="utf-8")
+    if not existed:
+        action = "created"
+    elif previous != text:
+        action = "updated"
+    else:
+        action = "unchanged"
     return {
         "id": workspace.id,
         "name": workspace.name,
         "personal": workspace.personal,
         "file": str(path),
         "folders": [folder["name"] for folder in document["folders"]],
+        "action": action,
+        "changed": action != "unchanged",
     }
 
 
@@ -88,6 +106,79 @@ def generate_workspaces(catalog: Catalog, coboose_root: Path) -> list[dict[str, 
         for workspace in catalog.workspaces
         if not workspace.personal
     ]
+
+
+def workspace_file_status(
+    catalog: Catalog, coboose_root: Path, workspace: Workspace
+) -> dict[str, Any]:
+    path = catalog.workspace_file(coboose_root, workspace)
+    payload: dict[str, Any] = {
+        "id": workspace.id,
+        "name": workspace.name,
+        "file": str(path),
+        "exists": path.exists(),
+        "personal": workspace.personal,
+    }
+    if workspace.personal:
+        payload["status"] = "personal"
+        return payload
+    if not path.exists():
+        payload["status"] = "missing"
+        return payload
+    actual = path.read_text(encoding="utf-8")
+    expected = workspace_file_text(catalog, coboose_root, workspace)
+    payload["status"] = "ok" if actual == expected else "stale"
+    return payload
+
+
+def check_workspaces(catalog: Catalog, coboose_root: Path) -> dict[str, Any]:
+    """Compare shared catalog/stack.yaml workspaces to workspaces/*.code-workspace."""
+    shared = [workspace for workspace in catalog.workspaces if not workspace.personal]
+    expected_ids = {workspace.id for workspace in shared}
+    workspaces = [
+        workspace_file_status(catalog, coboose_root, workspace) for workspace in shared
+    ]
+    missing = [item["id"] for item in workspaces if item["status"] == "missing"]
+    stale = [item["id"] for item in workspaces if item["status"] == "stale"]
+    orphans: list[dict[str, str]] = []
+    directory = coboose_root / WORKSPACES_DIR
+    if directory.is_dir():
+        for path in sorted(directory.glob("*.code-workspace")):
+            if not path.is_file() or path.stem in expected_ids:
+                continue
+            orphans.append({"id": path.stem, "file": str(path), "status": "orphan"})
+    in_sync = not missing and not stale and not orphans
+    payload: dict[str, Any] = {
+        "ok": in_sync,
+        "in_sync": in_sync,
+        "workspaces": workspaces,
+        "missing": missing,
+        "stale": stale,
+        "orphans": [item["id"] for item in orphans],
+        "orphan_files": orphans,
+    }
+    if not in_sync:
+        payload["hint"] = (
+            "Run `coboose workspace generate` to rewrite workspaces/*.code-workspace "
+            "from catalog/stack.yaml. Delete orphan files or add the id to the catalog."
+        )
+    return payload
+
+
+def workspace_sync_error(status: dict[str, Any]) -> str:
+    parts: list[str] = []
+    if status.get("missing"):
+        parts.append("missing " + ", ".join(status["missing"]))
+    if status.get("stale"):
+        parts.append("stale " + ", ".join(status["stale"]))
+    if status.get("orphans"):
+        parts.append("orphan " + ", ".join(status["orphans"]))
+    detail = "; ".join(parts) if parts else "unknown drift"
+    return (
+        "Shared workspace files are out of sync with catalog/stack.yaml "
+        f"({detail}). Run `coboose workspace generate` to rewrite "
+        "workspaces/*.code-workspace from the catalog."
+    )
 
 
 def list_workspaces(catalog: Catalog, coboose_root: Path) -> list[dict[str, Any]]:
@@ -107,6 +198,7 @@ def list_workspaces(catalog: Catalog, coboose_root: Path) -> list[dict[str, Any]
                     "cloned": repo_path.exists(),
                 }
             )
+        sync = workspace_file_status(catalog, coboose_root, workspace)
         result.append(
             {
                 "id": workspace.id,
@@ -122,6 +214,8 @@ def list_workspaces(catalog: Catalog, coboose_root: Path) -> list[dict[str, Any]
                 "personal": workspace.personal,
                 "file": str(path),
                 "exists": path.exists(),
+                "sync": sync["status"],
+                "in_sync": sync["status"] in {"ok", "personal"},
                 "start_file": str(start_file),
                 "start_plan": start_file.is_file(),
                 "repos": repos,

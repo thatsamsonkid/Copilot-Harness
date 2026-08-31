@@ -36,7 +36,13 @@ from coboose.skills import lift_skills, list_skills, pull_skills, sync_root_skil
 from coboose.start import collect_start_plan, execute_start_env, execute_start_run
 from coboose.status import collect_status
 from coboose.templates import get_template, template_to_dict, templates_payload
-from coboose.workspace import generate_workspaces, list_workspaces, open_workspace
+from coboose.workspace import (
+    check_workspaces,
+    generate_workspaces,
+    list_workspaces,
+    open_workspace,
+    workspace_sync_error,
+)
 from coboose.workspace_create import create_workspace
 from coboose.workspace_detect import current_workspace_payload, resolve_workspace_scope
 
@@ -381,8 +387,18 @@ def build_parser() -> argparse.ArgumentParser:
     workspace_sub.add_parser(
         "list", parents=[shared], help="List feature workspaces"
     )
-    workspace_sub.add_parser(
-        "generate", parents=[shared], help="Write .code-workspace files from the catalog"
+    workspace_generate = workspace_sub.add_parser(
+        "generate",
+        parents=[shared],
+        help="Write .code-workspace files from catalog/stack.yaml",
+    )
+    workspace_generate.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "Fail if workspaces/*.code-workspace drift from catalog/stack.yaml; "
+            "do not write files"
+        ),
     )
     workspace_create = workspace_sub.add_parser(
         "create",
@@ -1134,6 +1150,11 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, coboose_root: Pa
     if args.workspace_command == "list":
         return {"workspaces": list_workspaces(catalog, coboose_root)}
     if args.workspace_command == "generate":
+        if getattr(args, "check", False):
+            status = check_workspaces(catalog, coboose_root)
+            if not status["ok"]:
+                raise CobooseError(workspace_sync_error(status), payload=status)
+            return {"check": True, **status}
         workspaces = generate_workspaces(catalog, coboose_root)
         return {
             "workspaces": workspaces,

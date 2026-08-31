@@ -41,7 +41,7 @@ Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`
 | `coboose templates [NAME]` | List starter remotes from `templates.yml` |
 | `coboose bootstrap [TEMPLATE]` | Clone a listed template as a new project |
 | `coboose workspace list` | List feature workspaces |
-| `coboose workspace generate` | Write `.code-workspace` files from the catalog |
+| `coboose workspace generate` | Write `.code-workspace` files from `catalog/stack.yaml` (`--check` fails on drift, no write) |
 | `coboose workspace create [ID]` | Create a workspace and pick projects from `repositories.yml` |
 | `coboose workspace match ISSUE` | Recommend a workspace for an issue |
 | `coboose workspace open ID` | Open a workspace in VS Code |

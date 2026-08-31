@@ -27,7 +27,7 @@ from coboose.keychain import (
 from coboose.onboard import onboarding_steps
 from coboose.skills import sync_root_skills
 from coboose.uv_check import detect_uv, uv_missing_action
-from coboose.workspace import generate_workspaces
+from coboose.workspace import check_workspaces, generate_workspaces
 from coboose.workspace_detect import resolve_workspace_scope, scoped_repos
 
 
@@ -227,14 +227,38 @@ def run_doctor(
                 )
             )
 
+    workspace_sync = check_workspaces(catalog, coboose_root)
     generated = generate_workspaces(catalog, coboose_root)
-    checks.append(
-        _check(
-            "workspaces",
-            bool(generated),
-            f"generated {len(generated)} workspace file(s)",
+    changed = [item["id"] for item in generated if item.get("changed")]
+    if workspace_sync["ok"]:
+        checks.append(
+            _check(
+                "workspaces",
+                True,
+                f"{len(generated)} workspace file(s) match catalog/stack.yaml",
+            )
         )
-    )
+    else:
+        parts: list[str] = []
+        if workspace_sync["missing"]:
+            parts.append("missing " + ", ".join(workspace_sync["missing"]))
+        if workspace_sync["stale"]:
+            parts.append("stale " + ", ".join(workspace_sync["stale"]))
+        if workspace_sync["orphans"]:
+            parts.append("orphan " + ", ".join(workspace_sync["orphans"]))
+        rewritten = (
+            f"rewrote {len(changed)} file(s) from catalog/stack.yaml; "
+            if changed
+            else ""
+        )
+        checks.append(
+            _check(
+                "workspaces",
+                False,
+                rewritten + "; ".join(parts),
+                ok_when_false=True,
+            )
+        )
     skills = sync_root_skills(
         catalog,
         coboose_root,
@@ -456,6 +480,7 @@ def run_doctor(
             for template in catalog.templates
         ],
         "workspaces": generated,
+        "workspace_sync": workspace_sync,
         "skills": skills,
         "jira": jira,
         "jira_token_source": source,

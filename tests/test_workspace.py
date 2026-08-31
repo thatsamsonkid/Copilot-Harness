@@ -4,7 +4,13 @@ from pathlib import Path
 from coboose.catalog import load_catalog
 from coboose.prompt import PromptSession
 from coboose.start import collect_start_plan
-from coboose.workspace import generate_workspaces, list_workspaces, workspace_document
+from coboose.workspace import (
+    check_workspaces,
+    generate_workspaces,
+    list_workspaces,
+    workspace_document,
+    workspace_sync_error,
+)
 from coboose.workspace_create import create_workspace
 from tests.helpers import write_coboose_config
 
@@ -60,6 +66,9 @@ def test_generate_and_list(catalog, coboose_root: Path):
     frontend = next(item for item in listed if item["id"] == "frontend")
     assert frontend["exists"] is True
     assert frontend["personal"] is False
+    assert frontend["sync"] == "ok"
+    assert frontend["in_sync"] is True
+    assert {item["action"] for item in written} == {"created"}
     assert frontend["repos"][0]["cloned"] is False
     assert frontend["start_file"].endswith("workspaces/frontend.start.yml")
     assert frontend["start_plan"] is False
@@ -101,3 +110,61 @@ def test_generate_skips_personal_and_list_includes_them(catalog, coboose_root: P
     assert scratch["personal"] is True
     assert scratch["exists"] is True
     assert scratch["file"] == str(personal_path)
+    assert scratch["sync"] == "personal"
+    assert scratch["in_sync"] is True
+    assert check_workspaces(refreshed, coboose_root)["ok"] is True
+
+
+def test_check_workspaces_reports_missing_stale_and_orphan(catalog, coboose_root: Path):
+    missing = check_workspaces(catalog, coboose_root)
+    assert missing["ok"] is False
+    assert missing["missing"] == ["frontend", "backend"]
+    assert missing["stale"] == []
+    assert missing["orphans"] == []
+    assert "workspace generate" in (missing.get("hint") or "")
+    assert "missing frontend, backend" in workspace_sync_error(missing)
+
+    listed = list_workspaces(catalog, coboose_root)
+    assert {item["id"]: item["sync"] for item in listed} == {
+        "frontend": "missing",
+        "backend": "missing",
+    }
+
+    generate_workspaces(catalog, coboose_root)
+    ok = check_workspaces(catalog, coboose_root)
+    assert ok["ok"] is True
+    assert ok["missing"] == []
+    assert ok["stale"] == []
+    assert ok["orphans"] == []
+
+    stale_path = coboose_root / "workspaces" / "frontend.code-workspace"
+    document = json.loads(stale_path.read_text(encoding="utf-8"))
+    document["coboose"]["description"] = "hand edited"
+    stale_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    orphan = coboose_root / "workspaces" / "legacy.code-workspace"
+    orphan.write_text("{}\n", encoding="utf-8")
+
+    drifted = check_workspaces(catalog, coboose_root)
+    assert drifted["ok"] is False
+    assert drifted["missing"] == []
+    assert drifted["stale"] == ["frontend"]
+    assert drifted["orphans"] == ["legacy"]
+    assert drifted["orphan_files"][0]["file"] == str(orphan)
+    error = workspace_sync_error(drifted)
+    assert "stale frontend" in error
+    assert "orphan legacy" in error
+
+    generate_workspaces(catalog, coboose_root)
+    after_generate = check_workspaces(catalog, coboose_root)
+    assert after_generate["stale"] == []
+    assert after_generate["orphans"] == ["legacy"]
+    assert after_generate["ok"] is False
+    rewritten = json.loads(stale_path.read_text(encoding="utf-8"))
+    assert rewritten["coboose"]["description"] != "hand edited"
+
+
+def test_checked_in_workspace_files_match_stack_yaml():
+    root = Path(__file__).resolve().parents[1]
+    catalog = load_catalog(root)
+    status = check_workspaces(catalog, root)
+    assert status["ok"] is True, status

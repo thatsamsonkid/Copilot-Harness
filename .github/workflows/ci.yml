@@ -17,5 +17,5 @@ jobs:
         run: uv sync --frozen
       - name: Test
         run: uv run pytest
-      - name: Generate workspaces
-        run: uv run coboose workspace generate
+      - name: Check generated workspaces
+        run: uv run coboose workspace generate --check

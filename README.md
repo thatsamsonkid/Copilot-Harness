@@ -104,7 +104,7 @@ repositories:
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
 | `knowledge` | no | `{ dirs: [handbook] }` extra folders to treat as feature notes |
 
-`catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
+`catalog/stack.yaml` is the source of truth for feature workspaces and Jira routing. `workspaces/*.code-workspace` files are generated from it — do not hand-edit them. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
 
 One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this coboose.
 
@@ -116,7 +116,7 @@ coboose templates
 coboose clone --tag api
 ```
 
-One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `coboose workspace generate`.
+One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `coboose workspace generate`. `coboose workspace generate --check` compares the generated files without writing and exits non-zero when they drift (CI uses this).
 
 To add a workspace without editing YAML by hand:
 
