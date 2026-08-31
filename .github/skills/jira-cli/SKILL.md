@@ -85,7 +85,7 @@ This skill is the CLI contract, not an implementer.
 | 401 / 403 from the CLI | Tell them to rotate the Atlassian API token and run `uv run goat jira login` |
 | Placeholder clone URLs | Tell them to edit `repositories.yml`; do not invent remotes |
 | `uv` missing | `docs/install-uv.md` — macOS/Linux `setup.sh`, Windows `setup.ps1` |
-| `Failed to spawn: goat` / no `pyproject.toml` | Cwd is a sibling. Re-run from the goat folder or `uv run --project "$GOAT_ROOT" goat …` |
+| `Failed to spawn: goat` / no `pyproject.toml` | Cwd is a sibling. Re-run from the goat folder, `uv run --project "$GOAT_ROOT" goat …`, or `uv run goat install` so `goat` is on PATH |
 
 ## Related Copilot customizations
 
@@ -95,6 +95,7 @@ This skill is the CLI contract, not an implementer.
 - Local stack start: workspace-start skill or `/start-workspace`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
 - Figma frames: figma-cli skill or `/figma-frame`
+- Bruno collections: bruno-cli skill or `/bruno`
 - Create a feature workspace: Workspace Creator agent or `/new-workspace`
 - Implement an agreed plan: Implementer agent
 - Review a diff: Reviewer agent or `/review`

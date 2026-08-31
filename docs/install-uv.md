@@ -78,4 +78,18 @@ uv run goat doctor
 
 Those `uv run goat` commands must run from this repo. If the shell is already in a sibling clone, use `uv run --project <path-to-this-repo> goat …` or `./scripts/goat.sh` (Windows: `.\scripts\goat.ps1`).
 
+To register `goat` itself on PATH (so you can run it from a sibling, or any other directory):
+
+```bash
+uv run goat install
+```
+
+Windows (PowerShell):
+
+```powershell
+uv run goat install
+```
+
+That writes a shim to `~/.local/bin` (macOS/Linux) or `%USERPROFILE%\.local\bin` (Windows). The shim sets `GOAT_ROOT` to this checkout and runs `uv run --project`. It does **not** `pip install` the package. `setup.sh` / `setup.ps1` run `goat install` at the end. Remove it with `goat uninstall`.
+
 If `uv` is still not found, the installer put the binary in `~/.local/bin` (macOS/Linux) or `%USERPROFILE%\.local\bin` (Windows). Open a new terminal, or add that directory to PATH, then retry.

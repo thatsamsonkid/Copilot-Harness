@@ -4,7 +4,7 @@ This repo is **Goat** (Yard Goat), a Copilot Kit — not the product codebase.
 
 Application repositories are cloned **next to** this folder (flat siblings, or grouped under `parent_dir` folders such as `frontend/`, `backend/`, `infra/`, `shared/`). The full-app list lives in `repositories.yml`. Starter remotes for new projects live in `templates.yml`. See also `catalog/stack.yaml` and `.github/copilot-instructions.md`.
 
-Run `uv run goat …` from this Goat repo (or `uv run --project "$GOAT_ROOT" goat …` / `./scripts/goat.sh`). After `cd` into a sibling clone, bare `uv run goat` cannot spawn. Full command catalog: `uv run goat commands --format json` or [docs/cli.md](docs/cli.md).
+Run `uv run goat …` from this Goat repo (or `uv run --project "$GOAT_ROOT" goat …` / `./scripts/goat.sh`). After `cd` into a sibling clone, bare `uv run goat` cannot spawn. `uv run goat install` writes a `~/.local/bin` shim so `goat` works from any cwd (macOS, Linux, Windows). Full command catalog: `uv run goat commands --format json` or [docs/cli.md](docs/cli.md).
 
 When asked to bootstrap a new project:
 
@@ -36,3 +36,11 @@ uv run goat figma images 'https://www.figma.com/design/…' --format json
 ```
 
 Open each returned `images[].url` in VS Code Simple Browser. Optionally run `figma comments` for designer notes, or `figma nodes` for a small targeted frame only (raw JSON; a page will overwhelm context). Do not curl Figma or reconstruct the layout from JSON.
+
+For Bruno API collections (`.bru` files, `bru run`, or a multi-step API workflow), follow `.github/skills/bruno-cli/SKILL.md`:
+
+```bash
+uv run goat bruno collections --format json
+```
+
+That JSON says which sibling holds the collections, which requests/environments exist, and which `--env` to pass. Execute HTTP with `goat bruno run` (or `bru run` from the collection root). Workflows are a plan — pick values between steps. Do not curl product APIs or read environment file values. See [docs/bruno.md](docs/bruno.md).

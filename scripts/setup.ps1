@@ -33,6 +33,13 @@ Write-Host "     then run: uv run goat jira login"
 Write-Host "     (or: uv run goat init --interactive)"
 Write-Host "  2. Edit repositories.yml, then ./scripts/clone-repos.sh"
 Write-Host "  3. In Copilot Chat: /get-started"
-Write-Host "Run the CLI with: uv run goat <command>"
-Write-Host "From a sibling clone: uv run --project `"$Root`" goat <command>"
+Write-Host "Register goat on PATH (any cwd):"
+try {
+    uv run goat install --format text
+} catch {
+    Write-Host "goat install skipped: $_"
+}
+Write-Host "Run the CLI with: goat <command>  (or: uv run goat <command>)"
+Write-Host "From a sibling clone: goat <command>"
+Write-Host "  or: uv run --project `"$Root`" goat <command>"
 Write-Host "  or: $Root\scripts\goat.ps1 <command>"

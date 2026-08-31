@@ -6,6 +6,13 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from goat import GoatError, __version__
+from goat.bruno import (
+    collect_bruno_inventory,
+    list_bruno_envs,
+    list_bruno_requests,
+    list_bruno_workflows,
+    run_bruno_request,
+)
 from goat.bootstrap import bootstrap_project
 from goat.branch import align_branches
 from goat.catalog import catalog_to_dict, load_catalog
@@ -16,6 +23,7 @@ from goat.doctor import run_doctor
 from goat.envspec import find_var, list_env, set_env_value, unset_env_value
 from goat.figma_client import FigmaClient, figma_token_from_env, figma_var
 from goat.handoff import latest_handoff, list_handoffs, write_handoff
+from goat.install import install_cli, resolve_install_root, uninstall_cli
 from goat.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
 from goat.keychain import login_token, logout_token
 from goat.onboard import run_init
@@ -75,9 +83,10 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Clone product git repos under parent_dir, bootstrap projects from "
             "listed templates, query Jira Cloud with basic auth, export Figma "
-            "frame images, inspect clone git status, create or select a "
-            "feature VS Code workspace, and lift agent skills into the root "
-            "workspace for the VS Code Agents window."
+            "frame images, discover Bruno API collections and wrap bru, inspect "
+            "clone git status, create or select a feature VS Code workspace, "
+            "and lift agent skills into the root workspace for the VS Code "
+            "Agents window."
         ),
         parents=[shared],
     )
@@ -93,7 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_argument(
         "group",
         nargs="?",
-        help="Show one group or command (jira, figma, start, …)",
+        help="Show one group or command (jira, figma, bruno, start, …)",
     )
 
     clone = sub.add_parser(
@@ -235,6 +244,85 @@ def build_parser() -> argparse.ArgumentParser:
         "--clear-env",
         action="store_true",
         help="Also blank FIGMA_ACCESS_TOKEN in .env",
+    )
+
+    bruno = sub.add_parser(
+        "bruno",
+        parents=[shared],
+        help="Discover Bruno collections and wrap the bru CLI",
+    )
+    bruno_sub = bruno.add_subparsers(dest="bruno_command", required=True)
+    bruno_sub.add_parser(
+        "collections",
+        parents=[shared],
+        help="List Bruno repos, collections, services, and workflows",
+    )
+    bruno_requests = bruno_sub.add_parser(
+        "requests",
+        parents=[shared],
+        help="List Bruno requests (optional collection or request filter)",
+    )
+    bruno_requests.add_argument(
+        "target",
+        nargs="?",
+        help="Collection id, request id, or relative .bru path",
+    )
+    bruno_envs = bruno_sub.add_parser(
+        "envs",
+        parents=[shared],
+        help="List Bruno environments and service defaults (names only)",
+    )
+    bruno_envs.add_argument(
+        "target",
+        nargs="?",
+        help="Collection id to limit environments",
+    )
+    bruno_workflows = bruno_sub.add_parser(
+        "workflows",
+        parents=[shared],
+        help="List described multi-step Bruno workflows (a plan, not a runner)",
+    )
+    bruno_workflows.add_argument(
+        "name",
+        nargs="?",
+        help="Workflow id for the full step plan",
+    )
+    bruno_run = bruno_sub.add_parser(
+        "run",
+        parents=[shared],
+        help="Resolve collection cwd + env, then invoke bru run",
+    )
+    bruno_run.add_argument(
+        "target",
+        help="Request id, meta name, or relative .bru path",
+    )
+    bruno_run.add_argument(
+        "--collection",
+        help="Disambiguate when two collections share a request name",
+    )
+    bruno_run.add_argument(
+        "--service",
+        help="Service id from goat.services.yml or catalog/stack.yaml bruno.services",
+    )
+    bruno_run.add_argument(
+        "--env",
+        help="Bruno environment name (default: service env, then bruno.default_env)",
+    )
+    bruno_run.add_argument(
+        "--env-var",
+        dest="env_vars",
+        action="append",
+        help="KEY=value passed to bru (repeatable). Values are redacted on stdout",
+    )
+    bruno_run.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the resolved bru command without executing HTTP",
+    )
+    bruno_sub.add_parser(
+        "schema",
+        parents=[shared],
+        help="Show configured Bruno output fields and the request template",
     )
 
     env = sub.add_parser(
@@ -421,7 +509,7 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = sub.add_parser(
         "doctor",
         parents=[shared],
-        help="Check catalog, clones, Jira, and optional Figma configuration",
+        help="Check catalog, clones, Jira, optional Figma, and Bruno configuration",
     )
     doctor.add_argument("--ping-jira", action="store_true")
     doctor.add_argument("--ping-figma", action="store_true")
@@ -438,6 +526,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Prompt in the terminal for missing Jira values (never use this in chat)",
     )
     init.add_argument("--ping-jira", action="store_true")
+
+    install = sub.add_parser(
+        "install",
+        parents=[shared],
+        help="Register goat on PATH so it runs from any directory",
+    )
+    _add_install_flags(install)
+
+    uninstall = sub.add_parser(
+        "uninstall",
+        parents=[shared],
+        help="Remove the goat PATH shim written by goat install",
+    )
+    _add_install_flags(uninstall)
 
     context = sub.add_parser(
         "context",
@@ -708,6 +810,8 @@ def build_parser() -> argparse.ArgumentParser:
 def dispatch(args: argparse.Namespace) -> Any:
     if args.command in {"commands", "help"}:
         return command_reference(build_parser(), group=getattr(args, "group", None))
+    if args.command in {"install", "uninstall"}:
+        return _dispatch_install(args)
     goat_root = Path(args.root).resolve() if args.root else find_goat_root()
     load_dotenv_files(goat_root)
     catalog = load_catalog(
@@ -743,6 +847,8 @@ def dispatch(args: argparse.Namespace) -> Any:
         return _dispatch_jira(args, catalog, goat_root)
     if args.command == "figma":
         return _dispatch_figma(args, catalog, goat_root)
+    if args.command == "bruno":
+        return _dispatch_bruno(args, catalog, goat_root)
     if args.command == "env":
         return _dispatch_env(args, catalog, goat_root)
     if args.command == "workspace":
@@ -960,6 +1066,39 @@ def _dispatch_figma(args: argparse.Namespace, catalog: Any, goat_root: Path) -> 
     if args.figma_command == "whoami":
         return client.myself()
     raise GoatError(f"Unknown figma command: {args.figma_command}")
+
+
+def _dispatch_bruno(args: argparse.Namespace, catalog: Any, goat_root: Path) -> Any:
+    settings = catalog.bruno
+    if args.bruno_command == "schema":
+        return {"bruno": settings.schema()}
+    if args.bruno_command == "collections":
+        return collect_bruno_inventory(catalog, goat_root, settings=settings)
+    if args.bruno_command == "requests":
+        return list_bruno_requests(
+            catalog, goat_root, getattr(args, "target", None), settings=settings
+        )
+    if args.bruno_command == "envs":
+        return list_bruno_envs(
+            catalog, goat_root, getattr(args, "target", None), settings=settings
+        )
+    if args.bruno_command == "workflows":
+        return list_bruno_workflows(
+            catalog, goat_root, getattr(args, "name", None), settings=settings
+        )
+    if args.bruno_command == "run":
+        return run_bruno_request(
+            catalog,
+            goat_root,
+            args.target,
+            collection=getattr(args, "collection", None),
+            service=getattr(args, "service", None),
+            env=getattr(args, "env", None),
+            env_vars=getattr(args, "env_vars", None),
+            dry_run=bool(getattr(args, "dry_run", False)),
+            settings=settings,
+        )
+    raise GoatError(f"Unknown bruno command: {args.bruno_command}")
 
 
 def _dispatch_env(args: argparse.Namespace, catalog: Any, goat_root: Path) -> Any:
@@ -1184,6 +1323,32 @@ def _dispatch_skills(args: argparse.Namespace, catalog: Any, goat_root: Path) ->
             prompt=prompt,
         )
     raise GoatError(f"Unknown skills command: {args.skills_command}")
+
+
+def _dispatch_install(args: argparse.Namespace) -> Any:
+    goat_root = resolve_install_root(getattr(args, "root", None))
+    kwargs = {
+        "bin_dir": getattr(args, "bin_dir", None),
+        "force": bool(getattr(args, "force", False)),
+        "dry_run": bool(getattr(args, "dry_run", False)),
+    }
+    if args.command == "uninstall":
+        return uninstall_cli(goat_root, **kwargs)
+    return install_cli(goat_root, **kwargs)
+
+
+def _add_install_flags(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--bin-dir",
+        type=Path,
+        help="Override the user bin directory (default: ~/.local/bin)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite or remove a file that is not a goat shim",
+    )
+    parser.add_argument("--dry-run", action="store_true")
 
 
 def _add_skills_dest_flag(parser: argparse.ArgumentParser) -> None:

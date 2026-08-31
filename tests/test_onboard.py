@@ -43,6 +43,8 @@ def test_init_lists_missing_jira_keys_without_reading_secrets(
     assert "windows" in payload["uv"]["install"]
     ids = {step["id"]: step for step in payload["steps"]}
     assert "uv" in ids
+    assert "cli_path" in ids
+    assert ids["cli_path"]["optional"] is True
     assert ids["jira_api_token"]["ok"] is False
     assert "docs/jira-api-token.md" in ids["jira_api_token"]["action"]
     assert "jira login" in ids["jira_api_token"]["action"]

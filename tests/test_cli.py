@@ -183,10 +183,13 @@ def test_clone_dry_run_and_doctor(goat_root: Path, capsys, monkeypatch):
         "JIRA_API_TOKEN",
     }
     assert any(check["name"] == "uv" for check in doctor["checks"])
+    assert any(check["name"] == "cli_path" for check in doctor["checks"])
     assert "onboarding" in doctor
     assert "uv" in doctor
     assert any(check["name"] == "env_age" for check in doctor["checks"])
     assert any(check["name"] == "graphify_cli" for check in doctor["checks"])
+    assert any(check["name"] == "bru_cli" for check in doctor["checks"])
+    assert "bruno" in doctor
     assert "env_age" in doctor
     assert doctor["invoke"]["cwd"] == str(goat_root.resolve())
     assert "--project" in doctor["invoke"]["command"]

@@ -47,6 +47,10 @@ def to_text(payload: Any) -> str:
         return _skills_text(payload)
     if _is_commands(payload):
         return _commands_text(payload)
+    if _is_bruno(payload):
+        return _bruno_text(payload)
+    if _is_cli_install(payload):
+        return _cli_install_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -85,6 +89,10 @@ def to_markdown(payload: Any) -> str:
         return _skills_markdown(payload)
     if _is_commands(payload):
         return _commands_markdown(payload)
+    if _is_bruno(payload):
+        return _bruno_markdown(payload)
+    if _is_cli_install(payload):
+        return _cli_install_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -643,6 +651,57 @@ def _is_skills(payload: Any) -> bool:
     )
 
 
+def _is_cli_install(payload: Any) -> bool:
+    return isinstance(payload, dict) and payload.get("kind") == "cli_install"
+
+
+def _cli_install_text(payload: dict[str, Any]) -> str:
+    action = payload.get("action") or "install"
+    verb = "Uninstalled" if action == "uninstall" else "Installed"
+    if payload.get("dry_run"):
+        verb = f"Would {action}"
+    lines = [
+        f"{verb} goat PATH shim",
+        "",
+        f"root: {payload.get('goat_root')}",
+        f"bin:  {payload.get('bin_dir')}",
+    ]
+    for shim in payload.get("shims") or []:
+        state = []
+        if shim.get("written"):
+            state.append("written")
+        if shim.get("removed"):
+            state.append("removed")
+        if shim.get("would_write"):
+            state.append("would write")
+        if shim.get("would_remove"):
+            state.append("would remove")
+        if not state and shim.get("existed"):
+            state.append("present")
+        extra = f" ({', '.join(state)})" if state else ""
+        lines.append(f"shim: {shim.get('path')}{extra}")
+    if payload.get("on_path"):
+        lines.append(f"on PATH: yes ({payload.get('which') or 'bin dir'})")
+        if payload.get("shadowed_by"):
+            lines.append(f"shadowed by: {payload['shadowed_by']}")
+    else:
+        lines.append("on PATH: no")
+        hint = payload.get("path_hint")
+        if hint:
+            lines.append(hint)
+    next_commands = payload.get("next") or []
+    if next_commands:
+        lines.append("")
+        lines.append("Next:")
+        for command in next_commands:
+            lines.append(f"  {command}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _cli_install_markdown(payload: dict[str, Any]) -> str:
+    return "```text\n" + _cli_install_text(payload) + "```\n"
+
+
 def _is_commands(payload: Any) -> bool:
     return isinstance(payload, dict) and payload.get("kind") == "command_reference"
 
@@ -846,4 +905,85 @@ def _bootstrap_markdown(payload: dict[str, Any]) -> str:
         for index, step in enumerate(steps, start=1):
             lines.append(f"{index}. {step}")
         lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _is_bruno(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and str(payload.get("kind") or "").startswith("bruno_")
+    )
+
+
+def _bruno_text(payload: dict[str, Any]) -> str:
+    kind = payload.get("kind")
+    if kind == "bruno_run":
+        lines = [
+            f"Bruno run ({'dry-run' if payload.get('dry_run') else 'execute'})",
+            f"cwd: {payload.get('cwd')}",
+            f"env: {payload.get('env')}",
+            "command: " + " ".join(str(part) for part in (payload.get("bru_command") or [])),
+        ]
+        if payload.get("exit_code") is not None:
+            lines.append(f"exit: {payload.get('exit_code')}")
+        return "\n".join(lines).strip() + "\n"
+    collections = payload.get("collections") or []
+    requests = payload.get("requests") or []
+    workflows = payload.get("workflows") or []
+    environments = payload.get("environments") or []
+    lines = [f"Bruno {kind or 'inventory'}"]
+    if payload.get("default_env"):
+        lines.append(f"default env: {payload['default_env']}")
+    for item in collections:
+        envs = ",".join(item.get("environments") or []) or "-"
+        lines.append(
+            f"- {item.get('id')} ({item.get('request_count')} requests, envs {envs})"
+        )
+    for item in requests:
+        lines.append(
+            f"- {item.get('method') or '?'} {item.get('id')} {item.get('url') or ''}"
+        )
+    for item in environments:
+        lines.append(
+            f"- env {item.get('name')} vars={','.join(item.get('vars') or []) or '-'}"
+        )
+    for item in workflows:
+        lines.append(f"- workflow {item.get('id')}: {item.get('description') or ''}")
+    if payload.get("clone_command"):
+        lines.append(f"clone: {payload['clone_command']}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _bruno_markdown(payload: dict[str, Any]) -> str:
+    kind = payload.get("kind")
+    if kind == "bruno_run":
+        command = " ".join(f"`{part}`" if " " in str(part) else str(part) for part in (payload.get("bru_command") or []))
+        lines = [
+            "# Bruno run",
+            "",
+            f"- **cwd:** `{payload.get('cwd')}`",
+            f"- **env:** `{payload.get('env')}`",
+            f"- **dry-run:** {'yes' if payload.get('dry_run') else 'no'}",
+            f"- **command:** `{command}`",
+            "",
+        ]
+        return "\n".join(lines).strip() + "\n"
+    lines = [f"# Bruno `{kind or 'inventory'}`", ""]
+    if payload.get("default_env"):
+        lines.append(f"- **Default env:** `{payload['default_env']}`")
+        lines.append("")
+    for item in payload.get("collections") or []:
+        envs = ", ".join(f"`{name}`" for name in (item.get("environments") or [])) or "_none_"
+        lines.append(
+            f"- **{item.get('id')}** — {item.get('request_count')} requests, envs {envs}"
+        )
+    for item in payload.get("requests") or []:
+        lines.append(
+            f"- `{item.get('method') or '?'}` `{item.get('id')}` {item.get('url') or ''}"
+        )
+    for item in payload.get("environments") or []:
+        lines.append(f"- env `{item.get('name')}` (names only)")
+    for item in payload.get("workflows") or []:
+        lines.append(f"- workflow `{item.get('id')}` — {item.get('description') or ''}")
+    lines.append("")
     return "\n".join(lines).strip() + "\n"

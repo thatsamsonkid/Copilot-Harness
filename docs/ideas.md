@@ -114,4 +114,18 @@ These are separate from the themes above but fit the same goat:
 - **Assignment board in chat** — `/mine` prompt that runs `jira mine` then `prepare` on the chosen key. Thin wrapper; only add if people keep forgetting the command.
 - **Figma comments / targeted raw nodes** — shipped as `figma comments` (allowlisted) and `figma nodes` (raw Figma node map, depth-capped, targeted frames only). Images stay the visual source of truth. Variable names / tokens stay a later clip if designers actually write them.
 
+## 7. Bruno API collections
+
+**Shipped**
+
+- Tag a sibling `bruno` (example: `api-collections` in `repositories.yml`) or list it in `catalog/stack.yaml` `bruno.repos`.
+- `goat bruno collections` / `requests` / `envs` / `workflows` / `run` / `schema`. Discovery reads `bruno.json` and `.bru` files. `run` only wraps `bru` with the collection cwd and `--env`.
+- Workflows live in the Bruno repo as `goat.workflows.yml` (search → pick a product → cart). Yard Goat prints the plan; Copilot picks values and passes `--env-var`.
+- Service → default env via `goat.services.yml` or `bruno.services`. Environment **values** never appear in CLI JSON.
+- bruno-cli skill + `/bruno` prompt. `bru` itself stays the HTTP runner.
+
+**Worth adding next**
+
+- Nothing urgent. A folder of `workflows/*.yml` is optional if one `goat.workflows.yml` gets large.
+
 When you have the next batch of ideas, we can add them here and promote one slice at a time.

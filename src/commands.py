@@ -16,6 +16,8 @@ EXPANDED_HELPS = {
 GROUP_ORDER = (
     "commands",
     "init",
+    "install",
+    "uninstall",
     "doctor",
     "env",
     "clone",
@@ -27,6 +29,7 @@ GROUP_ORDER = (
     "prepare",
     "jira",
     "figma",
+    "bruno",
     "context",
     "status",
     "branch",

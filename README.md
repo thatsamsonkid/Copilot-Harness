@@ -62,14 +62,16 @@ Then:
 6. Or create a new feature workspace and pick projects from `repositories.yml`:
    `goat workspace create` (or `/new-workspace` in chat). Choose **shared** for the team catalog, or **personal** for a local-only file under `workspaces/personal/` (gitignored).
 7. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
+8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
 
-`setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, and install this package in editable mode. Prefer `uv` over pip. Run the CLI from this repo. After `cd` into a sibling clone, `uv run goat` cannot spawn — use `--project` or the wrapper script:
+`setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, install this package in editable mode, and register a `goat` shim on PATH (`~/.local/bin`). Prefer `uv` over pip. Do not `pip install` this repo. After `cd` into a sibling clone, bare `uv run goat` cannot spawn — use the global shim, `--project`, or the wrapper script:
 
 ```bash
-uv run goat doctor
+uv run goat install                            # once: goat on PATH (any OS)
+goat doctor                                    # any cwd, after install
+uv run goat doctor                             # from this repo
 uv run goat commands --format markdown         # every command
-uv run --project "$GOAT_ROOT" goat doctor   # any cwd
+uv run --project "$GOAT_ROOT" goat doctor   # any cwd, no shim
 ./scripts/goat.sh doctor                       # macOS / Linux, any cwd
 .\scripts\goat.ps1 doctor                      # Windows, any cwd
 ./scripts/coboose.sh doctor                    # alias
@@ -228,7 +230,7 @@ uv run goat start env --repo backend
 uv run goat start env --repo backend --shell
 ```
 
-The CLI does not print a raw vendor REST payload, except `figma nodes` (targeted frames only). `catalog/stack.yaml` `jira.fields` is the Copilot allowlist; `jira.shapes` clips nested objects (project, parent, comments, links) and `jira.search_fields` is the leaner search/mine list. Empty values are dropped by default. Add a custom field with `extra_fields` + `field_aliases`, then list the alias in `fields`. The same `fields` / `shapes` projector (`goat.projection`) is what later integrations should reuse — change the YAML, not the client.
+The CLI does not print a raw vendor REST payload, except `figma nodes` (targeted frames only). `catalog/stack.yaml` `jira.fields` is the Copilot allowlist; `jira.shapes` clips nested objects (project, parent, comments, links) and `jira.search_fields` is the leaner search/mine list. Empty values are dropped by default. Add a custom field with `extra_fields` + `field_aliases`, then list the alias in `fields`. The same `fields` / `shapes` projector (`goat.projection`) is what later integrations should reuse — change the YAML, not the client. Bruno uses that projector for collection inventory; environment **values** are stripped before projection.
 
 ## Figma CLI (personal access token)
 
@@ -246,6 +248,21 @@ uv run goat figma nodes 'https://www.figma.com/design/FILEKEY/Name?node-id=12-34
 ```
 
 `figma login` writes to macOS Keychain or Windows Credential Manager. `figma login --from-env` moves a token that is already in `.env`. This token is optional; `init` / `doctor` stay green without it.
+
+## Bruno CLI (git-backed API collections)
+
+Bruno is the Postman alternative. Collections live in a sibling git repo (tag `bruno` on `repositories.yml`, example `api-collections`). `bru run` still executes HTTP. Yard Goat discovers collections, environments (names only), and `goat.workflows.yml` plans, then wraps bru with the right cwd and `--env`. The **bruno-cli** skill (`.github/skills/bruno-cli/SKILL.md`) is the on-demand contract.
+
+```bash
+uv run goat bruno collections
+uv run goat bruno requests cart-api
+uv run goat bruno envs cart-api
+uv run goat bruno workflows add-to-cart
+uv run goat bruno run search/search-products --env staging --dry-run
+uv run goat bruno schema
+```
+
+Install bru when you want to execute (`npm install -g @usebruno/cli`). Discovery does not need it. Convention: [docs/bruno.md](docs/bruno.md).
 
 `catalog/stack.yaml` `figma.fields` is the images allowlist (`file_key`, `url`, `format`, `scale`, `images`, `missing`). `figma.comment_fields` clips comments. `figma nodes` is not allowlisted: it passes the raw node objects through, so keep it on a tight frame. Copilot should open each `images[].url` in VS Code Simple Browser to look at the frame. Do not curl `api.figma.com`.
 
@@ -281,6 +298,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/workspace-start/SKILL.md` | Local stack plan + sequential start (`/start-workspace`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
 | `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images / comments / nodes CLI contract (`/figma-frame`) |
+| `.github/skills/bruno-cli/SKILL.md` | On-demand Bruno collections / workflows / bru wrap (`/bruno`) |
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
 | `.github/skills/skills-install/SKILL.md` | Lift sibling or remote skills into this Yard Goat repo for VS Code Agents (`/skills-install`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
@@ -288,6 +306,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `docs/cli.md` | Human cheat sheet of every `goat` command (`goat commands`) |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
 | `.github/prompts/figma-frame.prompt.md` | `/figma-frame` |
+| `.github/prompts/bruno.prompt.md` | `/bruno` |
 | `.github/prompts/new-workspace.prompt.md` | `/new-workspace` |
 | `.github/prompts/orient.prompt.md` | `/orient` |
 | `.github/prompts/start-workspace.prompt.md` | `/start-workspace` |
@@ -334,7 +353,7 @@ uv run goat commands jira
 uv run goat help start
 ```
 
-See [docs/cli.md](docs/cli.md) for the grouped list (setup, workspaces, Jira, Figma, day-to-day, skills). Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`, `--root`. For one command's flags, run `goat <command> --help`.
+See [docs/cli.md](docs/cli.md) for the grouped list (setup, workspaces, Jira, Figma, Bruno, day-to-day, skills). Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`, `--root`. For one command's flags, run `goat <command> --help`.
 
 ## Tests
 

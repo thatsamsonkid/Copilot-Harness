@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from goat import GoatError
+from goat.bruno import bru_cli_status, collect_bruno_inventory
 from goat.catalog import Catalog
 from goat.context import inspect_repo
 from goat.envfile import env_file_age
 from goat.envspec import list_env, resolve_var
 from goat.figma_client import FigmaClient, figma_var
+from goat.install import cli_path_status
 from goat.invoke import invoke_spec
 from goat.jira_client import JiraClient, jira_settings_from_env
 from goat.keychain import (
@@ -48,6 +50,20 @@ def run_doctor(
             f"uv is on PATH ({uv['path']})" if uv["present"] else uv_missing_action(uv),
         )
     )
+    path_status = cli_path_status(goat_root, environ=environ)
+    checks.append(
+        _check(
+            "cli_path",
+            bool(path_status["on_path"]),
+            path_status["detail"]
+            if path_status["on_path"]
+            else (
+                f"{path_status['detail']}. Run `uv run goat install`. "
+                f"{path_status['path_hint']}"
+            ),
+            ok_when_false=True,
+        )
+    )
     checks.append(
         _check(
             "git",
@@ -73,6 +89,18 @@ def run_doctor(
             f"graphify is on PATH ({graphify_cli})"
             if graphify_cli
             else "graphify is not on PATH; still use committed graphify-out/ artifacts",
+            ok_when_false=True,
+        )
+    )
+    bru = bru_cli_status()
+    checks.append(
+        _check(
+            "bru_cli",
+            bool(bru["present"]),
+            f"bru is on PATH ({bru['path']})"
+            if bru["present"]
+            else "bru is not on PATH; goat bruno collections still works, "
+            "bruno run needs `npm install -g @usebruno/cli`",
             ok_when_false=True,
         )
     )
@@ -335,6 +363,49 @@ def run_doctor(
     elif figma_token:
         checks.append(_check("figma_env", True, f"Figma credentials are present ({figma_source})"))
 
+    bruno_inventory = collect_bruno_inventory(catalog, goat_root)
+    bruno_repos = bruno_inventory.get("repos") or []
+    bruno_collections = bruno_inventory.get("collections") or []
+    bruno_missing = bruno_inventory.get("missing_repos") or []
+    if bruno_repos:
+        cloned = [repo for repo in bruno_repos if repo.get("cloned")]
+        checks.append(
+            _check(
+                "bruno_repos",
+                bool(cloned),
+                (
+                    f"{len(cloned)} Bruno repo(s) cloned"
+                    if cloned
+                    else "Bruno repo listed but not cloned: "
+                    + (bruno_inventory.get("clone_command") or "goat clone")
+                ),
+                ok_when_false=True,
+            )
+        )
+        if cloned:
+            checks.append(
+                _check(
+                    "bruno_collections",
+                    bool(bruno_collections),
+                    (
+                        f"{len(bruno_collections)} Bruno collection(s) found"
+                        if bruno_collections
+                        else "cloned Bruno repo has no bruno.json collections"
+                    ),
+                    ok_when_false=True,
+                )
+            )
+        if bruno_missing:
+            checks.append(
+                _check(
+                    "bruno_clone",
+                    False,
+                    "Clone missing Bruno repo(s): "
+                    + (bruno_inventory.get("clone_command") or "goat clone"),
+                    ok_when_false=True,
+                )
+            )
+
     for row in env_payload["variables"]:
         if row["name"] in {
             "JIRA_BASE_URL",
@@ -390,6 +461,12 @@ def run_doctor(
         "jira_token_source": source,
         "figma": figma,
         "figma_token_source": figma_source,
+        "bruno": {
+            "bru_cli": bru,
+            "repos": bruno_repos,
+            "collections": len(bruno_collections),
+            "missing_repos": bruno_missing,
+        },
         "keychain": status.as_dict(),
         "keychain_guide": storage_guides(),
         "env": env_payload,

@@ -27,6 +27,13 @@ When the user gives a Figma file/design/proto URL or asks to look at a frame, lo
 4. Optionally run `goat figma comments <URL>` for designer notes. Run `goat figma nodes <URL>` only for a small targeted frame (a button or similar). That command returns raw Figma node JSON and will overwhelm context on a page or file. Do not reconstruct layout from the tree.
 5. Do not curl `api.figma.com`, read `.env`, or call a Figma MCP tool.
 
+When the user mentions Bruno, bru, a `.bru` file, an API collection, or a multi-step API workflow (search then cart), load the **bruno-cli** skill (`.github/skills/bruno-cli/SKILL.md`) and follow it.
+
+1. Run `uv run goat bruno collections --format json` from this repo. If cwd is a sibling clone, use `uv run --project "$GOAT_ROOT" goat bruno collections --format json`.
+2. Use that CLI JSON to find the Bruno sibling, collections, services, environments, and workflows. Environment values are not returned.
+3. Generate new requests as `.bru` files in that collection. Execute with `goat bruno run` (or `bru run` from the collection root) and `--env` / `--env-var`. Workflows are a plan — pick values between steps.
+4. Do not curl product APIs, read Bruno environment file values, or clone into this goat folder.
+
 `goat` stdout is JSON by default. Read stdout. Errors are JSON on stderr with a non-zero exit code.
 
 ## Jira access (hard rules)
@@ -50,18 +57,27 @@ This workspace has **no Figma MCP server**. The personal access token must never
 - Do **not** configure or call an MCP Figma tool.
 - If credentials are missing, tell the user to run `uv run goat figma login` in their own terminal. Never ask them to paste a token into chat.
 
+## Bruno access (hard rules)
+
+Bruno collections are git files plus the `bru` CLI. These rules apply even if the bruno-cli skill is not loaded.
+
+- Discover collections through `uv run goat bruno …`. Execute HTTP with `goat bruno run` or `bru run` from the collection root.
+- Do **not** curl product APIs when a `.bru` request exists for that call.
+- Do **not** read Bruno `environments/*.bru` values or print tokens. Yard Goat only lists environment and variable **names**.
+- Do **not** nest a collections clone inside this goat folder.
+
 ## Repo layout
 
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/` (imported as `goat`) — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, workspace create/generate/match, prepare, init, context, status, branch, handoff, start, skills list/lift/pull. `goat commands` (alias `help`) is the live catalog; `docs/cli.md` is the human cheat sheet.
+- CLI: `src/` (imported as `goat`) — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, Bruno collection discovery / bru wrap, workspace create/generate/match, prepare, init, context, status, branch, handoff, start, skills list/lift/pull. `goat commands` (alias `help`) is the live catalog; `docs/cli.md` is the human cheat sheet.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this Goat repo. Personal/local mixes live in `workspaces/personal/` (gitignored, not in `catalog/stack.yaml`).
 - Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `goat env set NAME` / `goat jira login` / `goat figma login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run goat <command>` **from this Goat repo**, or `uv run --project "$GOAT_ROOT" goat <command>` / `./scripts/goat.sh` (Windows: `.\scripts\goat.ps1`) from any cwd. Sibling clones are not a uv project; `uv run goat` fails there with Failed to spawn. For a full command catalog, run `uv run goat commands --format json` (or read `docs/cli.md`). Jira command choice, flags, and output shapes live in the jira-cli skill. Figma image, comment, and scoped-node exports live in the figma-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start. VS Code Agents skill copies live in skills-install.
+Prefer `uv` for Python. Run the CLI as `uv run goat <command>` **from this Goat repo**, or `uv run --project "$GOAT_ROOT" goat <command>` / `./scripts/goat.sh` (Windows: `.\scripts\goat.ps1`) from any cwd. After `uv run goat install`, a `~/.local/bin` shim makes `goat` work from any cwd. Sibling clones are not a uv project; `uv run goat` fails there with Failed to spawn. For a full command catalog, run `uv run goat commands --format json` (or read `docs/cli.md`). Jira command choice, flags, and output shapes live in the jira-cli skill. Figma image, comment, and scoped-node exports live in the figma-cli skill. Bruno collections, workflows, and `bru run` wrapping live in the bruno-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start. VS Code Agents skill copies live in skills-install.
 
 ```bash
 uv run goat templates

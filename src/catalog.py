@@ -8,6 +8,16 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from goat import GoatError
+from goat.bruno_fields import (
+    DEFAULT_ENV as BRUNO_DEFAULT_ENV,
+    DEFAULT_OUTPUT_FIELDS as BRUNO_DEFAULT_OUTPUT_FIELDS,
+    DEFAULT_SERVICES_FILE as BRUNO_DEFAULT_SERVICES_FILE,
+    DEFAULT_SHAPES as BRUNO_DEFAULT_SHAPES,
+    DEFAULT_TAGS as BRUNO_DEFAULT_TAGS,
+    DEFAULT_WORKFLOWS_FILE as BRUNO_DEFAULT_WORKFLOWS_FILE,
+    BrunoService,
+    BrunoSettings,
+)
 from goat.figma_fields import (
     DEFAULT_COMMENT_FIELDS as FIGMA_DEFAULT_COMMENT_FIELDS,
     DEFAULT_DEPTH as FIGMA_DEFAULT_DEPTH,
@@ -177,6 +187,7 @@ class Catalog:
     workspaces: list[Workspace]
     jira: JiraSettings
     figma: FigmaSettings
+    bruno: BrunoSettings
     source: Path
     repos_source: Path
     templates: list[Template] = field(default_factory=list)
@@ -287,7 +298,7 @@ def load_catalog(
     env_file = goat_root / ENV_RELATIVE
     repos, parent_dir = load_repositories(repos_file)
     repo_names = {repo.name for repo in repos}
-    workspaces, jira, figma = load_stack(stack_file, repo_names)
+    workspaces, jira, figma, bruno = load_stack(stack_file, repo_names)
     workspaces = [
         *workspaces,
         *load_personal_workspaces(
@@ -312,6 +323,7 @@ def load_catalog(
         workspaces=workspaces,
         jira=jira,
         figma=figma,
+        bruno=bruno,
         source=stack_file,
         repos_source=repos_file,
         templates=templates,
@@ -533,7 +545,7 @@ def _require_relative_dir(label: str, value: str) -> None:
 
 def load_stack(
     path: Path, repo_names: set[str]
-) -> tuple[list[Workspace], JiraSettings, FigmaSettings]:
+) -> tuple[list[Workspace], JiraSettings, FigmaSettings, BrunoSettings]:
     raw = _read_yaml(path)
     if raw is None:
         raw = {}
@@ -612,7 +624,9 @@ def load_stack(
             "Only one workspace can be fallback=true; found: " + ", ".join(fallbacks)
         )
 
-    return workspaces, jira, _load_figma(raw.get("figma"))
+    return workspaces, jira, _load_figma(raw.get("figma")), _load_bruno(
+        raw.get("bruno"), repo_names
+    )
 
 
 def _load_figma(raw: Any) -> FigmaSettings:
@@ -659,6 +673,84 @@ def _load_figma(raw: Any) -> FigmaSettings:
         max_depth=max_depth,
         drop_empty=bool(data.get("drop_empty", True)),
     )
+
+
+def _load_bruno(raw: Any, repo_names: set[str]) -> BrunoSettings:
+    data = raw or {}
+    if not isinstance(data, dict):
+        raise GoatError("bruno settings must be a mapping")
+    repos = _as_list(data.get("repos"))
+    unknown = [name for name in repos if name not in repo_names]
+    if unknown:
+        raise GoatError(
+            "bruno.repos references unknown repo name(s): "
+            + ", ".join(unknown)
+            + f". Add them to {REPOS_RELATIVE}."
+        )
+    tags = _as_list(data.get("tags"))
+    if not tags and data.get("tags") is None:
+        tags = list(BRUNO_DEFAULT_TAGS)
+    workflows_file = str(data.get("workflows_file") or BRUNO_DEFAULT_WORKFLOWS_FILE)
+    services_file = str(data.get("services_file") or BRUNO_DEFAULT_SERVICES_FILE)
+    for label, value in (
+        ("bruno.workflows_file", workflows_file),
+        ("bruno.services_file", services_file),
+    ):
+        _require_relative_dir(label, value)
+    configured_fields = _as_list(data.get("fields"))
+    return BrunoSettings(
+        repos=repos,
+        tags=tags,
+        default_env=str(data.get("default_env") or BRUNO_DEFAULT_ENV),
+        workflows_file=workflows_file,
+        services_file=services_file,
+        services=_parse_bruno_services(data.get("services"), repo_names),
+        fields=configured_fields or list(BRUNO_DEFAULT_OUTPUT_FIELDS),
+        shapes=_as_shapes(
+            data.get("shapes"),
+            defaults=BRUNO_DEFAULT_SHAPES,
+            label="bruno.shapes",
+        ),
+        drop_empty=bool(data.get("drop_empty", True)),
+    )
+
+
+def _parse_bruno_services(raw: Any, repo_names: set[str]) -> list[BrunoService]:
+    if raw is None:
+        return []
+    items: list[Any]
+    if isinstance(raw, list):
+        items = raw
+    elif isinstance(raw, dict):
+        items = [{"id": key, **value} if isinstance(value, dict) else {"id": key} for key, value in raw.items()]
+    else:
+        raise GoatError("bruno.services must be a list or a mapping")
+    services: list[BrunoService] = []
+    seen: set[str] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise GoatError("Each bruno.services entry must be a mapping")
+        service_id = str(item.get("id") or item.get("name") or "").strip()
+        if not service_id:
+            raise GoatError("Each bruno.services entry needs an id")
+        if service_id in seen:
+            raise GoatError(f"Duplicate bruno.services id: {service_id}")
+        seen.add(service_id)
+        repo = str(item.get("repo") or "").strip()
+        if repo and repo not in repo_names:
+            raise GoatError(
+                f"bruno.services {service_id} references unknown repo {repo!r}"
+            )
+        services.append(
+            BrunoService(
+                id=service_id,
+                collection=str(item.get("collection") or ""),
+                env=str(item.get("env") or ""),
+                description=str(item.get("description") or ""),
+                repo=repo,
+            )
+        )
+    return services
 
 
 def load_personal_workspaces(
@@ -780,6 +872,7 @@ def catalog_to_dict(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
         ],
         "jira": catalog.jira.schema(),
         "figma": catalog.figma.schema(),
+        "bruno": catalog.bruno.schema(),
         "env_source": str(catalog.env_source) if catalog.env_source else None,
         "env": [
             {

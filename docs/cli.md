@@ -1,6 +1,6 @@
 # Goat CLI quick reference
 
-Run from this repo: `uv run goat <command>`. After `cd` into a sibling, `uv run goat` cannot spawn — use `uv run --project "$GOAT_ROOT" goat …` or `./scripts/goat.sh` (Windows: `.\scripts\goat.ps1`).
+Run from this repo: `uv run goat <command>`. After `cd` into a sibling, `uv run goat` cannot spawn — use `uv run --project "$GOAT_ROOT" goat …` or `./scripts/goat.sh` (Windows: `.\scripts\goat.ps1`). To type `goat` from any directory, run `uv run goat install` once (macOS, Linux, and Windows). That writes a shim to `~/.local/bin` which pins this kit and calls `uv run --project`.
 
 Stdout is JSON by default. Use `--format markdown` or `text` for a human view. Errors are JSON on stderr.
 
@@ -22,7 +22,9 @@ Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`
 | --- | --- |
 | `goat commands [GROUP]` | Print this catalog (`help` is an alias) |
 | `goat init` | First-run checklist for `.env`, Jira token, and repos |
-| `goat doctor` | Check catalog, clones, Jira, and optional Figma |
+| `goat install` | Put `goat` on PATH (shim in `~/.local/bin`, any cwd) |
+| `goat uninstall` | Remove the PATH shim written by `goat install` |
+| `goat doctor` | Check catalog, clones, Jira, optional Figma, and Bruno |
 | `goat env list` | Show declared env vars and whether each is present (never values) |
 | `goat env set NAME` | Set one declared variable (secrets go in the OS keychain) |
 | `goat env unset NAME` | Remove a secret from the OS keychain |
@@ -82,6 +84,21 @@ There is no Figma MCP server. Open each `images[].url` in VS Code Simple Browser
 | `goat figma logout` | Remove the token from the OS keychain |
 
 `FILE` can be a `https://www.figma.com/design/…` URL or a file key. See `.github/skills/figma-cli/SKILL.md`.
+
+## Bruno (API collections)
+
+`bru run` executes HTTP. Yard Goat discovers the sibling collections repo and resolves cwd / `--env`. Workflows are a plan, not a runner.
+
+| Command | What it does |
+| --- | --- |
+| `goat bruno collections` | List Bruno repos, collections, services, and workflows |
+| `goat bruno requests [TARGET]` | List requests (optional collection or request filter) |
+| `goat bruno envs [COLLECTION]` | List environment and variable names (never values) |
+| `goat bruno workflows [NAME]` | List described workflows, or one full step plan |
+| `goat bruno run REQUEST` | Resolve collection cwd + env, then invoke `bru run` |
+| `goat bruno schema` | Configured Bruno output fields and the request template |
+
+Tag the collections remote `bruno` in `repositories.yml` (or set `catalog/stack.yaml` `bruno.repos`). See `.github/skills/bruno-cli/SKILL.md` and [docs/bruno.md](bruno.md).
 
 ## Day-to-day loop
 

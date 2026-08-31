@@ -213,6 +213,31 @@ def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: 
     assert schema["raw_nodes"] is True
 
 
+def test_loads_bruno_settings_from_stack(tmp_path: Path, sample_catalog_data: dict):
+    sample_catalog_data["repos"].append(
+        {
+            "name": "api-collections",
+            "url": "https://github.com/acme/api-collections.git",
+            "tags": ["bruno"],
+        }
+    )
+    sample_catalog_data["bruno"] = {
+        "repos": ["api-collections"],
+        "default_env": "staging",
+        "services": [{"id": "cart", "collection": "cart-api", "env": "staging"}],
+    }
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    assert catalog.bruno.repos == ["api-collections"]
+    assert catalog.bruno.default_env == "staging"
+    assert catalog.bruno.tags == ["bruno"]
+    assert catalog.bruno.services[0].id == "cart"
+    schema = catalog.bruno.schema()
+    assert "request_template" in schema
+    assert schema["workflows_file"] == "goat.workflows.yml"
+
+
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
     root = tmp_path / "goat"

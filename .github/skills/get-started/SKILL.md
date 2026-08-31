@@ -21,7 +21,9 @@ Run these from the goat repo. After `cd` into a sibling, `uv run goat` cannot sp
 | Store a declared secret | Tell them to run `uv run goat env set NAME` themselves |
 | Live Jira ping | `uv run goat doctor --ping-jira` or `uv run goat jira whoami` |
 | Live Figma ping (optional) | `uv run goat doctor --ping-figma` or `uv run goat figma whoami` |
+| Bruno collections (optional) | `uv run goat bruno collections` after tagging a repo `bruno` (`docs/bruno.md`) |
 | Lift sibling skills into this goat (VS Code Agents) | `uv run goat skills lift` (see the skills-install skill) |
+| Put `goat` on PATH (any cwd; macOS / Windows / Linux) | `uv run goat install` |
 
 ## Walkthrough order
 
@@ -39,6 +41,7 @@ Run these from the goat repo. After `cd` into a sibling, `uv run goat` cannot sp
 8. `repositories.yml` — replace `YOUR_ORG` placeholder remotes.
 9. `./scripts/clone-repos.sh` then `uv run goat workspace generate`. `setup.sh` / `setup.ps1` already end by running `goat init`.
 10. `init`, `workspace generate`, and `doctor` lift goat + cloned sibling skills into this repo's `.github/skills` so the VS Code Agents window can see them (child folders are not scanned). Confirm the `skills` step. Use `uv run goat skills list` / `skills lift` or the skills-install skill if they want a subset or a remote skills git repo.
+11. Optional: `uv run goat install` so they can type `goat` from a sibling clone (shim in `~/.local/bin` on macOS, Linux, and Windows). `setup.sh` / `setup.ps1` already do this. Confirm the optional `cli_path` init step.
 
 ## Hard rules
 
