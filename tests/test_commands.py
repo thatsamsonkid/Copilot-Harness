@@ -12,6 +12,12 @@ DOCS = Path(__file__).resolve().parents[1] / "docs" / "cli.md"
 EXPECTED = {
     "bootstrap",
     "branch",
+    "bruno collections",
+    "bruno envs",
+    "bruno requests",
+    "bruno run",
+    "bruno schema",
+    "bruno workflows",
     "catalog",
     "clone",
     "commands",

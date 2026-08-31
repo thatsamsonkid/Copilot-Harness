@@ -50,3 +50,11 @@ repositories:
     url: git@github.com:YOUR_ORG/infra.git
     tags: [infra, devops]
     description: Infrastructure and deployment
+
+  # Git-backed Bruno API collections (Postman alternative). Tag must include
+  # `bruno` so `coboose bruno collections` can find the sibling. Keep this
+  # tag off product app repos. See docs/bruno.md.
+  - name: api-collections
+    url: git@github.com:YOUR_ORG/api-collections.git
+    tags: [bruno]
+    description: Bruno API collections (git-backed)

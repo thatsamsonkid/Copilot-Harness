@@ -29,6 +29,7 @@ GROUP_ORDER = (
     "prepare",
     "jira",
     "figma",
+    "bruno",
     "context",
     "status",
     "branch",

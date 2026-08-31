@@ -74,6 +74,54 @@ figma:
     images: [id, url]
     comments: [author, created, message, node_id, resolved]
 
+# Git-backed Bruno collections (the Postman alternative). Coboose discovers
+# sibling repos tagged `bruno` (or listed in `repos` below), then lists
+# collections, requests, environments, and coboose.workflows.yml plans.
+# `bru run` still executes HTTP. Do not put product request bodies here.
+bruno:
+  # Optional explicit repositories.yml names. Empty = discover by tags.
+  repos: []
+  tags: [bruno]
+  default_env: local
+  workflows_file: coboose.workflows.yml
+  services_file: coboose.services.yml
+  # Optional catalog overlays. Prefer coboose.services.yml in the Bruno repo.
+  services: []
+  drop_empty: true
+  fields:
+    - kind
+    - bru_cli
+    - default_env
+    - repos
+    - collections
+    - services
+    - workflows
+    - requests
+    - environments
+    - missing_repos
+    - clone_command
+    - note
+    - dry_run
+    - cwd
+    - collection
+    - request
+    - env
+    - env_var_keys
+    - bru_command
+    - exit_code
+    - stdout
+    - stderr
+  shapes:
+    bru_cli: [present, path]
+    repos: [name, path, cloned, placeholder, collections]
+    collections: [id, name, repo, path, relpath, request_count, environments, folders]
+    services: [id, collection, env, description, repo]
+    workflows: [id, description, env, service, collection, repo, steps]
+    requests: [id, name, method, url, path, collection, seq, docs, folder]
+    environments: [name, path, collection, vars, secrets]
+    steps: [id, request, pick, needs, env_vars, env, bru_command]
+    missing_repos: [id, path]
+
 workspaces:
   - id: frontend
     name: Frontend
@@ -89,7 +137,7 @@ workspaces:
   - id: backend
     name: Backend
     description: API, services, and data changes
-    folders: [backend]
+    folders: [backend, api-collections]
     match:
       projects: [API, BE]
       components: [Backend, API]
@@ -111,7 +159,7 @@ workspaces:
   - id: platform
     name: Platform
     description: Cross-cutting work across the full stack
-    tags: [ui, api, mobile, infra]
+    tags: [ui, api, mobile, infra, bruno]
     fallback: true
     match:
       projects: [PLAT]

@@ -24,7 +24,7 @@ Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`
 | `coboose init` | First-run checklist for `.env`, Jira token, and repos |
 | `coboose install` | Put `coboose` on PATH (shim in `~/.local/bin`, any cwd) |
 | `coboose uninstall` | Remove the PATH shim written by `coboose install` |
-| `coboose doctor` | Check catalog, clones, Jira, and optional Figma |
+| `coboose doctor` | Check catalog, clones, Jira, optional Figma, and Bruno |
 | `coboose env list` | Show declared env vars and whether each is present (never values) |
 | `coboose env set NAME` | Set one declared variable (secrets go in the OS keychain) |
 | `coboose env unset NAME` | Remove a secret from the OS keychain |
@@ -84,6 +84,21 @@ There is no Figma MCP server. Open each `images[].url` in VS Code Simple Browser
 | `coboose figma logout` | Remove the token from the OS keychain |
 
 `FILE` can be a `https://www.figma.com/design/…` URL or a file key. See `.github/skills/figma-cli/SKILL.md`.
+
+## Bruno (API collections)
+
+`bru run` executes HTTP. Coboose discovers the sibling collections repo and resolves cwd / `--env`. Workflows are a plan, not a runner.
+
+| Command | What it does |
+| --- | --- |
+| `coboose bruno collections` | List Bruno repos, collections, services, and workflows |
+| `coboose bruno requests [TARGET]` | List requests (optional collection or request filter) |
+| `coboose bruno envs [COLLECTION]` | List environment and variable names (never values) |
+| `coboose bruno workflows [NAME]` | List described workflows, or one full step plan |
+| `coboose bruno run REQUEST` | Resolve collection cwd + env, then invoke `bru run` |
+| `coboose bruno schema` | Configured Bruno output fields and the request template |
+
+Tag the collections remote `bruno` in `repositories.yml` (or set `catalog/stack.yaml` `bruno.repos`). See `.github/skills/bruno-cli/SKILL.md` and [docs/bruno.md](bruno.md).
 
 ## Day-to-day loop
 

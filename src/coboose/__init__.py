@@ -1,4 +1,4 @@
-"""Coboose CLI — a Copilot Kit for sibling repos, workspaces, Jira Cloud, and Figma."""
+"""Coboose CLI — a Copilot Kit for sibling repos, workspaces, Jira Cloud, Figma, and Bruno."""
 
 __version__ = "0.1.0"
 

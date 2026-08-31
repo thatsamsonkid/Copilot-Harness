@@ -188,6 +188,8 @@ def test_clone_dry_run_and_doctor(coboose_root: Path, capsys, monkeypatch):
     assert "uv" in doctor
     assert any(check["name"] == "env_age" for check in doctor["checks"])
     assert any(check["name"] == "graphify_cli" for check in doctor["checks"])
+    assert any(check["name"] == "bru_cli" for check in doctor["checks"])
+    assert "bruno" in doctor
     assert "env_age" in doctor
     assert doctor["invoke"]["cwd"] == str(coboose_root.resolve())
     assert "--project" in doctor["invoke"]["command"]

@@ -95,6 +95,7 @@ This skill is the CLI contract, not an implementer.
 - Local stack start: workspace-start skill or `/start-workspace`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
 - Figma frames: figma-cli skill or `/figma-frame`
+- Bruno collections: bruno-cli skill or `/bruno`
 - Create a feature workspace: Workspace Creator agent or `/new-workspace`
 - Implement an agreed plan: Implementer agent
 - Review a diff: Reviewer agent or `/review`

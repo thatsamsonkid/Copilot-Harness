@@ -6,6 +6,13 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from coboose import CobooseError, __version__
+from coboose.bruno import (
+    collect_bruno_inventory,
+    list_bruno_envs,
+    list_bruno_requests,
+    list_bruno_workflows,
+    run_bruno_request,
+)
 from coboose.bootstrap import bootstrap_project
 from coboose.branch import align_branches
 from coboose.catalog import catalog_to_dict, load_catalog
@@ -76,9 +83,10 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Clone product git repos under parent_dir, bootstrap projects from "
             "listed templates, query Jira Cloud with basic auth, export Figma "
-            "frame images, inspect clone git status, create or select a "
-            "feature VS Code workspace, and lift agent skills into the root "
-            "workspace for the VS Code Agents window."
+            "frame images, discover Bruno API collections and wrap bru, inspect "
+            "clone git status, create or select a feature VS Code workspace, "
+            "and lift agent skills into the root workspace for the VS Code "
+            "Agents window."
         ),
         parents=[shared],
     )
@@ -94,7 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_argument(
         "group",
         nargs="?",
-        help="Show one group or command (jira, figma, start, …)",
+        help="Show one group or command (jira, figma, bruno, start, …)",
     )
 
     clone = sub.add_parser(
@@ -236,6 +244,85 @@ def build_parser() -> argparse.ArgumentParser:
         "--clear-env",
         action="store_true",
         help="Also blank FIGMA_ACCESS_TOKEN in .env",
+    )
+
+    bruno = sub.add_parser(
+        "bruno",
+        parents=[shared],
+        help="Discover Bruno collections and wrap the bru CLI",
+    )
+    bruno_sub = bruno.add_subparsers(dest="bruno_command", required=True)
+    bruno_sub.add_parser(
+        "collections",
+        parents=[shared],
+        help="List Bruno repos, collections, services, and workflows",
+    )
+    bruno_requests = bruno_sub.add_parser(
+        "requests",
+        parents=[shared],
+        help="List Bruno requests (optional collection or request filter)",
+    )
+    bruno_requests.add_argument(
+        "target",
+        nargs="?",
+        help="Collection id, request id, or relative .bru path",
+    )
+    bruno_envs = bruno_sub.add_parser(
+        "envs",
+        parents=[shared],
+        help="List Bruno environments and service defaults (names only)",
+    )
+    bruno_envs.add_argument(
+        "target",
+        nargs="?",
+        help="Collection id to limit environments",
+    )
+    bruno_workflows = bruno_sub.add_parser(
+        "workflows",
+        parents=[shared],
+        help="List described multi-step Bruno workflows (a plan, not a runner)",
+    )
+    bruno_workflows.add_argument(
+        "name",
+        nargs="?",
+        help="Workflow id for the full step plan",
+    )
+    bruno_run = bruno_sub.add_parser(
+        "run",
+        parents=[shared],
+        help="Resolve collection cwd + env, then invoke bru run",
+    )
+    bruno_run.add_argument(
+        "target",
+        help="Request id, meta name, or relative .bru path",
+    )
+    bruno_run.add_argument(
+        "--collection",
+        help="Disambiguate when two collections share a request name",
+    )
+    bruno_run.add_argument(
+        "--service",
+        help="Service id from coboose.services.yml or catalog/stack.yaml bruno.services",
+    )
+    bruno_run.add_argument(
+        "--env",
+        help="Bruno environment name (default: service env, then bruno.default_env)",
+    )
+    bruno_run.add_argument(
+        "--env-var",
+        dest="env_vars",
+        action="append",
+        help="KEY=value passed to bru (repeatable). Values are redacted on stdout",
+    )
+    bruno_run.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the resolved bru command without executing HTTP",
+    )
+    bruno_sub.add_parser(
+        "schema",
+        parents=[shared],
+        help="Show configured Bruno output fields and the request template",
     )
 
     env = sub.add_parser(
@@ -420,7 +507,7 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = sub.add_parser(
         "doctor",
         parents=[shared],
-        help="Check catalog, clones, Jira, and optional Figma configuration",
+        help="Check catalog, clones, Jira, optional Figma, and Bruno configuration",
     )
     doctor.add_argument("--ping-jira", action="store_true")
     doctor.add_argument("--ping-figma", action="store_true")
@@ -758,6 +845,8 @@ def dispatch(args: argparse.Namespace) -> Any:
         return _dispatch_jira(args, catalog, coboose_root)
     if args.command == "figma":
         return _dispatch_figma(args, catalog, coboose_root)
+    if args.command == "bruno":
+        return _dispatch_bruno(args, catalog, coboose_root)
     if args.command == "env":
         return _dispatch_env(args, catalog, coboose_root)
     if args.command == "workspace":
@@ -975,6 +1064,39 @@ def _dispatch_figma(args: argparse.Namespace, catalog: Any, coboose_root: Path) 
     if args.figma_command == "whoami":
         return client.myself()
     raise CobooseError(f"Unknown figma command: {args.figma_command}")
+
+
+def _dispatch_bruno(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
+    settings = catalog.bruno
+    if args.bruno_command == "schema":
+        return {"bruno": settings.schema()}
+    if args.bruno_command == "collections":
+        return collect_bruno_inventory(catalog, coboose_root, settings=settings)
+    if args.bruno_command == "requests":
+        return list_bruno_requests(
+            catalog, coboose_root, getattr(args, "target", None), settings=settings
+        )
+    if args.bruno_command == "envs":
+        return list_bruno_envs(
+            catalog, coboose_root, getattr(args, "target", None), settings=settings
+        )
+    if args.bruno_command == "workflows":
+        return list_bruno_workflows(
+            catalog, coboose_root, getattr(args, "name", None), settings=settings
+        )
+    if args.bruno_command == "run":
+        return run_bruno_request(
+            catalog,
+            coboose_root,
+            args.target,
+            collection=getattr(args, "collection", None),
+            service=getattr(args, "service", None),
+            env=getattr(args, "env", None),
+            env_vars=getattr(args, "env_vars", None),
+            dry_run=bool(getattr(args, "dry_run", False)),
+            settings=settings,
+        )
+    raise CobooseError(f"Unknown bruno command: {args.bruno_command}")
 
 
 def _dispatch_env(args: argparse.Namespace, catalog: Any, coboose_root: Path) -> Any:
