@@ -445,8 +445,9 @@ def test_create_personal_cli(coboose_root: Path, capsys, monkeypatch):
     assert scratch["personal"] is True
 
 
-def test_gitignore_covers_personal_workspace_files():
+def test_gitignore_covers_generated_and_personal_workspace_files():
     gitignore = Path(__file__).resolve().parents[1] / ".gitignore"
     text = gitignore.read_text(encoding="utf-8")
+    assert "workspaces/*.code-workspace" in text
     assert "workspaces/personal/*" in text
     assert "!workspaces/personal/README.md" in text

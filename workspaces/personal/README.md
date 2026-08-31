@@ -10,6 +10,6 @@ coboose workspace create --personal
 
 or choose **personal** when `coboose workspace create` prompts.
 
-Shared team workspaces still live in `workspaces/<id>.code-workspace` and `catalog/stack.yaml`. Those are what `/new-workspace` writes when you pick **shared**.
+Shared team workspaces live in `catalog/stack.yaml`. `/new-workspace` writes that catalog when you pick **shared**. The matching `.code-workspace` file is generated locally (gitignored) by `coboose workspace generate`.
 
 A personal start sequence, if you save one, is `workspaces/personal/<id>.start.yml` next to that workspace file. Shared plans use `workspaces/<id>.start.yml`.

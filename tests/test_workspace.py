@@ -68,6 +68,7 @@ def test_generate_and_list(catalog, coboose_root: Path):
     assert frontend["personal"] is False
     assert frontend["sync"] == "ok"
     assert frontend["in_sync"] is True
+    assert frontend["open_command"].endswith("frontend.code-workspace")
     assert {item["action"] for item in written} == {"created"}
     assert frontend["repos"][0]["cloned"] is False
     assert frontend["start_file"].endswith("workspaces/frontend.start.yml")
@@ -163,8 +164,9 @@ def test_check_workspaces_reports_missing_stale_and_orphan(catalog, coboose_root
     assert rewritten["coboose"]["description"] != "hand edited"
 
 
-def test_checked_in_workspace_files_match_stack_yaml():
+def test_shared_workspace_files_are_gitignored_not_committed():
     root = Path(__file__).resolve().parents[1]
-    catalog = load_catalog(root)
-    status = check_workspaces(catalog, root)
-    assert status["ok"] is True, status
+    gitignore = (root / ".gitignore").read_text(encoding="utf-8")
+    assert "workspaces/*.code-workspace" in gitignore
+    committed = list((root / "workspaces").glob("*.code-workspace"))
+    assert committed == []

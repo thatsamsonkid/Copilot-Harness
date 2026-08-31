@@ -216,12 +216,33 @@ def list_workspaces(catalog: Catalog, coboose_root: Path) -> list[dict[str, Any]
                 "exists": path.exists(),
                 "sync": sync["status"],
                 "in_sync": sync["status"] in {"ok", "personal"},
+                "open_command": open_command(path),
                 "start_file": str(start_file),
                 "start_plan": start_file.is_file(),
                 "repos": repos,
             }
         )
     return result
+
+
+def catalog_starters(catalog: Catalog, coboose_root: Path) -> list[dict[str, Any]]:
+    """Shared catalog/stack.yaml workspaces for get-started / init."""
+    starters: list[dict[str, Any]] = []
+    for row in list_workspaces(catalog, coboose_root):
+        if row["personal"]:
+            continue
+        starters.append(
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "description": row["description"],
+                "fallback": row["fallback"],
+                "file": row["file"],
+                "exists": row["exists"],
+                "open_command": row["open_command"],
+            }
+        )
+    return starters
 
 
 def open_command(workspace_file: Path) -> str:

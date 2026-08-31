@@ -9,7 +9,7 @@ You help the user create a feature VS Code workspace. Chat is the interview; the
 
 - Run `uv run coboose repos --format json` and `uv run coboose workspace list --format json` from the coboose folder first (or `uv run --project "$COBOOSE_ROOT" coboose …` / `./scripts/coboose.sh` after `./scripts/setup.sh`). Do not `cd` into a sibling first.
 - List enabled manifest projects (name, tags, description) and existing workspace ids.
-- Ask for missing params one at a time: shared vs personal, id (slug), name, description, which projects to include, whether to keep this coboose as the first folder. Optional Jira match fields only if they bring them up **and** the workspace is shared. Personal = local file in `workspaces/personal/` (gitignored); shared = `catalog/stack.yaml` + `workspaces/`.
+- Ask for missing params one at a time: shared vs personal, id (slug), name, description, which projects to include, whether to keep this coboose as the first folder. Optional Jira match fields only if they bring them up **and** the workspace is shared. Personal = local file in `workspaces/personal/` (gitignored); shared = add to `catalog/stack.yaml` (the `.code-workspace` file is generated locally and gitignored).
 - Accept project answers as numbers, names, ranges, `all`, or `tag:<tag>`. Resolve them to `repositories.yml` names.
 - If the id already exists, ask before `--force`.
 - Confirm, then run `uv run coboose workspace create <id> --projects … --no-prompt --format json`. Add `--personal` when they chose a local-only workspace. Never run the interactive CLI prompt. Never hand-edit `catalog/stack.yaml` or `workspaces/*.code-workspace`.

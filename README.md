@@ -56,11 +56,10 @@ Then:
 2. Edit `templates.yml` — add starter remotes you want Copilot or `coboose bootstrap` to offer.
 3. Copy `.env.example` to `.env` and set `JIRA_BASE_URL` / `JIRA_EMAIL`. Store the Jira API token with `uv run coboose jira login` (macOS Keychain or Windows Credential Manager). See [docs/jira-api-token.md](docs/jira-api-token.md). Optional Figma: `uv run coboose figma login` ([docs/figma-access-token.md](docs/figma-access-token.md)).
 4. Clone product repos: `./scripts/clone-repos.sh`
-5. Generate workspaces: `coboose workspace generate`
-6. Or create a new feature workspace and pick projects from `repositories.yml`:
-   `coboose workspace create` (or `/new-workspace` in chat). Choose **shared** for the team catalog, or **personal** for a local-only file under `workspaces/personal/` (gitignored).
-7. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
+5. Generate local workspaces: `coboose workspace generate` (gitignored `.code-workspace` files from `catalog/stack.yaml`)
+6. Open a catalog starter (`coboose workspace open frontend`) or create your own:
+   `coboose workspace create` (or `/new-workspace` in chat). Choose **shared** to add an id to the team catalog, or **personal** for a local-only mix under `workspaces/personal/`.
+7. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
 
 `setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, install this package in editable mode, and register a `coboose` shim on PATH (`~/.local/bin`). Prefer `uv` over pip. Do not `pip install` this repo. After `cd` into a sibling clone, bare `uv run coboose` cannot spawn — use the global shim, `--project`, or the wrapper script:
 
@@ -104,7 +103,7 @@ repositories:
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
 | `knowledge` | no | `{ dirs: [handbook] }` extra folders to treat as feature notes |
 
-`catalog/stack.yaml` is the source of truth for feature workspaces and Jira routing. `workspaces/*.code-workspace` files are generated from it — do not hand-edit them. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
+`catalog/stack.yaml` is the source of truth for feature workspaces and Jira routing. `workspaces/*.code-workspace` files are generated locally from it and gitignored — do not commit or hand-edit them. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
 
 One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this coboose.
 
@@ -116,7 +115,7 @@ coboose templates
 coboose clone --tag api
 ```
 
-One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `coboose workspace generate`. `coboose workspace generate --check` compares the generated files without writing and exits non-zero when they drift (CI uses this).
+One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `coboose workspace generate` on your machine. `coboose workspace generate --check` compares local files to the catalog without writing.
 
 To add a workspace without editing YAML by hand:
 
@@ -130,7 +129,7 @@ coboose workspace create checkout --projects frontend,backend --no-prompt
 coboose workspace create mobile-api --tag mobile,api --name "Mobile + API"
 ```
 
-That writes `catalog/stack.yaml` and `workspaces/<id>.code-workspace`. Use `--force` to replace an existing id, `--dry-run` to preview, or `--no-prompt` when flags must be complete.
+Shared create writes `catalog/stack.yaml` (the team catalog) and generates a local `.code-workspace` file. Use `--force` to replace an existing id, `--dry-run` to preview, or `--no-prompt` when flags must be complete.
 
 For a scratch mix you do not want to commit, pass `--personal` (or choose **personal** at the prompt):
 
@@ -138,7 +137,7 @@ For a scratch mix you do not want to commit, pass `--personal` (or choose **pers
 coboose workspace create scratch --projects frontend,backend --personal --no-prompt
 ```
 
-Personal workspaces go in `workspaces/personal/` and are gitignored. They are not added to `catalog/stack.yaml` and do not participate in Jira routing. Shared workspaces stay the default so the team catalog does not change unless you ask.
+Personal workspaces go in `workspaces/personal/` and are gitignored. They are not added to `catalog/stack.yaml` and do not participate in Jira routing. Shared create stays the default so the team catalog only changes when you add a starter for everyone. Generated shared `.code-workspace` files are also gitignored.
 
 Workspace files always include this coboose as the first root so Copilot still sees the CLI and instructions.
 

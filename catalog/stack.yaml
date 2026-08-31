@@ -1,10 +1,10 @@
 # Feature workspaces and Jira routing.
 # Repository remotes live in ../repositories.yml — reference them by name
 # in `folders`, or pull a set in by `tags`.
-# Shared workspaces/*.code-workspace files are generated from this file —
-# after editing workspaces below, run `coboose workspace generate`.
-# `coboose workspace generate --check` fails when those files drift.
-# Local-only mixes: `coboose workspace create --personal` (workspaces/personal/).
+# workspaces/*.code-workspace files are generated locally from this catalog —
+# do not commit them. setup / init / doctor run `coboose workspace generate`.
+# Open a starter with `coboose workspace open <id>`, or make your own with
+# `coboose workspace create` (`--personal` stays under workspaces/personal/).
 
 # Copilot-facing API allowlists. Every integration should normalize its vendor
 # payload, then clip it with `fields` + `shapes` (see coboose.projection).

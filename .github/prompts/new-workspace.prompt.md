@@ -18,7 +18,7 @@ Copilot collects the remaining params in chat, then runs the coboose CLI. Do **n
 2. Show a numbered list of **enabled** `repositories.yml` projects: name, tags, description, `path` / `group` when organized, cloned or not.
 3. Also list existing workspace ids so the user does not collide unless they mean to replace one.
 4. Ask for anything still missing, one question at a time:
-   - **kind** — **shared** (default: `catalog/stack.yaml` + `workspaces/<id>.code-workspace` for the team) or **personal** (local only under `workspaces/personal/`, gitignored, no catalog edit). If they say scratch, local, mine, or "don't commit it", use personal.
+   - **kind** — **shared** (default: add the id to `catalog/stack.yaml` for the team and Jira routing; the `.code-workspace` file is generated locally and gitignored) or **personal** (local only under `workspaces/personal/`, gitignored, no catalog edit). If they say scratch, local, mine, or "don't commit it", use personal.
    - **id** — lowercase slug (`checkout`). Use `${input:id:Workspace id (optional slug)}` when it is a real slug; otherwise ask. Default a suggestion from their wording (`Checkout Flow` → `checkout-flow`).
    - **name** — default to a title-cased id.
    - **description** — optional; skip if they do not care.

@@ -437,8 +437,8 @@ def build_parser() -> argparse.ArgumentParser:
         dest="personal",
         action="store_false",
         help=(
-            "Add the workspace to catalog/stack.yaml and workspaces/ "
-            "for everyone (default)"
+            "Add the workspace to catalog/stack.yaml for the team (default). "
+            "The .code-workspace file is generated locally and gitignored"
         ),
     )
     workspace_create.add_argument(

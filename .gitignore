@@ -16,6 +16,9 @@ build/
 handoffs/*.md
 !handoffs/.gitkeep
 
+# Generated VS Code workspaces from catalog/stack.yaml (local only)
+workspaces/*.code-workspace
+
 # Local-only workspaces from `coboose workspace create --personal`
 workspaces/personal/*
 !workspaces/personal/README.md

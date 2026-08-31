@@ -39,9 +39,10 @@ Run these from the coboose repo. After `cd` into a sibling, `uv run coboose` can
 6. Optional Figma: they create a personal access token using `docs/figma-access-token.md` and store it with `uv run coboose figma login`. Skip this if the team does not use Figma.
 7. Any other `env.variables` row from `coboose init` / `catalog/env.yaml` where `ok` is false. Non-secrets: edit `.env`. Secrets: `uv run coboose env set NAME` in their terminal. Do not put values in `.code-workspace` files.
 8. `repositories.yml` — replace `YOUR_ORG` placeholder remotes.
-9. `./scripts/clone-repos.sh` then `uv run coboose workspace generate`. `setup.sh` / `setup.ps1` already end by running `coboose init`.
-10. `init`, `workspace generate`, and `doctor` lift coboose + cloned sibling skills into this repo's `.github/skills` so the VS Code Agents window can see them (child folders are not scanned). Confirm the `skills` step. Use `uv run coboose skills list` / `skills lift` or the skills-install skill if they want a subset or a remote skills git repo.
-11. Optional: `uv run coboose install` so they can type `coboose` from a sibling clone (shim in `~/.local/bin` on macOS, Linux, and Windows). `setup.sh` / `setup.ps1` already do this. Confirm the optional `cli_path` init step.
+9. `./scripts/clone-repos.sh`. `setup.sh` / `setup.ps1` / `init` / `doctor` generate local `.code-workspace` files from `catalog/stack.yaml` (gitignored — do not commit them). If files are missing, run `uv run coboose workspace generate`.
+10. From init JSON `workspaces[]`, list the catalog starters and ask which to open (`open_command` / `coboose workspace open <id>`). They can also create their own with `/new-workspace` or `coboose workspace create` (shared adds an id to the catalog; `--personal` is local-only).
+11. `init`, `workspace generate`, and `doctor` lift coboose + cloned sibling skills into this repo's `.github/skills` so the VS Code Agents window can see them (child folders are not scanned). Confirm the `skills` step. Use `uv run coboose skills list` / `skills lift` or the skills-install skill if they want a subset or a remote skills git repo.
+12. Optional: `uv run coboose install` so they can type `coboose` from a sibling clone (shim in `~/.local/bin` on macOS, Linux, and Windows). `setup.sh` / `setup.ps1` already do this. Confirm the optional `cli_path` init step.
 
 ## Hard rules
 

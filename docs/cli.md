@@ -41,14 +41,14 @@ Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`
 | `coboose templates [NAME]` | List starter remotes from `templates.yml` |
 | `coboose bootstrap [TEMPLATE]` | Clone a listed template as a new project |
 | `coboose workspace list` | List feature workspaces |
-| `coboose workspace generate` | Write `.code-workspace` files from `catalog/stack.yaml` (`--check` fails on drift, no write) |
+| `coboose workspace generate` | Write local `.code-workspace` files from `catalog/stack.yaml` (`--check` reports drift, no write) |
 | `coboose workspace create [ID]` | Create a workspace and pick projects from `repositories.yml` |
 | `coboose workspace match ISSUE` | Recommend a workspace for an issue |
 | `coboose workspace open ID` | Open a workspace in VS Code |
 | `coboose workspace path ID` | Print a workspace file path |
 | `coboose workspace current` | Detect the open feature workspace |
 
-Typical bootstrap: `coboose bootstrap --template <name> --name <folder>`. Personal (gitignored) workspaces: `coboose workspace create scratch --projects frontend,backend --personal --no-prompt`.
+Typical bootstrap: `coboose bootstrap --template <name> --name <folder>`. Catalog starters: `coboose workspace generate` then `coboose workspace open <id>`. Your own mix: `coboose workspace create` (add `--personal` for a local-only file).
 
 ## Tickets (Jira)
 
