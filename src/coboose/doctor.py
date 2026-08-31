@@ -11,6 +11,7 @@ from coboose.context import inspect_repo
 from coboose.envfile import env_file_age
 from coboose.envspec import list_env, resolve_var
 from coboose.figma_client import FigmaClient, figma_var
+from coboose.install import cli_path_status
 from coboose.invoke import invoke_spec
 from coboose.jira_client import JiraClient, jira_settings_from_env
 from coboose.keychain import (
@@ -46,6 +47,20 @@ def run_doctor(
             "uv",
             bool(uv["present"]),
             f"uv is on PATH ({uv['path']})" if uv["present"] else uv_missing_action(uv),
+        )
+    )
+    path_status = cli_path_status(coboose_root, environ=environ)
+    checks.append(
+        _check(
+            "cli_path",
+            bool(path_status["on_path"]),
+            path_status["detail"]
+            if path_status["on_path"]
+            else (
+                f"{path_status['detail']}. Run `uv run coboose install`. "
+                f"{path_status['path_hint']}"
+            ),
+            ok_when_false=True,
         )
     )
     checks.append(
