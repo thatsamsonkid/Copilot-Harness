@@ -24,22 +24,22 @@ if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
     Write-Host "Created .env from .env.example — fill in Jira values."
 }
 
-uv run coboose workspace generate
+uv run goat workspace generate
 Write-Host "Setup complete. First-run checklist:"
-uv run coboose init --format text
+uv run goat init --format text
 Write-Host "Next:"
 Write-Host "  1. Create a Jira API token (docs/jira-api-token.md), set email/URL in .env,"
-Write-Host "     then run: uv run coboose jira login"
-Write-Host "     (or: uv run coboose init --interactive)"
+Write-Host "     then run: uv run goat jira login"
+Write-Host "     (or: uv run goat init --interactive)"
 Write-Host "  2. Edit repositories.yml, then ./scripts/clone-repos.sh"
 Write-Host "  3. In Copilot Chat: /get-started"
-Write-Host "Register coboose on PATH (any cwd):"
+Write-Host "Register goat on PATH (any cwd):"
 try {
-    uv run coboose install --format text
+    uv run goat install --format text
 } catch {
-    Write-Host "coboose install skipped: $_"
+    Write-Host "goat install skipped: $_"
 }
-Write-Host "Run the CLI with: coboose <command>  (or: uv run coboose <command>)"
-Write-Host "From a sibling clone: coboose <command>"
-Write-Host "  or: uv run --project `"$Root`" coboose <command>"
-Write-Host "  or: $Root\scripts\coboose.ps1 <command>"
+Write-Host "Run the CLI with: goat <command>  (or: uv run goat <command>)"
+Write-Host "From a sibling clone: goat <command>"
+Write-Host "  or: uv run --project `"$Root`" goat <command>"
+Write-Host "  or: $Root\scripts\goat.ps1 <command>"

@@ -5,12 +5,12 @@
 The `.code-workspace` files in this folder are **generated locally**. Git ignores them. Do not commit them.
 
 ```bash
-coboose workspace generate          # write files from the catalog
-coboose workspace list              # see ids, sync, open paths
-coboose workspace open frontend     # open a catalog starter
-coboose workspace create            # add an id to the catalog
+goat workspace generate          # write files from the catalog
+goat workspace list              # see ids, sync, open paths
+goat workspace open frontend     # open a catalog starter
+goat workspace create            # add an id to the catalog
 ```
 
-Get-started / `coboose init` / `setup` / `doctor` already generate the catalog starters. Open one of those, or create your own mix with `/new-workspace`.
+Get-started / `goat init` / `setup` / `doctor` already generate the catalog starters. Open one of those, or create your own mix with `/new-workspace`.
 
 A saved boot sequence is `workspaces/<id>.start.yml` next to the generated file. Those plans can be committed so the team reuses the same start order.

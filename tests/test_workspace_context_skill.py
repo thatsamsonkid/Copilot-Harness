@@ -34,7 +34,7 @@ def test_skill_covers_graphify_and_standards():
         assert token in description
     lowered = body.lower()
     for token in (
-        "uv run coboose context",
+        "uv run goat context",
         "workspace current",
         "workspace.repos",
         "graphify.report",

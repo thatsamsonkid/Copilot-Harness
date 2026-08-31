@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from coboose.envfile import env_file_keys, load_env_file, upsert_env_file
+from goat.envfile import env_file_keys, load_env_file, upsert_env_file
 
 
 def test_upsert_preserves_comments_and_other_keys(tmp_path: Path):

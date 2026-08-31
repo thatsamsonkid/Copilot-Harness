@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from coboose.cli import build_parser, main
-from coboose.commands import collect_commands, command_reference
-from coboose.output import to_markdown, to_text
+from goat.cli import build_parser, main
+from goat.commands import collect_commands, command_reference
+from goat.output import to_markdown, to_text
 
 DOCS = Path(__file__).resolve().parents[1] / "docs" / "cli.md"
 
@@ -141,10 +141,10 @@ def test_unknown_group_is_json_error(capsys):
 def test_usage_includes_positionals():
     payload = command_reference(build_parser())
     by_name = {item["command"]: item for item in payload["commands"]}
-    assert by_name["jira get"]["usage"] == "coboose jira get ISSUE"
-    assert by_name["prepare"]["usage"] == "coboose prepare ISSUE"
-    assert by_name["commands"]["usage"] == "coboose commands [GROUP]"
-    assert by_name["workspace create"]["usage"] == "coboose workspace create [ID]"
+    assert by_name["jira get"]["usage"] == "goat jira get ISSUE"
+    assert by_name["prepare"]["usage"] == "goat prepare ISSUE"
+    assert by_name["commands"]["usage"] == "goat commands [GROUP]"
+    assert by_name["workspace create"]["usage"] == "goat workspace create [ID]"
     assert "--from-env" in {arg["name"] for arg in by_name["jira login"]["arguments"]}
     assert by_name["start"]["help"] == "Print a workspace start plan (does not launch)"
     assert "in-process" in by_name["start run"]["help"]
@@ -155,19 +155,19 @@ def test_markdown_and_text_are_scannable():
     payload = command_reference(build_parser())
     markdown = to_markdown(payload)
     text = to_text(payload)
-    assert markdown.startswith("# Coboose CLI")
-    assert "| `coboose jira get ISSUE` | Fetch one issue |" in markdown
+    assert markdown.startswith("# Goat CLI")
+    assert "| `goat jira get ISSUE` | Fetch one issue |" in markdown
     assert "## `start`" in markdown
     assert "Shared flags" in markdown
-    assert text.startswith("Coboose CLI (")
-    assert "coboose jira get ISSUE" in text
+    assert text.startswith("Goat CLI (")
+    assert "goat jira get ISSUE" in text
     assert "Fetch one issue" in text
 
 
 def test_docs_quick_reference_lists_every_command():
     docs = DOCS.read_text(encoding="utf-8")
     missing = [
-        name for name in sorted(EXPECTED) if f"`coboose {name}" not in docs
+        name for name in sorted(EXPECTED) if f"`goat {name}" not in docs
     ]
     assert missing == []
-    assert "uv run coboose commands" in docs
+    assert "uv run goat commands" in docs

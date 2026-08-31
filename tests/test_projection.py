@@ -1,7 +1,7 @@
 import pytest
 
-from coboose import CobooseError
-from coboose.projection import ProjectionSpec, project
+from goat import GoatError
+from goat.projection import ProjectionSpec, project
 
 
 def test_project_keeps_allowlist_order_and_drops_unknown_keys():
@@ -86,5 +86,5 @@ def test_from_mapping_overlays_shapes_and_defaults():
 
 
 def test_from_mapping_rejects_non_mapping_shapes():
-    with pytest.raises(CobooseError, match="shapes must be a mapping"):
+    with pytest.raises(GoatError, match="shapes must be a mapping"):
         ProjectionSpec.from_mapping({"fields": ["key"], "shapes": ["project"]}, name="jira")

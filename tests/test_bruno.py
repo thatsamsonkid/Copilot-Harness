@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from coboose import CobooseError
-from coboose.bruno import (
+from goat import GoatError
+from goat.bruno import (
     collect_bruno_inventory,
     list_bruno_envs,
     list_bruno_requests,
@@ -16,9 +16,9 @@ from coboose.bruno import (
     parse_env_vars,
     run_bruno_request,
 )
-from coboose.catalog import load_catalog
-from coboose.cli import main
-from tests.helpers import write_coboose_config
+from goat.catalog import load_catalog
+from goat.cli import main
+from tests.helpers import write_goat_config
 
 
 SEARCH_BRU = """meta {
@@ -123,12 +123,12 @@ def _write_bruno_tree(sibling: Path) -> Path:
     (root / "cart" / "add-item.bru").write_text(CART_BRU, encoding="utf-8")
     (root / "environments" / "local.bru").write_text(LOCAL_ENV, encoding="utf-8")
     (root / "environments" / "staging.bru").write_text(STAGING_ENV, encoding="utf-8")
-    (root / "coboose.workflows.yml").write_text(WORKFLOWS, encoding="utf-8")
-    (root / "coboose.services.yml").write_text(SERVICES, encoding="utf-8")
+    (root / "goat.workflows.yml").write_text(WORKFLOWS, encoding="utf-8")
+    (root / "goat.services.yml").write_text(SERVICES, encoding="utf-8")
     return root
 
 
-def _catalog_with_bruno(coboose_root: Path, sample_catalog_data: dict):
+def _catalog_with_bruno(goat_root: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"].append(
         {
             "name": "api-collections",
@@ -142,9 +142,9 @@ def _catalog_with_bruno(coboose_root: Path, sample_catalog_data: dict):
         "default_env": "local",
         "services": [{"id": "cart", "env": "staging", "collection": "cart-api"}],
     }
-    write_coboose_config(coboose_root, sample_catalog_data)
-    _write_bruno_tree(coboose_root.parent)
-    return load_catalog(coboose_root)
+    write_goat_config(goat_root, sample_catalog_data)
+    _write_bruno_tree(goat_root.parent)
+    return load_catalog(goat_root)
 
 
 def test_parse_bru_blocks_and_request(tmp_path: Path):
@@ -180,15 +180,15 @@ def test_parse_env_vars_requires_key():
         ("productId", "abc"),
         ("q", "shoes"),
     ]
-    with pytest.raises(CobooseError, match="KEY=value"):
+    with pytest.raises(GoatError, match="KEY=value"):
         parse_env_vars(["novalue"])
 
 
 def test_inventory_lists_repo_collections_and_workflows(
-    coboose_root: Path, sample_catalog_data: dict
+    goat_root: Path, sample_catalog_data: dict
 ):
-    catalog = _catalog_with_bruno(coboose_root, sample_catalog_data)
-    payload = collect_bruno_inventory(catalog, coboose_root)
+    catalog = _catalog_with_bruno(goat_root, sample_catalog_data)
+    payload = collect_bruno_inventory(catalog, goat_root)
     assert payload["kind"] == "bruno_inventory"
     assert payload["repos"][0]["name"] == "api-collections"
     assert payload["repos"][0]["cloned"] is True
@@ -203,13 +203,13 @@ def test_inventory_lists_repo_collections_and_workflows(
     assert workflows["add-to-cart"]["steps"][0]["request"] == "search/search-products"
 
 
-def test_requests_and_envs(coboose_root: Path, sample_catalog_data: dict):
-    catalog = _catalog_with_bruno(coboose_root, sample_catalog_data)
-    requests = list_bruno_requests(catalog, coboose_root, "cart-api")
+def test_requests_and_envs(goat_root: Path, sample_catalog_data: dict):
+    catalog = _catalog_with_bruno(goat_root, sample_catalog_data)
+    requests = list_bruno_requests(catalog, goat_root, "cart-api")
     ids = [item["id"] for item in requests["requests"]]
     assert any(item.endswith("search/search-products") for item in ids)
     assert all(item["collection"] == "cart-api" for item in requests["requests"])
-    envs = list_bruno_envs(catalog, coboose_root, "cart-api")
+    envs = list_bruno_envs(catalog, goat_root, "cart-api")
     names = {item["name"] for item in envs["environments"]}
     assert names == {"local", "staging"}
     staging = next(item for item in envs["environments"] if item["name"] == "staging")
@@ -219,10 +219,10 @@ def test_requests_and_envs(coboose_root: Path, sample_catalog_data: dict):
 
 
 def test_workflow_plan_includes_bru_command(
-    coboose_root: Path, sample_catalog_data: dict
+    goat_root: Path, sample_catalog_data: dict
 ):
-    catalog = _catalog_with_bruno(coboose_root, sample_catalog_data)
-    payload = list_bruno_workflows(catalog, coboose_root, "add-to-cart")
+    catalog = _catalog_with_bruno(goat_root, sample_catalog_data)
+    payload = list_bruno_workflows(catalog, goat_root, "add-to-cart")
     workflow = payload["workflows"][0]
     assert workflow["env"] == "staging"
     assert workflow["steps"][0]["pick"]["product_id"] == "body.products[0].id"
@@ -234,12 +234,12 @@ def test_workflow_plan_includes_bru_command(
 
 
 def test_run_dry_run_redacts_env_vars(
-    coboose_root: Path, sample_catalog_data: dict
+    goat_root: Path, sample_catalog_data: dict
 ):
-    catalog = _catalog_with_bruno(coboose_root, sample_catalog_data)
+    catalog = _catalog_with_bruno(goat_root, sample_catalog_data)
     payload = run_bruno_request(
         catalog,
-        coboose_root,
+        goat_root,
         "search/search-products",
         service="cart",
         env_vars=["productId=should-not-leak", "token=sekrit"],
@@ -255,9 +255,9 @@ def test_run_dry_run_redacts_env_vars(
     assert payload["cwd"].endswith("api-collections")
 
 
-def test_run_invokes_bru(coboose_root: Path, sample_catalog_data: dict, monkeypatch):
-    catalog = _catalog_with_bruno(coboose_root, sample_catalog_data)
-    monkeypatch.setattr("coboose.bruno.shutil.which", lambda _name: "/usr/bin/bru")
+def test_run_invokes_bru(goat_root: Path, sample_catalog_data: dict, monkeypatch):
+    catalog = _catalog_with_bruno(goat_root, sample_catalog_data)
+    monkeypatch.setattr("goat.bruno.shutil.which", lambda _name: "/usr/bin/bru")
 
     class Result:
         returncode = 0
@@ -276,7 +276,7 @@ def test_run_invokes_bru(coboose_root: Path, sample_catalog_data: dict, monkeypa
 
     payload = run_bruno_request(
         catalog,
-        coboose_root,
+        goat_root,
         "Add to cart",
         env="local",
         run_fn=fake_run,
@@ -287,53 +287,53 @@ def test_run_invokes_bru(coboose_root: Path, sample_catalog_data: dict, monkeypa
     assert any(str(part).endswith("add-item.bru") for part in seen["cmd"])
 
 
-def test_run_missing_bru_is_clear(coboose_root: Path, sample_catalog_data: dict, monkeypatch):
-    catalog = _catalog_with_bruno(coboose_root, sample_catalog_data)
-    monkeypatch.setattr("coboose.bruno.shutil.which", lambda _name: None)
-    with pytest.raises(CobooseError, match="bru is not on PATH"):
-        run_bruno_request(catalog, coboose_root, "search/search-products")
+def test_run_missing_bru_is_clear(goat_root: Path, sample_catalog_data: dict, monkeypatch):
+    catalog = _catalog_with_bruno(goat_root, sample_catalog_data)
+    monkeypatch.setattr("goat.bruno.shutil.which", lambda _name: None)
+    with pytest.raises(GoatError, match="bru is not on PATH"):
+        run_bruno_request(catalog, goat_root, "search/search-products")
 
 
 def test_unknown_bruno_repo_in_stack(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["bruno"] = {"repos": ["missing-collections"]}
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
-    with pytest.raises(CobooseError, match="unknown repo"):
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    with pytest.raises(GoatError, match="unknown repo"):
         load_catalog(root)
 
 
-def test_empty_inventory_when_no_bruno_tag(catalog, coboose_root: Path):
-    payload = collect_bruno_inventory(catalog, coboose_root)
+def test_empty_inventory_when_no_bruno_tag(catalog, goat_root: Path):
+    payload = collect_bruno_inventory(catalog, goat_root)
     assert payload["kind"] == "bruno_inventory"
     assert payload.get("repos") in (None, [])
     assert payload.get("collections") in (None, [])
 
 
 def test_cli_schema_and_collections(
-    coboose_root: Path, sample_catalog_data: dict, capsys, monkeypatch
+    goat_root: Path, sample_catalog_data: dict, capsys, monkeypatch
 ):
-    _catalog_with_bruno(coboose_root, sample_catalog_data)
-    monkeypatch.chdir(coboose_root)
-    assert main(["--root", str(coboose_root), "bruno", "schema"]) == 0
+    _catalog_with_bruno(goat_root, sample_catalog_data)
+    monkeypatch.chdir(goat_root)
+    assert main(["--root", str(goat_root), "bruno", "schema"]) == 0
     schema = __import__("json").loads(capsys.readouterr().out)
     assert schema["bruno"]["tags"] == ["bruno"]
     assert "meta {" in schema["bruno"]["request_template"]
-    assert main(["--root", str(coboose_root), "bruno", "collections"]) == 0
+    assert main(["--root", str(goat_root), "bruno", "collections"]) == 0
     inventory = __import__("json").loads(capsys.readouterr().out)
     assert inventory["collections"][0]["id"] == "cart-api"
     assert main(
-        ["--root", str(coboose_root), "bruno", "run", "search-products", "--dry-run"]
+        ["--root", str(goat_root), "bruno", "run", "search-products", "--dry-run"]
     ) == 0
     run = __import__("json").loads(capsys.readouterr().out)
     assert run["dry_run"] is True
     assert run["bru_command"][0] == "bru"
 
 
-def test_catalog_to_dict_includes_bruno(coboose_root: Path, sample_catalog_data: dict):
-    from coboose.catalog import catalog_to_dict
+def test_catalog_to_dict_includes_bruno(goat_root: Path, sample_catalog_data: dict):
+    from goat.catalog import catalog_to_dict
 
-    catalog = _catalog_with_bruno(coboose_root, sample_catalog_data)
-    payload = catalog_to_dict(catalog, coboose_root)
+    catalog = _catalog_with_bruno(goat_root, sample_catalog_data)
+    payload = catalog_to_dict(catalog, goat_root)
     assert payload["bruno"]["default_env"] == "local"
-    assert payload["bruno"]["workflows_file"] == "coboose.workflows.yml"
+    assert payload["bruno"]["workflows_file"] == "goat.workflows.yml"
     assert payload["bruno"]["services"][0]["id"] == "cart"

@@ -2,12 +2,12 @@
 # Repository remotes live in ../repositories.yml — reference them by name
 # in `folders`, or pull a set in by `tags`.
 # workspaces/*.code-workspace files are generated locally from this catalog —
-# do not commit them. setup / init / doctor run `coboose workspace generate`.
-# Open a starter with `coboose workspace open <id>`, or make your own with
-# `coboose workspace create` / `/new-workspace`.
+# do not commit them. setup / init / doctor run `goat workspace generate`.
+# Open a starter with `goat workspace open <id>`, or make your own with
+# `goat workspace create` / `/new-workspace`.
 
 # Copilot-facing API allowlists. Every integration should normalize its vendor
-# payload, then clip it with `fields` + `shapes` (see coboose.projection).
+# payload, then clip it with `fields` + `shapes` (see goat.projection).
 # Add or remove keys here — do not expand a client to pass raw REST objects through.
 jira:
   include_comments: true
@@ -77,18 +77,18 @@ figma:
     images: [id, url]
     comments: [author, created, message, node_id, resolved]
 
-# Git-backed Bruno collections (the Postman alternative). Coboose discovers
+# Git-backed Bruno collections (the Postman alternative). Yard Goat discovers
 # sibling repos tagged `bruno` (or listed in `repos` below), then lists
-# collections, requests, environments, and coboose.workflows.yml plans.
+# collections, requests, environments, and goat.workflows.yml plans.
 # `bru run` still executes HTTP. Do not put product request bodies here.
 bruno:
   # Optional explicit repositories.yml names. Empty = discover by tags.
   repos: []
   tags: [bruno]
   default_env: local
-  workflows_file: coboose.workflows.yml
-  services_file: coboose.services.yml
-  # Optional catalog overlays. Prefer coboose.services.yml in the Bruno repo.
+  workflows_file: goat.workflows.yml
+  services_file: goat.services.yml
+  # Optional catalog overlays. Prefer goat.services.yml in the Bruno repo.
   services: []
   drop_empty: true
   fields:

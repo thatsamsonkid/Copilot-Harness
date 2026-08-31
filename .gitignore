@@ -20,6 +20,8 @@ handoffs/*.md
 workspaces/*.code-workspace
 
 # Lifted / pulled agent skills (VS Code Agents multi-root shim)
+.goat/
 .coboose/
 .github/skills/.gitignore
+.github/skills/*/.goat-source.json
 .github/skills/*/.coboose-source.json

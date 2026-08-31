@@ -10,26 +10,26 @@ clone:
 	./scripts/clone-repos.sh
 
 templates:
-	uv run coboose templates
+	uv run goat templates
 
 bootstrap:
 	@test -n "$(TEMPLATE)" && test -n "$(NAME)" || (echo "Usage: make bootstrap TEMPLATE=spartan-stack NAME=my-app" >&2; exit 2)
-	uv run coboose bootstrap --template $(TEMPLATE) --name $(NAME)
+	uv run goat bootstrap --template $(TEMPLATE) --name $(NAME)
 
 workspaces:
-	uv run coboose workspace generate
+	uv run goat workspace generate
 
 create-workspace:
-	uv run coboose workspace create
+	uv run goat workspace create
 
 doctor:
-	uv run coboose doctor
+	uv run goat doctor
 
 init:
-	uv run coboose init
+	uv run goat init
 
 status:
-	uv run coboose status
+	uv run goat status
 
 handoff:
-	uv run coboose handoff latest
+	uv run goat handoff latest

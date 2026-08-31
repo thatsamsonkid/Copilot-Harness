@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from coboose.jira_client import JiraClient
-from coboose.prepare import prepare_issue
+from goat.jira_client import JiraClient
+from goat.prepare import prepare_issue
 from tests.helpers import FakeHttp, json_response as _json
 
 
@@ -38,7 +38,7 @@ def _issue_payload() -> dict:
     }
 
 
-def test_prepare_recommends_frontend_and_lists_missing(catalog, coboose_root: Path):
+def test_prepare_recommends_frontend_and_lists_missing(catalog, goat_root: Path):
     http = FakeHttp(
         {
             ("GET", "https://acme.atlassian.net/rest/api/3/issue/WEB-42"): _json(
@@ -70,7 +70,7 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, coboose_root: Pa
         }
     )
     client = JiraClient("https://acme.atlassian.net", "a@b.com", "token", http=http)
-    payload = prepare_issue(catalog, coboose_root, client, "WEB-42")
+    payload = prepare_issue(catalog, goat_root, client, "WEB-42")
     assert payload["issue"]["key"] == "WEB-42"
     assert payload["issue"]["comments"][0]["body"] == "Please ship"
     assert payload["routing"]["workspace_id"] == "frontend"
@@ -81,20 +81,20 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, coboose_root: Pa
     assert payload["routing"]["open_command"].endswith(
         "workspaces/frontend.code-workspace"
     )
-    assert (coboose_root / "workspaces" / "frontend.code-workspace").exists()
+    assert (goat_root / "workspaces" / "frontend.code-workspace").exists()
     frontend = next(repo for repo in payload["routing"]["repos"] if repo["id"] == "frontend")
     assert frontend["graphify"]["present"] is False
     assert frontend["instructions"] == []
     assert frontend["knowledge"]["files"] == []
     assert "Read the issue summary" in payload["next_steps"][0]
     assert payload["routing"]["suggested_branch"] == "WEB-42"
-    assert any(item["source"] == "coboose" for item in payload["done_when"])
+    assert any(item["source"] == "goat" for item in payload["done_when"])
     assert any("WEB-42" in step for step in payload["next_steps"])
     assert "skills" in payload
 
 
-def test_prepare_lifts_sibling_skills(catalog, coboose_root: Path):
-    frontend = coboose_root.parent / "frontend"
+def test_prepare_lifts_sibling_skills(catalog, goat_root: Path):
+    frontend = goat_root.parent / "frontend"
     skill = frontend / ".github" / "skills" / "checkout"
     skill.mkdir(parents=True)
     skill.joinpath("SKILL.md").write_text(
@@ -112,7 +112,7 @@ def test_prepare_lifts_sibling_skills(catalog, coboose_root: Path):
         }
     )
     client = JiraClient("https://acme.atlassian.net", "a@b.com", "token", http=http)
-    payload = prepare_issue(catalog, coboose_root, client, "WEB-42")
+    payload = prepare_issue(catalog, goat_root, client, "WEB-42")
     assert any(item["name"] == "checkout" for item in payload["skills"]["copied"])
-    assert (coboose_root / ".github" / "skills" / "checkout" / "SKILL.md").is_file()
+    assert (goat_root / ".github" / "skills" / "checkout" / "SKILL.md").is_file()
     assert any("skills" in step.lower() for step in payload["next_steps"])

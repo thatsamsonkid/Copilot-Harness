@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from coboose import CobooseError
-from coboose.envapply import (
-    COBOOSE_ENV_CONFIGURATION,
-    COBOOSE_ENV_REPO,
+from goat import GoatError
+from goat.envapply import (
+    GOAT_ENV_CONFIGURATION,
+    GOAT_ENV_REPO,
     apply_project_env,
     normalize_env_prefix,
 )
@@ -19,7 +19,7 @@ def test_normalize_prefix_adds_underscore():
 
 
 def test_normalize_prefix_rejects_invalid():
-    with pytest.raises(CobooseError, match="identifier"):
+    with pytest.raises(GoatError, match="identifier"):
         normalize_env_prefix("backend-api")
 
 
@@ -33,13 +33,13 @@ def test_apply_reports_collisions_and_stamps_markers():
     assert applied.env["DB_PASSWORD"] == "secret"
     assert applied.env["NEW_KEY"] == "1"
     assert applied.env["PATH"] == "/bin"
-    assert applied.env[COBOOSE_ENV_REPO] == "backend"
-    assert applied.env[COBOOSE_ENV_CONFIGURATION] == "Launch Backend"
+    assert applied.env[GOAT_ENV_REPO] == "backend"
+    assert applied.env[GOAT_ENV_CONFIGURATION] == "Launch Backend"
     assert applied.env_keys == ["DB_PASSWORD", "NEW_KEY"]
     assert applied.overwritten_keys == ["DB_PASSWORD"]
     assert applied.new_keys == ["NEW_KEY"]
     assert applied.skipped_keys == []
-    assert applied.marker_keys == [COBOOSE_ENV_CONFIGURATION, COBOOSE_ENV_REPO]
+    assert applied.marker_keys == [GOAT_ENV_CONFIGURATION, GOAT_ENV_REPO]
     assert applied.prefix == ""
 
 
@@ -66,8 +66,8 @@ def test_prefix_namespaces_app_keys_not_markers():
     )
     assert applied.env["BACKEND_DB_PASSWORD"] == "secret"
     assert applied.env["DB_PASSWORD"] == "old"
-    assert applied.env[COBOOSE_ENV_REPO] == "backend"
+    assert applied.env[GOAT_ENV_REPO] == "backend"
     assert applied.env_keys == ["BACKEND_DB_PASSWORD"]
     assert applied.prefix == "BACKEND_"
     assert applied.overwritten_keys == []
-    assert COBOOSE_ENV_REPO not in applied.env_keys
+    assert GOAT_ENV_REPO not in applied.env_keys

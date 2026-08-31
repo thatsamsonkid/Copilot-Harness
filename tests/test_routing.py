@@ -1,4 +1,4 @@
-from coboose.routing import recommend_workspace, score_workspace
+from goat.routing import recommend_workspace, score_workspace
 
 
 def test_scores_project_component_and_keywords(catalog):

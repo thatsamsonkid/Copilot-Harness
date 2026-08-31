@@ -28,7 +28,7 @@ def test_skill_description_covers_triggers_and_forbidden_paths():
     description = meta["description"]
     assert 1 <= len(description) <= 1024
     lowered = description.lower()
-    for token in ("bruno", "bru", "collection", "coboose", ".bru", "workflow"):
+    for token in ("bruno", "bru", "collection", "goat", ".bru", "workflow"):
         assert token in lowered
 
 
@@ -36,7 +36,7 @@ def test_skill_body_is_the_cli_contract():
     _, body = _frontmatter_and_body(SKILL)
     lowered = body.lower()
     for token in (
-        "uv run coboose bruno collections",
+        "uv run goat bruno collections",
         "bruno requests",
         "bruno envs",
         "bruno workflows",
@@ -47,7 +47,7 @@ def test_skill_body_is_the_cli_contract():
         "never curl",
         "failed to spawn",
         "--project",
-        "coboose.workflows.yml",
+        "goat.workflows.yml",
         "clone_command",
         "npm install -g @usebruno/cli",
         "pick",
@@ -69,8 +69,8 @@ def test_docs_explain_gap_versus_bru():
     for token in (
         "repositories.yml",
         "tag `bruno`",
-        "coboose.workflows.yml",
-        "coboose.services.yml",
+        "goat.workflows.yml",
+        "goat.services.yml",
         "bru run",
         "--env-var",
         "never",

@@ -21,14 +21,14 @@ def test_skill_name_matches_directory():
     assert meta["name"] == SKILL.parent.name
 
 
-def test_skill_keeps_notes_in_coboose():
+def test_skill_keeps_notes_in_goat():
     meta, body = _frontmatter_and_body()
     description = meta["description"].lower()
     for token in ("handoff", "status", ".env"):
         assert token in description
     lowered = body.lower()
     for token in (
-        "uv run coboose status",
+        "uv run goat status",
         "workspace current",
         "workspace.repos",
         "handoff write",

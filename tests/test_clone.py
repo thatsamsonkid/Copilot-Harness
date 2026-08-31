@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from coboose import CobooseError
-from coboose.catalog import load_catalog
-from coboose.clone import clone_repos, rewrite_clone_url
-from tests.helpers import write_coboose_config
+from goat import GoatError
+from goat.catalog import load_catalog
+from goat.clone import clone_repos, rewrite_clone_url
+from tests.helpers import write_goat_config
 
 
 def _git(cwd: Path, *args: str) -> None:
@@ -44,49 +44,49 @@ def test_rewrite_https():
 
 
 def test_clone_as_sibling_and_skip_existing(
-    coboose_root: Path, sample_catalog_data: dict, tmp_path: Path
+    goat_root: Path, sample_catalog_data: dict, tmp_path: Path
 ):
     remotes = tmp_path / "remotes"
     sample_catalog_data["repos"][0]["url"] = str(_bare_repo(remotes / "frontend.git"))
     sample_catalog_data["repos"][1]["url"] = str(_bare_repo(remotes / "backend.git"))
-    write_coboose_config(coboose_root, sample_catalog_data)
-    catalog = load_catalog(coboose_root)
+    write_goat_config(goat_root, sample_catalog_data)
+    catalog = load_catalog(goat_root)
 
-    first = clone_repos(catalog, coboose_root)
+    first = clone_repos(catalog, goat_root)
     assert {item["action"] for item in first} == {"clone"}
-    sibling = coboose_root.parent / "frontend"
+    sibling = goat_root.parent / "frontend"
     assert (sibling / ".git").exists()
-    assert (coboose_root.parent / "backend" / "README.md").read_text() == "hello\n"
-    assert sibling.resolve().parent == coboose_root.parent.resolve()
-    assert not (coboose_root / "frontend").exists()
+    assert (goat_root.parent / "backend" / "README.md").read_text() == "hello\n"
+    assert sibling.resolve().parent == goat_root.parent.resolve()
+    assert not (goat_root / "frontend").exists()
 
-    second = clone_repos(catalog, coboose_root)
+    second = clone_repos(catalog, goat_root)
     assert {item["action"] for item in second} == {"exists"}
 
 
 def test_placeholder_urls_are_blocked(
-    coboose_root: Path, sample_catalog_data: dict
+    goat_root: Path, sample_catalog_data: dict
 ):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
-    write_coboose_config(coboose_root, sample_catalog_data)
-    catalog = load_catalog(coboose_root)
-    result = clone_repos(catalog, coboose_root, only=["frontend"])
+    write_goat_config(goat_root, sample_catalog_data)
+    catalog = load_catalog(goat_root)
+    result = clone_repos(catalog, goat_root, only=["frontend"])
     assert result[0]["action"] == "blocked"
-    assert not (coboose_root.parent / "frontend").exists()
+    assert not (goat_root.parent / "frontend").exists()
 
 
 def test_refuses_filesystem_root_parent(
-    coboose_root: Path, sample_catalog_data: dict
+    goat_root: Path, sample_catalog_data: dict
 ):
     sample_catalog_data["parent_dir"] = "/"
-    write_coboose_config(coboose_root, sample_catalog_data)
-    catalog = load_catalog(coboose_root)
-    with pytest.raises(CobooseError, match="filesystem root"):
-        clone_repos(catalog, coboose_root, only=["frontend"], dry_run=True)
+    write_goat_config(goat_root, sample_catalog_data)
+    catalog = load_catalog(goat_root)
+    with pytest.raises(GoatError, match="filesystem root"):
+        clone_repos(catalog, goat_root, only=["frontend"], dry_run=True)
 
 
 def test_clone_into_grouped_folder(
-    coboose_root: Path, sample_catalog_data: dict, tmp_path: Path
+    goat_root: Path, sample_catalog_data: dict, tmp_path: Path
 ):
     remotes = tmp_path / "remotes"
     sample_catalog_data["repos"][0]["name"] = "shop-web"
@@ -94,21 +94,21 @@ def test_clone_into_grouped_folder(
     sample_catalog_data["repos"][0].pop("path", None)
     sample_catalog_data["repos"][0]["url"] = str(_bare_repo(remotes / "shop-web.git"))
     sample_catalog_data["workspaces"][0]["folders"] = ["shop-web", "backend"]
-    write_coboose_config(coboose_root, sample_catalog_data)
-    catalog = load_catalog(coboose_root)
+    write_goat_config(goat_root, sample_catalog_data)
+    catalog = load_catalog(goat_root)
 
-    result = clone_repos(catalog, coboose_root, only=["shop-web"])
-    dest = coboose_root.parent / "frontend" / "shop-web"
+    result = clone_repos(catalog, goat_root, only=["shop-web"])
+    dest = goat_root.parent / "frontend" / "shop-web"
     assert result[0]["action"] == "clone"
     assert (dest / ".git").exists()
     assert (dest / "README.md").read_text() == "hello\n"
-    assert not (coboose_root / "frontend").exists()
-    assert not (coboose_root.parent / "shop-web").exists()
+    assert not (goat_root / "frontend").exists()
+    assert not (goat_root.parent / "shop-web").exists()
 
 
-def test_refuses_non_git_destination(catalog, coboose_root: Path):
-    dest = coboose_root.parent / "frontend"
+def test_refuses_non_git_destination(catalog, goat_root: Path):
+    dest = goat_root.parent / "frontend"
     dest.mkdir(parents=True)
     (dest / "notes.txt").write_text("not a repo\n", encoding="utf-8")
-    with pytest.raises(CobooseError, match="not a git repo"):
-        clone_repos(catalog, coboose_root, only=["frontend"])
+    with pytest.raises(GoatError, match="not a git repo"):
+        clone_repos(catalog, goat_root, only=["frontend"])

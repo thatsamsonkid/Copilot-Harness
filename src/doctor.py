@@ -1,0 +1,513 @@
+from __future__ import annotations
+
+import os
+import shutil
+from pathlib import Path
+from typing import Any, Mapping
+
+from goat import GoatError
+from goat.bruno import bru_cli_status, collect_bruno_inventory
+from goat.catalog import Catalog
+from goat.context import inspect_repo
+from goat.envfile import env_file_age
+from goat.envspec import list_env, resolve_var
+from goat.figma_client import FigmaClient, figma_var
+from goat.install import cli_path_status
+from goat.invoke import invoke_spec
+from goat.jira_client import JiraClient, jira_settings_from_env
+from goat.keychain import (
+    SOURCE_ENV,
+    SOURCE_KEYCHAIN,
+    SOURCE_MISSING,
+    backend_display_name,
+    keychain_status,
+    resolve_token,
+    storage_guides,
+)
+from goat.onboard import onboarding_steps
+from goat.skills import sync_root_skills
+from goat.uv_check import detect_uv, uv_missing_action
+from goat.workspace import check_workspaces, generate_workspaces
+from goat.workspace_detect import resolve_workspace_scope, scoped_repos
+
+
+def run_doctor(
+    catalog: Catalog,
+    goat_root: Path,
+    *,
+    ping_jira: bool = False,
+    ping_figma: bool = False,
+    workspace_id: str | None = None,
+    all_repos: bool = False,
+    environ: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    checks: list[dict[str, Any]] = []
+    uv = detect_uv()
+    checks.append(
+        _check(
+            "uv",
+            bool(uv["present"]),
+            f"uv is on PATH ({uv['path']})" if uv["present"] else uv_missing_action(uv),
+        )
+    )
+    path_status = cli_path_status(goat_root, environ=environ)
+    checks.append(
+        _check(
+            "cli_path",
+            bool(path_status["on_path"]),
+            path_status["detail"]
+            if path_status["on_path"]
+            else (
+                f"{path_status['detail']}. Run `uv run goat install`. "
+                f"{path_status['path_hint']}"
+            ),
+            ok_when_false=True,
+        )
+    )
+    checks.append(
+        _check(
+            "git",
+            bool(shutil.which("git")),
+            "git is on PATH" if shutil.which("git") else "git is not on PATH",
+        )
+    )
+    checks.append(
+        _check(
+            "code",
+            bool(shutil.which("code")),
+            "code CLI is on PATH"
+            if shutil.which("code")
+            else "code CLI is not on PATH (open workspaces manually)",
+            ok_when_false=True,
+        )
+    )
+    graphify_cli = shutil.which("graphify")
+    checks.append(
+        _check(
+            "graphify_cli",
+            bool(graphify_cli),
+            f"graphify is on PATH ({graphify_cli})"
+            if graphify_cli
+            else "graphify is not on PATH; still use committed graphify-out/ artifacts",
+            ok_when_false=True,
+        )
+    )
+    bru = bru_cli_status()
+    checks.append(
+        _check(
+            "bru_cli",
+            bool(bru["present"]),
+            f"bru is on PATH ({bru['path']})"
+            if bru["present"]
+            else "bru is not on PATH; goat bruno collections still works, "
+            "bruno run needs `npm install -g @usebruno/cli`",
+            ok_when_false=True,
+        )
+    )
+
+    placeholders = [repo.id for repo in catalog.repos if repo.is_placeholder]
+    checks.append(
+        _check(
+            "catalog_urls",
+            not placeholders,
+            "repo URLs look real"
+            if not placeholders
+            else "placeholder URLs remain: " + ", ".join(placeholders),
+        )
+    )
+
+    templates_file = catalog.templates_source
+    template_placeholders = [
+        template.name for template in catalog.templates if template.is_placeholder
+    ]
+    if templates_file and templates_file.exists():
+        checks.append(
+            _check(
+                "templates",
+                bool(catalog.templates),
+                f"{len(catalog.templates)} template(s) listed"
+                if catalog.templates
+                else "templates.yml has no entries",
+                ok_when_false=True,
+            )
+        )
+        checks.append(
+            _check(
+                "template_urls",
+                not template_placeholders,
+                "template URLs look real"
+                if not template_placeholders
+                else "placeholder template URLs remain: "
+                + ", ".join(template_placeholders),
+                ok_when_false=True,
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "templates",
+                False,
+                "templates.yml is missing (optional until you bootstrap a project)",
+                ok_when_false=True,
+            )
+        )
+
+    try:
+        sibling_root = catalog.require_safe_sibling_root(goat_root)
+        checks.append(
+            _check(
+                "sibling_root",
+                sibling_root != goat_root.resolve(),
+                f"siblings clone to {sibling_root}",
+            )
+        )
+    except GoatError as exc:
+        sibling_root = catalog.sibling_root(goat_root)
+        checks.append(_check("sibling_root", False, str(exc)))
+
+    scope = resolve_workspace_scope(
+        catalog,
+        goat_root,
+        workspace_id=workspace_id,
+        all_repos=all_repos,
+        environ=environ,
+    )
+    env_payload = list_env(
+        catalog.env_vars,
+        goat_root,
+        workspace_id=scope.id,
+        extra_names=(catalog.workspace(scope.id).env if scope.id else None),
+        source=catalog.env_source,
+    )
+
+    repos = []
+    for repo in scoped_repos(catalog, scope):
+        path = catalog.repo_path(goat_root, repo)
+        cloned = path.exists()
+        repos.append(
+            {
+                "id": repo.id,
+                "path": str(path),
+                "relpath": repo.path,
+                "group": repo.group,
+                "cloned": cloned,
+                "placeholder": repo.is_placeholder,
+            }
+        )
+        checks.append(
+            _check(
+                f"repo:{repo.id}",
+                cloned,
+                f"{path} is present" if cloned else f"{path} is not cloned",
+                ok_when_false=True,
+            )
+        )
+        if cloned:
+            snapshot = inspect_repo(catalog, goat_root, repo)
+            graphify = snapshot["graphify"]
+            checks.append(
+                _check(
+                    f"graphify:{repo.id}",
+                    bool(graphify.get("present")) or not graphify.get("enabled"),
+                    graphify.get("detail") or "graphify status unknown",
+                    ok_when_false=True,
+                )
+            )
+            instruction_count = len(snapshot["instructions"])
+            checks.append(
+                _check(
+                    f"instructions:{repo.id}",
+                    instruction_count > 0,
+                    (
+                        f"{instruction_count} instruction file(s)"
+                        if instruction_count
+                        else "no Copilot/AGENTS instruction files found"
+                    ),
+                    ok_when_false=True,
+                )
+            )
+
+    workspace_sync = check_workspaces(catalog, goat_root)
+    generated = generate_workspaces(catalog, goat_root)
+    changed = [item["id"] for item in generated if item.get("changed")]
+    if workspace_sync["ok"]:
+        checks.append(
+            _check(
+                "workspaces",
+                True,
+                f"{len(generated)} workspace file(s) match catalog/stack.yaml",
+            )
+        )
+    else:
+        parts: list[str] = []
+        if workspace_sync["missing"]:
+            parts.append("missing " + ", ".join(workspace_sync["missing"]))
+        if workspace_sync["stale"]:
+            parts.append("stale " + ", ".join(workspace_sync["stale"]))
+        if workspace_sync["orphans"]:
+            parts.append("orphan " + ", ".join(workspace_sync["orphans"]))
+        rewritten = (
+            f"rewrote {len(changed)} file(s) from catalog/stack.yaml; "
+            if changed
+            else ""
+        )
+        checks.append(
+            _check(
+                "workspaces",
+                False,
+                rewritten + "; ".join(parts),
+                ok_when_false=True,
+            )
+        )
+    skills = sync_root_skills(
+        catalog,
+        goat_root,
+        workspace_id=scope.id,
+        all_repos=all_repos,
+        environ=environ,
+    )
+    skill_error = skills.get("error")
+    checks.append(
+        _check(
+            "skills",
+            not skill_error,
+            skill_error
+            or (
+                "agent skills in .github/skills: "
+                f"{len(skills.get('native') or [])} goat, "
+                f"{len(skills.get('copied') or [])} lifted, "
+                f"{len(skills.get('installed') or [])} installed copies"
+            ),
+            ok_when_false=True,
+        )
+    )
+
+    base_url = os.environ.get("JIRA_BASE_URL")
+    email = os.environ.get("JIRA_EMAIL") or os.environ.get("JIRA_USERNAME")
+    token, source = resolve_token()
+    jira_ok = bool(base_url and email and token)
+    jira: dict[str, Any] | None = None
+    status = keychain_status()
+    if source == SOURCE_KEYCHAIN:
+        checks.append(
+            _check(
+                "jira_token_store",
+                True,
+                f"Jira token is in {backend_display_name()}",
+            )
+        )
+    elif source == SOURCE_ENV:
+        checks.append(
+            _check(
+                "jira_token_store",
+                False,
+                "Jira token is in .env; prefer `uv run goat jira login --from-env`",
+                ok_when_false=True,
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "jira_token_store",
+                False,
+                "Jira token is not in the OS keychain or .env",
+                ok_when_false=True,
+            )
+        )
+    if not jira_ok:
+        checks.append(
+            _check(
+                "jira_env",
+                False,
+                "Jira site URL, email, or token is missing",
+                ok_when_false=True,
+            )
+        )
+    elif ping_jira:
+        try:
+            base_url, email, token = jira_settings_from_env()
+            jira = JiraClient(base_url, email, token).myself()
+            checks.append(_check("jira_auth", True, f"authenticated as {jira.get('display_name')}"))
+        except Exception as exc:  # noqa: BLE001 - doctor should not crash
+            checks.append(_check("jira_auth", False, str(exc)))
+    else:
+        checks.append(_check("jira_env", True, f"Jira credentials are present ({source})"))
+
+    figma = None
+    figma_token, figma_source = resolve_var(figma_var(catalog.env_vars))
+    if figma_source == SOURCE_MISSING:
+        figma_token = ""
+    if figma_source == SOURCE_KEYCHAIN:
+        checks.append(
+            _check(
+                "figma_token_store",
+                True,
+                f"Figma token is in {backend_display_name()}",
+            )
+        )
+    elif figma_source == SOURCE_ENV:
+        checks.append(
+            _check(
+                "figma_token_store",
+                False,
+                "Figma token is in .env; prefer `uv run goat figma login --from-env`",
+                ok_when_false=True,
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "figma_token_store",
+                False,
+                "Figma token is not in the OS keychain or .env (optional)",
+                ok_when_false=True,
+            )
+        )
+    if ping_figma:
+        if not figma_token:
+            checks.append(
+                _check(
+                    "figma_auth",
+                    False,
+                    "Cannot ping Figma until FIGMA_ACCESS_TOKEN is stored",
+                )
+            )
+        else:
+            try:
+                figma = FigmaClient(figma_token).myself()
+                checks.append(
+                    _check(
+                        "figma_auth",
+                        True,
+                        f"authenticated as {figma.get('handle') or figma.get('email')}",
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001 - doctor should not crash
+                checks.append(_check("figma_auth", False, str(exc)))
+    elif figma_token:
+        checks.append(_check("figma_env", True, f"Figma credentials are present ({figma_source})"))
+
+    bruno_inventory = collect_bruno_inventory(catalog, goat_root)
+    bruno_repos = bruno_inventory.get("repos") or []
+    bruno_collections = bruno_inventory.get("collections") or []
+    bruno_missing = bruno_inventory.get("missing_repos") or []
+    if bruno_repos:
+        cloned = [repo for repo in bruno_repos if repo.get("cloned")]
+        checks.append(
+            _check(
+                "bruno_repos",
+                bool(cloned),
+                (
+                    f"{len(cloned)} Bruno repo(s) cloned"
+                    if cloned
+                    else "Bruno repo listed but not cloned: "
+                    + (bruno_inventory.get("clone_command") or "goat clone")
+                ),
+                ok_when_false=True,
+            )
+        )
+        if cloned:
+            checks.append(
+                _check(
+                    "bruno_collections",
+                    bool(bruno_collections),
+                    (
+                        f"{len(bruno_collections)} Bruno collection(s) found"
+                        if bruno_collections
+                        else "cloned Bruno repo has no bruno.json collections"
+                    ),
+                    ok_when_false=True,
+                )
+            )
+        if bruno_missing:
+            checks.append(
+                _check(
+                    "bruno_clone",
+                    False,
+                    "Clone missing Bruno repo(s): "
+                    + (bruno_inventory.get("clone_command") or "goat clone"),
+                    ok_when_false=True,
+                )
+            )
+
+    for row in env_payload["variables"]:
+        if row["name"] in {
+            "JIRA_BASE_URL",
+            "JIRA_EMAIL",
+            "JIRA_API_TOKEN",
+            "FIGMA_ACCESS_TOKEN",
+        }:
+            continue
+        checks.append(
+            _check(
+                f"env:{row['name']}",
+                bool(row["present"]),
+                (
+                    f"{row['name']} is in {row['source']}"
+                    if row["present"]
+                    else f"{row['name']} is missing"
+                ),
+                ok_when_false=True,
+            )
+        )
+
+    env_age = env_file_age(goat_root / ".env")
+    checks.append(
+        _check(
+            "env_age",
+            not env_age["stale"],
+            env_age["detail"],
+            ok_when_false=True,
+        )
+    )
+
+    ok = all(item["ok"] or item.get("advisory") for item in checks)
+    steps = onboarding_steps(catalog, goat_root, uv=uv)
+    return {
+        "ok": ok,
+        "goat_root": str(goat_root),
+        "sibling_root": str(sibling_root),
+        "workspace": scope.id,
+        "workspace_scope": scope.as_payload(),
+        "repos": repos,
+        "templates": [
+            {
+                "name": template.name,
+                "url": template.url,
+                "tags": template.tags,
+                "placeholder": template.is_placeholder,
+            }
+            for template in catalog.templates
+        ],
+        "workspaces": generated,
+        "workspace_sync": workspace_sync,
+        "skills": skills,
+        "jira": jira,
+        "jira_token_source": source,
+        "figma": figma,
+        "figma_token_source": figma_source,
+        "bruno": {
+            "bru_cli": bru,
+            "repos": bruno_repos,
+            "collections": len(bruno_collections),
+            "missing_repos": bruno_missing,
+        },
+        "keychain": status.as_dict(),
+        "keychain_guide": storage_guides(),
+        "env": env_payload,
+        "uv": uv,
+        "graphify_cli": graphify_cli,
+        "env_age": env_age,
+        "invoke": invoke_spec(goat_root),
+        "checks": checks,
+        "onboarding": steps,
+    }
+
+
+def _check(name: str, ok: bool, detail: str, ok_when_false: bool = False) -> dict[str, Any]:
+    return {
+        "name": name,
+        "ok": ok,
+        "detail": detail,
+        "advisory": ok_when_false and not ok,
+    }

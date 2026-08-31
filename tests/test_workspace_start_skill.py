@@ -36,12 +36,12 @@ def test_skill_name_matches_directory():
 def test_skill_is_plan_then_sequential_start():
     meta, body = _frontmatter_and_body(SKILL)
     description = meta["description"].lower()
-    for token in ("coboose start", "angular", "java", "one"):
+    for token in ("goat start", "angular", "java", "one"):
         assert token in description
     lowered = body.lower()
     for token in (
-        "uv run coboose start",
-        "coboose_workspace",
+        "uv run goat start",
+        "goat_workspace",
         "workspace.repos",
         "never launches",
         "one at a time",
@@ -59,8 +59,8 @@ def test_skill_is_plan_then_sequential_start():
         "--project",
         "do not `cd`",
         "launch.json",
-        "coboose start run",
-        "coboose start env",
+        "goat start run",
+        "goat start env",
         "run without debugging",
         "never read",
         "--keep-existing",
@@ -77,14 +77,14 @@ def test_prompt_points_at_the_skill():
     assert meta["name"] == "start-workspace"
     lowered = body.lower()
     assert "workspace-start/skill.md" in lowered
-    assert "coboose start" in lowered
+    assert "goat start" in lowered
     assert "one process at a time" in lowered or "one at a time" in lowered
     assert "one vs code terminal per app" in lowered
     assert "reuse" in lowered
     assert "never start a second" in lowered
     assert "--save" in lowered
     assert "start.yml" in lowered
-    assert "coboose start run" in lowered
-    assert "coboose start env" in lowered
+    assert "goat start run" in lowered
+    assert "goat start env" in lowered
     assert "run without debugging" in lowered
     assert "launch.json" in lowered

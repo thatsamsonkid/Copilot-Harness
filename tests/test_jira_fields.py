@@ -1,4 +1,4 @@
-from coboose.jira_fields import JiraSettings, project_issue
+from goat.jira_fields import JiraSettings, project_issue
 
 
 def test_project_issue_keeps_allowlist_only():
