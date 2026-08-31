@@ -36,3 +36,11 @@ uv run coboose figma images 'https://www.figma.com/design/…' --format json
 ```
 
 Open each returned `images[].url` in VS Code Simple Browser. Optionally run `figma comments` for designer notes, or `figma nodes` for a small targeted frame only (raw JSON; a page will overwhelm context). Do not curl Figma or reconstruct the layout from JSON.
+
+For Bruno API collections (`.bru` files, `bru run`, or a multi-step API workflow), follow `.github/skills/bruno-cli/SKILL.md`:
+
+```bash
+uv run coboose bruno collections --format json
+```
+
+That JSON says which sibling holds the collections, which requests/environments exist, and which `--env` to pass. Execute HTTP with `coboose bruno run` (or `bru run` from the collection root). Workflows are a plan — pick values between steps. Do not curl product APIs or read environment file values. See [docs/bruno.md](docs/bruno.md).

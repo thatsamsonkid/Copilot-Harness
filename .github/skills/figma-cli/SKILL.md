@@ -106,6 +106,7 @@ Do not try to reconstruct the screen from JSON. The Images payload is only ids a
 - First-run setup: get-started skill or `/get-started`
 - Export a pasted frame: `/figma-frame`
 - Ticket routing: jira-cli skill or `/jira-ticket`
+- Bruno collections: bruno-cli skill or `/bruno`
 - Vague / large-repo orientation: workspace-context skill or `/orient`
 - Implement an agreed plan: Implementer agent
 - Review a diff: Reviewer agent or `/review`

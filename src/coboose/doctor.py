@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from coboose import CobooseError
+from coboose.bruno import bru_cli_status, collect_bruno_inventory
 from coboose.catalog import Catalog
 from coboose.context import inspect_repo
 from coboose.envfile import env_file_age
@@ -73,6 +74,18 @@ def run_doctor(
             f"graphify is on PATH ({graphify_cli})"
             if graphify_cli
             else "graphify is not on PATH; still use committed graphify-out/ artifacts",
+            ok_when_false=True,
+        )
+    )
+    bru = bru_cli_status()
+    checks.append(
+        _check(
+            "bru_cli",
+            bool(bru["present"]),
+            f"bru is on PATH ({bru['path']})"
+            if bru["present"]
+            else "bru is not on PATH; coboose bruno collections still works, "
+            "bruno run needs `npm install -g @usebruno/cli`",
             ok_when_false=True,
         )
     )
@@ -335,6 +348,49 @@ def run_doctor(
     elif figma_token:
         checks.append(_check("figma_env", True, f"Figma credentials are present ({figma_source})"))
 
+    bruno_inventory = collect_bruno_inventory(catalog, coboose_root)
+    bruno_repos = bruno_inventory.get("repos") or []
+    bruno_collections = bruno_inventory.get("collections") or []
+    bruno_missing = bruno_inventory.get("missing_repos") or []
+    if bruno_repos:
+        cloned = [repo for repo in bruno_repos if repo.get("cloned")]
+        checks.append(
+            _check(
+                "bruno_repos",
+                bool(cloned),
+                (
+                    f"{len(cloned)} Bruno repo(s) cloned"
+                    if cloned
+                    else "Bruno repo listed but not cloned: "
+                    + (bruno_inventory.get("clone_command") or "coboose clone")
+                ),
+                ok_when_false=True,
+            )
+        )
+        if cloned:
+            checks.append(
+                _check(
+                    "bruno_collections",
+                    bool(bruno_collections),
+                    (
+                        f"{len(bruno_collections)} Bruno collection(s) found"
+                        if bruno_collections
+                        else "cloned Bruno repo has no bruno.json collections"
+                    ),
+                    ok_when_false=True,
+                )
+            )
+        if bruno_missing:
+            checks.append(
+                _check(
+                    "bruno_clone",
+                    False,
+                    "Clone missing Bruno repo(s): "
+                    + (bruno_inventory.get("clone_command") or "coboose clone"),
+                    ok_when_false=True,
+                )
+            )
+
     for row in env_payload["variables"]:
         if row["name"] in {
             "JIRA_BASE_URL",
@@ -390,6 +446,12 @@ def run_doctor(
         "jira_token_source": source,
         "figma": figma,
         "figma_token_source": figma_source,
+        "bruno": {
+            "bru_cli": bru,
+            "repos": bruno_repos,
+            "collections": len(bruno_collections),
+            "missing_repos": bruno_missing,
+        },
         "keychain": status.as_dict(),
         "keychain_guide": storage_guides(),
         "env": env_payload,

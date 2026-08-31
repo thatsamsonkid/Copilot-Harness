@@ -10,6 +10,7 @@
     "orient": "Vague task? Map Graphify and repo instructions first.",
     "jira-ticket": "Plan work from a Jira key.",
     "figma-frame": "Look at a Figma frame from its image URL.",
+    "bruno": "Discover Bruno API collections or run a request.",
     "handoff": "Pause or resume this chat from a session note.",
     "review": "Review sibling diffs against done_when and repo linters.",
     "skills-install": "Lift sibling or remote agent skills into this coboose for VS Code Agents."

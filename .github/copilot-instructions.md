@@ -27,6 +27,13 @@ When the user gives a Figma file/design/proto URL or asks to look at a frame, lo
 4. Optionally run `coboose figma comments <URL>` for designer notes. Run `coboose figma nodes <URL>` only for a small targeted frame (a button or similar). That command returns raw Figma node JSON and will overwhelm context on a page or file. Do not reconstruct layout from the tree.
 5. Do not curl `api.figma.com`, read `.env`, or call a Figma MCP tool.
 
+When the user mentions Bruno, bru, a `.bru` file, an API collection, or a multi-step API workflow (search then cart), load the **bruno-cli** skill (`.github/skills/bruno-cli/SKILL.md`) and follow it.
+
+1. Run `uv run coboose bruno collections --format json` from this repo. If cwd is a sibling clone, use `uv run --project "$COBOOSE_ROOT" coboose bruno collections --format json`.
+2. Use that CLI JSON to find the Bruno sibling, collections, services, environments, and workflows. Environment values are not returned.
+3. Generate new requests as `.bru` files in that collection. Execute with `coboose bruno run` (or `bru run` from the collection root) and `--env` / `--env-var`. Workflows are a plan — pick values between steps.
+4. Do not curl product APIs, read Bruno environment file values, or clone into this coboose folder.
+
 `coboose` stdout is JSON by default. Read stdout. Errors are JSON on stderr with a non-zero exit code.
 
 ## Jira access (hard rules)
@@ -50,18 +57,27 @@ This workspace has **no Figma MCP server**. The personal access token must never
 - Do **not** configure or call an MCP Figma tool.
 - If credentials are missing, tell the user to run `uv run coboose figma login` in their own terminal. Never ask them to paste a token into chat.
 
+## Bruno access (hard rules)
+
+Bruno collections are git files plus the `bru` CLI. These rules apply even if the bruno-cli skill is not loaded.
+
+- Discover collections through `uv run coboose bruno …`. Execute HTTP with `coboose bruno run` or `bru run` from the collection root.
+- Do **not** curl product APIs when a `.bru` request exists for that call.
+- Do **not** read Bruno `environments/*.bru` values or print tokens. Coboose only lists environment and variable **names**.
+- Do **not** nest a collections clone inside this coboose folder.
+
 ## Repo layout
 
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/coboose` — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, workspace create/generate/match, prepare, init, context, status, branch, handoff, start, skills list/lift/pull. `coboose commands` (alias `help`) is the live catalog; `docs/cli.md` is the human cheat sheet.
+- CLI: `src/coboose` — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, Bruno collection discovery / bru wrap, workspace create/generate/match, prepare, init, context, status, branch, handoff, start, skills list/lift/pull. `coboose commands` (alias `help`) is the live catalog; `docs/cli.md` is the human cheat sheet.
 - Feature workspaces: `workspaces/*.code-workspace` — multi-root; first folder is this Coboose repo. Personal/local mixes live in `workspaces/personal/` (gitignored, not in `catalog/stack.yaml`).
 - Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `coboose env set NAME` / `coboose jira login` / `coboose figma login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 
 ## Commands
 
-Prefer `uv` for Python. Run the CLI as `uv run coboose <command>` **from this Coboose repo**, or `uv run --project "$COBOOSE_ROOT" coboose <command>` / `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`) from any cwd. Sibling clones are not a uv project; `uv run coboose` fails there with Failed to spawn. For a full command catalog, run `uv run coboose commands --format json` (or read `docs/cli.md`). Jira command choice, flags, and output shapes live in the jira-cli skill. Figma image, comment, and scoped-node exports live in the figma-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start. VS Code Agents skill copies live in skills-install.
+Prefer `uv` for Python. Run the CLI as `uv run coboose <command>` **from this Coboose repo**, or `uv run --project "$COBOOSE_ROOT" coboose <command>` / `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`) from any cwd. Sibling clones are not a uv project; `uv run coboose` fails there with Failed to spawn. For a full command catalog, run `uv run coboose commands --format json` (or read `docs/cli.md`). Jira command choice, flags, and output shapes live in the jira-cli skill. Figma image, comment, and scoped-node exports live in the figma-cli skill. Bruno collections, workflows, and `bru run` wrapping live in the bruno-cli skill. First-run lives in get-started. Graphify and repo standards live in workspace-context. Local stack start lives in workspace-start. VS Code Agents skill copies live in skills-install.
 
 ```bash
 uv run coboose templates

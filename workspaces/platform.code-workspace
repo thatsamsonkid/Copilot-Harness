@@ -19,6 +19,10 @@
     {
       "name": "infra",
       "path": "../../infra"
+    },
+    {
+      "name": "api-collections",
+      "path": "../../api-collections"
     }
   ],
   "settings": {
@@ -59,13 +63,15 @@
       "frontend",
       "backend",
       "mobile",
-      "infra"
+      "infra",
+      "api-collections"
     ],
     "tags": [
       "ui",
       "api",
       "mobile",
-      "infra"
+      "infra",
+      "bruno"
     ],
     "include_coboose": true
   }

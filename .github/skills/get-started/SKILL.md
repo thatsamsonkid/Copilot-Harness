@@ -21,6 +21,7 @@ Run these from the coboose repo. After `cd` into a sibling, `uv run coboose` can
 | Store a declared secret | Tell them to run `uv run coboose env set NAME` themselves |
 | Live Jira ping | `uv run coboose doctor --ping-jira` or `uv run coboose jira whoami` |
 | Live Figma ping (optional) | `uv run coboose doctor --ping-figma` or `uv run coboose figma whoami` |
+| Bruno collections (optional) | `uv run coboose bruno collections` after tagging a repo `bruno` (`docs/bruno.md`) |
 | Lift sibling skills into this coboose (VS Code Agents) | `uv run coboose skills lift` (see the skills-install skill) |
 
 ## Walkthrough order
