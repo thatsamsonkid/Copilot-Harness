@@ -59,7 +59,6 @@ def workspace_document(catalog: Catalog, coboose_root: Path, workspace: Workspac
             "id": workspace.id,
             "name": workspace.name,
             "description": workspace.description,
-            "personal": workspace.personal,
             "folders": catalog.workspace_repo_names(workspace),
             "tags": workspace.tags,
             "include_coboose": workspace.include_coboose,
@@ -92,7 +91,6 @@ def write_workspace_file(
     return {
         "id": workspace.id,
         "name": workspace.name,
-        "personal": workspace.personal,
         "file": str(path),
         "folders": [folder["name"] for folder in document["folders"]],
         "action": action,
@@ -104,7 +102,6 @@ def generate_workspaces(catalog: Catalog, coboose_root: Path) -> list[dict[str, 
     return [
         write_workspace_file(catalog, coboose_root, workspace)
         for workspace in catalog.workspaces
-        if not workspace.personal
     ]
 
 
@@ -117,11 +114,7 @@ def workspace_file_status(
         "name": workspace.name,
         "file": str(path),
         "exists": path.exists(),
-        "personal": workspace.personal,
     }
-    if workspace.personal:
-        payload["status"] = "personal"
-        return payload
     if not path.exists():
         payload["status"] = "missing"
         return payload
@@ -132,11 +125,11 @@ def workspace_file_status(
 
 
 def check_workspaces(catalog: Catalog, coboose_root: Path) -> dict[str, Any]:
-    """Compare shared catalog/stack.yaml workspaces to workspaces/*.code-workspace."""
-    shared = [workspace for workspace in catalog.workspaces if not workspace.personal]
-    expected_ids = {workspace.id for workspace in shared}
+    """Compare catalog/stack.yaml workspaces to workspaces/*.code-workspace."""
+    expected_ids = {workspace.id for workspace in catalog.workspaces}
     workspaces = [
-        workspace_file_status(catalog, coboose_root, workspace) for workspace in shared
+        workspace_file_status(catalog, coboose_root, workspace)
+        for workspace in catalog.workspaces
     ]
     missing = [item["id"] for item in workspaces if item["status"] == "missing"]
     stale = [item["id"] for item in workspaces if item["status"] == "stale"]
@@ -211,11 +204,10 @@ def list_workspaces(catalog: Catalog, coboose_root: Path) -> list[dict[str, Any]
                         catalog.env_vars, workspace.id, workspace.env
                     )
                 ],
-                "personal": workspace.personal,
                 "file": str(path),
                 "exists": path.exists(),
                 "sync": sync["status"],
-                "in_sync": sync["status"] in {"ok", "personal"},
+                "in_sync": sync["status"] == "ok",
                 "open_command": open_command(path),
                 "start_file": str(start_file),
                 "start_plan": start_file.is_file(),
@@ -229,8 +221,6 @@ def catalog_starters(catalog: Catalog, coboose_root: Path) -> list[dict[str, Any
     """Shared catalog/stack.yaml workspaces for get-started / init."""
     starters: list[dict[str, Any]] = []
     for row in list_workspaces(catalog, coboose_root):
-        if row["personal"]:
-            continue
         starters.append(
             {
                 "id": row["id"],

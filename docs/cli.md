@@ -48,7 +48,7 @@ Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`
 | `coboose workspace path ID` | Print a workspace file path |
 | `coboose workspace current` | Detect the open feature workspace |
 
-Typical bootstrap: `coboose bootstrap --template <name> --name <folder>`. Catalog starters: `coboose workspace generate` then `coboose workspace open <id>`. Your own mix: `coboose workspace create` (add `--personal` for a local-only file).
+Typical bootstrap: `coboose bootstrap --template <name> --name <folder>`. Catalog starters: `coboose workspace generate` then `coboose workspace open <id>`. Your own mix: `coboose workspace create`.
 
 ## Tickets (Jira)
 

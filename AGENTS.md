@@ -13,7 +13,7 @@ uv run coboose templates --format json
 uv run coboose bootstrap --template <name> --name <folder> --format json
 ```
 
-To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through shared vs personal, id, and `repositories.yml` projects, then run `uv run coboose workspace create <id> --projects … --no-prompt` (add `--personal` for a local-only file under `workspaces/personal/`). In a terminal, `coboose workspace create` prompts on its own.
+To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through id and `repositories.yml` projects, then run `uv run coboose workspace create <id> --projects … --no-prompt`. In a terminal, `coboose workspace create` prompts on its own.
 
 First-run setup: `.github/skills/get-started/SKILL.md` (`uv run coboose init`).
 VS Code Agents does not scan multi-root child skills: `.github/skills/skills-install/SKILL.md` (`uv run coboose skills list` / `skills lift` / `skills pull <url>`). `init`, `prepare`, and `workspace generate` already lift coboose + in-scope sibling skills into this repo's `.github/skills`.

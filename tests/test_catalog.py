@@ -111,36 +111,6 @@ def test_parses_knowledge_dirs(tmp_path: Path, sample_catalog_data: dict):
     assert catalog.repo("frontend").knowledge_dirs == ("handbook",)
 
 
-def test_load_catalog_discovers_personal_workspaces(catalog, coboose_root: Path):
-    from coboose.prompt import PromptSession
-    from coboose.workspace_create import create_workspace
-
-    create_workspace(
-        catalog,
-        coboose_root,
-        workspace_id="scratch",
-        name="Scratch",
-        folders=["backend"],
-        personal=True,
-        prompt=PromptSession(interactive=False),
-    )
-    # Shared id wins if a colliding personal file appears later.
-    colliding = coboose_root / "workspaces" / "personal" / "frontend.code-workspace"
-    colliding.parent.mkdir(parents=True, exist_ok=True)
-    colliding.write_text("{}", encoding="utf-8")
-    (coboose_root / "workspaces" / "personal" / "broken.code-workspace").write_text(
-        "not-json", encoding="utf-8"
-    )
-
-    refreshed = load_catalog(coboose_root)
-    payload = catalog_to_dict(refreshed, coboose_root)
-    by_id = {item["id"]: item for item in payload["workspaces"]}
-    assert by_id["scratch"]["personal"] is True
-    assert by_id["scratch"]["folders"] == ["backend"]
-    assert by_id["frontend"]["personal"] is False
-    assert "broken" not in by_id
-
-
 def test_loads_jira_projection_from_stack(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["jira"] = {
         "fields": ["key", "summary", "comments"],

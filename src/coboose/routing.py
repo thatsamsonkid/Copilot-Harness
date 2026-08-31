@@ -10,8 +10,6 @@ def match_workspaces(
 ) -> list[dict[str, Any]]:
     scored: list[dict[str, Any]] = []
     for workspace in catalog.workspaces:
-        if workspace.personal:
-            continue
         score, reasons = score_workspace(workspace, issue)
         scored.append(
             {

@@ -166,7 +166,7 @@ def test_create_workspace_dry_run_does_not_write(catalog, coboose_root: Path):
 
 
 def test_create_workspace_prompts_for_projects(catalog, coboose_root: Path):
-    stdin = io.StringIO("\ncheckout\nCheckout\nCart flow\n1,2\n\n")
+    stdin = io.StringIO("checkout\nCheckout\nCart flow\n1,2\n\n")
     stderr = io.StringIO()
     payload = create_workspace(
         catalog,
@@ -174,7 +174,6 @@ def test_create_workspace_prompts_for_projects(catalog, coboose_root: Path):
         prompt=PromptSession(stdin=stdin, stderr=stderr, interactive=True),
     )
     menu = stderr.getvalue()
-    assert "Personal workspaces stay in workspaces/personal/" in menu
     assert "Repositories from repositories.yml" in menu
     assert "1. frontend" in menu
     assert payload["workspace"]["id"] == "checkout"
@@ -187,7 +186,7 @@ def test_create_workspace_prompts_for_projects(catalog, coboose_root: Path):
 
 
 def test_create_workspace_reprompts_invalid_selection(catalog, coboose_root: Path):
-    stdin = io.StringIO("\npayments\n\n\nnope\n2\ny\n")
+    stdin = io.StringIO("payments\n\n\nnope\n2\ny\n")
     stderr = io.StringIO()
     payload = create_workspace(
         catalog,
@@ -285,169 +284,8 @@ def test_create_workspace_preserves_stack_comments(
     ]
 
 
-def test_create_personal_workspace_skips_catalog(catalog, coboose_root: Path):
-    stack_before = (coboose_root / "catalog" / "stack.yaml").read_text(encoding="utf-8")
-    payload = create_workspace(
-        catalog,
-        coboose_root,
-        workspace_id="scratch",
-        name="Scratch",
-        description="Local mix",
-        folders=["frontend", "backend"],
-        personal=True,
-        prompt=PromptSession(interactive=False),
-    )
-    assert payload["created"] is True
-    assert payload["workspace"]["personal"] is True
-    assert payload["workspace"]["id"] == "scratch"
-    path = coboose_root / "workspaces" / "personal" / "scratch.code-workspace"
-    assert path.exists()
-    assert payload["workspace"]["file"] == str(path)
-    assert not (coboose_root / "workspaces" / "scratch.code-workspace").exists()
-    assert (coboose_root / "catalog" / "stack.yaml").read_text(
-        encoding="utf-8"
-    ) == stack_before
-
-    document = json.loads(path.read_text(encoding="utf-8"))
-    assert document["coboose"]["personal"] is True
-    assert document["coboose"]["folders"] == ["frontend", "backend"]
-    assert [folder["name"] for folder in document["folders"]] == [
-        "coboose",
-        "frontend",
-        "backend",
-    ]
-    assert document["folders"][0]["path"] == "../.."
-    assert document["folders"][1]["path"] == "../../../frontend"
-    assert document["folders"][2]["path"] == "../../../backend"
-
-    refreshed = load_catalog(coboose_root)
-    personal = refreshed.workspace("scratch")
-    assert personal.personal is True
-    assert personal.folders == ["frontend", "backend"]
-    assert personal.description == "Local mix"
-    assert {item.id for item in refreshed.workspaces if not item.personal} == {
-        "frontend",
-        "backend",
-    }
-
-
-def test_create_personal_workspace_prompts_for_kind(catalog, coboose_root: Path):
-    stdin = io.StringIO("personal\nscratch\n\n\n1\n\n")
-    payload = create_workspace(
-        catalog,
-        coboose_root,
-        prompt=PromptSession(stdin=stdin, stderr=io.StringIO(), interactive=True),
-    )
-    assert payload["workspace"]["personal"] is True
-    assert payload["workspace"]["id"] == "scratch"
-    assert payload["workspace"]["folders"] == ["frontend"]
-    assert (coboose_root / "workspaces" / "personal" / "scratch.code-workspace").exists()
-    stack_ids = [
-        item["id"]
-        for item in yaml.safe_load(
-            (coboose_root / "catalog" / "stack.yaml").read_text(encoding="utf-8")
-        ).get("workspaces")
-        or []
-    ]
-    assert "scratch" not in stack_ids
-
-
-def test_create_personal_rejects_shared_id_and_fallback(catalog, coboose_root: Path):
-    with pytest.raises(CobooseError, match="already exists as a shared"):
-        create_workspace(
-            catalog,
-            coboose_root,
-            workspace_id="frontend",
-            folders=["frontend"],
-            personal=True,
-            prompt=PromptSession(interactive=False),
-        )
-    with pytest.raises(CobooseError, match="cannot be fallback"):
-        create_workspace(
-            catalog,
-            coboose_root,
-            workspace_id="scratch",
-            folders=["frontend"],
-            personal=True,
-            fallback=True,
-            prompt=PromptSession(interactive=False),
-        )
-    with pytest.raises(CobooseError, match="only exist as .code-workspace"):
-        create_workspace(
-            catalog,
-            coboose_root,
-            workspace_id="scratch",
-            folders=["frontend"],
-            personal=True,
-            generate=False,
-            prompt=PromptSession(interactive=False),
-        )
-
-
-def test_create_personal_force_replaces(catalog, coboose_root: Path):
-    create_workspace(
-        catalog,
-        coboose_root,
-        workspace_id="scratch",
-        folders=["frontend"],
-        personal=True,
-        prompt=PromptSession(interactive=False),
-    )
-    payload = create_workspace(
-        catalog,
-        coboose_root,
-        workspace_id="scratch",
-        folders=["backend"],
-        personal=True,
-        force=True,
-        prompt=PromptSession(interactive=False),
-    )
-    assert payload["replaced"] is True
-    document = json.loads(
-        (coboose_root / "workspaces" / "personal" / "scratch.code-workspace").read_text(
-            encoding="utf-8"
-        )
-    )
-    assert document["coboose"]["folders"] == ["backend"]
-
-
-def test_create_personal_cli(coboose_root: Path, capsys, monkeypatch):
-    monkeypatch.chdir(coboose_root)
-    assert (
-        main(
-            [
-                "--root",
-                str(coboose_root),
-                "workspace",
-                "create",
-                "scratch",
-                "--projects",
-                "frontend",
-                "--personal",
-            ]
-        )
-        == 0
-    )
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["workspace"]["personal"] is True
-    path = coboose_root / "workspaces" / "personal" / "scratch.code-workspace"
-    assert path.exists()
-    assert not (coboose_root / "workspaces" / "scratch.code-workspace").exists()
-
-    assert main(["--root", str(coboose_root), "workspace", "path", "scratch"]) == 0
-    listed_path = json.loads(capsys.readouterr().out)
-    assert listed_path["file"] == str(path)
-    assert listed_path["exists"] is True
-
-    assert main(["--root", str(coboose_root), "workspace", "list"]) == 0
-    listed = json.loads(capsys.readouterr().out)
-    scratch = next(item for item in listed["workspaces"] if item["id"] == "scratch")
-    assert scratch["personal"] is True
-
-
-def test_gitignore_covers_generated_and_personal_workspace_files():
+def test_gitignore_covers_generated_workspace_files():
     gitignore = Path(__file__).resolve().parents[1] / ".gitignore"
     text = gitignore.read_text(encoding="utf-8")
     assert "workspaces/*.code-workspace" in text
-    assert "workspaces/personal/*" in text
-    assert "!workspaces/personal/README.md" in text
+    assert "workspaces/personal" not in text

@@ -4,7 +4,7 @@
 # workspaces/*.code-workspace files are generated locally from this catalog —
 # do not commit them. setup / init / doctor run `coboose workspace generate`.
 # Open a starter with `coboose workspace open <id>`, or make your own with
-# `coboose workspace create` (`--personal` stays under workspaces/personal/).
+# `coboose workspace create` / `/new-workspace`.
 
 # Copilot-facing API allowlists. Every integration should normalize its vendor
 # payload, then clip it with `fields` + `shapes` (see coboose.projection).

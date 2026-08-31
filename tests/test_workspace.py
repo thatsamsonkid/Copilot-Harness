@@ -65,7 +65,6 @@ def test_generate_and_list(catalog, coboose_root: Path):
     listed = list_workspaces(catalog, coboose_root)
     frontend = next(item for item in listed if item["id"] == "frontend")
     assert frontend["exists"] is True
-    assert frontend["personal"] is False
     assert frontend["sync"] == "ok"
     assert frontend["in_sync"] is True
     assert frontend["open_command"].endswith("frontend.code-workspace")
@@ -84,35 +83,22 @@ def test_generate_and_list(catalog, coboose_root: Path):
     assert frontend["start_plan"] is True
 
 
-def test_generate_skips_personal_and_list_includes_them(catalog, coboose_root: Path):
+def test_generate_includes_created_catalog_workspace(catalog, coboose_root: Path):
     create_workspace(
         catalog,
         coboose_root,
         workspace_id="scratch",
         folders=["frontend"],
-        personal=True,
         prompt=PromptSession(interactive=False),
     )
-    personal_path = coboose_root / "workspaces" / "personal" / "scratch.code-workspace"
-    original = personal_path.read_text(encoding="utf-8")
-    document = json.loads(original)
-    document["coboose"]["description"] = "do not overwrite"
-    personal_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
-
     refreshed = load_catalog(coboose_root)
     written = generate_workspaces(refreshed, coboose_root)
-    assert {item["id"] for item in written} == {"frontend", "backend"}
-    assert all(item["personal"] is False for item in written)
-    assert not (coboose_root / "workspaces" / "scratch.code-workspace").exists()
-    assert personal_path.read_text(encoding="utf-8") == json.dumps(document, indent=2) + "\n"
-
+    assert {item["id"] for item in written} == {"frontend", "backend", "scratch"}
     listed = list_workspaces(refreshed, coboose_root)
     scratch = next(item for item in listed if item["id"] == "scratch")
-    assert scratch["personal"] is True
     assert scratch["exists"] is True
-    assert scratch["file"] == str(personal_path)
-    assert scratch["sync"] == "personal"
-    assert scratch["in_sync"] is True
+    assert scratch["sync"] == "ok"
+    assert scratch["file"].endswith("workspaces/scratch.code-workspace")
     assert check_workspaces(refreshed, coboose_root)["ok"] is True
 
 
@@ -165,8 +151,14 @@ def test_check_workspaces_reports_missing_stale_and_orphan(catalog, coboose_root
 
 
 def test_shared_workspace_files_are_gitignored_not_committed():
+    import subprocess
+
     root = Path(__file__).resolve().parents[1]
     gitignore = (root / ".gitignore").read_text(encoding="utf-8")
     assert "workspaces/*.code-workspace" in gitignore
-    committed = list((root / "workspaces").glob("*.code-workspace"))
-    assert committed == []
+    tracked = subprocess.check_output(
+        ["git", "ls-files", "--", "workspaces/*.code-workspace"],
+        cwd=root,
+        text=True,
+    ).strip()
+    assert tracked == ""

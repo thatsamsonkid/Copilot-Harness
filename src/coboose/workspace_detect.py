@@ -24,14 +24,12 @@ class WorkspaceScope:
     repos: list[str]
     file: str | None
     name: str | None
-    personal: bool | None
     detail: str
 
     def as_payload(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
-            "personal": self.personal,
             "detected": self.detected,
             "source": self.source,
             "scope": self.scope,
@@ -71,7 +69,6 @@ def resolve_workspace_scope(
             repos=enabled,
             file=None,
             name=None,
-            personal=None,
             detail=(
                 "Including every enabled repositories.yml repo (--all). "
                 "Do not use this while a feature workspace is open unless "
@@ -126,7 +123,6 @@ def resolve_workspace_scope(
         repos=enabled,
         file=None,
         name=None,
-        personal=None,
         detail=(
             "No feature workspace is open. "
             f"{WORKSPACE_ID_ENV} is unset. "
@@ -203,7 +199,6 @@ def _scope_for_workspace(
         repos=catalog.workspace_repo_names(workspace),
         file=str(path),
         name=workspace.name,
-        personal=workspace.personal,
         detail=detail,
     )
 

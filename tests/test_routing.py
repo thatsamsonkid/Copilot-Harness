@@ -1,6 +1,4 @@
-from coboose.prompt import PromptSession
 from coboose.routing import recommend_workspace, score_workspace
-from coboose.workspace_create import create_workspace
 
 
 def test_scores_project_component_and_keywords(catalog):
@@ -46,29 +44,3 @@ def test_prefers_higher_score_over_fallback(catalog):
     assert recommended is not None
     assert recommended["id"] == "frontend"
     assert recommended["score"] > 0
-
-
-def test_personal_workspaces_are_ignored_for_routing(catalog, coboose_root):
-    create_workspace(
-        catalog,
-        coboose_root,
-        workspace_id="scratch",
-        folders=["frontend"],
-        personal=True,
-        prompt=PromptSession(interactive=False),
-    )
-    from coboose.catalog import load_catalog
-
-    refreshed = load_catalog(coboose_root)
-    assert refreshed.workspace("scratch").personal is True
-    issue = {
-        "project": {"key": "OPS"},
-        "components": [],
-        "labels": [],
-        "summary": "Rotate logs",
-        "description": "",
-    }
-    recommended, alternatives = recommend_workspace(refreshed, issue)
-    assert recommended is not None
-    assert recommended["id"] == "backend"
-    assert {item["id"] for item in alternatives} == {"frontend"}

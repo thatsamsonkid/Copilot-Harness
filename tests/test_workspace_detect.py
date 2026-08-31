@@ -113,7 +113,6 @@ def test_generated_document_stamps_workspace_env(catalog, coboose_root: Path):
     assert env["COBOOSE_WORKSPACE"] == "backend"
     assert env["COBOOSE_WORKSPACE_FILE"] == "${workspaceFile}"
     assert document["coboose"]["id"] == "backend"
-    assert document["coboose"]["personal"] is False
 
 
 def test_context_stays_inside_open_workspace(catalog, coboose_root: Path):

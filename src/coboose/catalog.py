@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -39,7 +38,6 @@ from coboose.jira_fields import (
 )
 from coboose.paths import (
     ENV_RELATIVE,
-    PERSONAL_WORKSPACES_DIR,
     REPOS_RELATIVE,
     STACK_RELATIVE,
     TEMPLATES_RELATIVE,
@@ -150,7 +148,6 @@ class Workspace:
     include_coboose: bool = True
     fallback: bool = False
     env: list[str] = field(default_factory=list)
-    personal: bool = False
     match: WorkspaceMatch = field(default_factory=WorkspaceMatch)
 
 
@@ -245,8 +242,7 @@ class Catalog:
     def workspace_file(self, coboose_root: Path, workspace: Workspace | str) -> Path:
         if isinstance(workspace, str):
             workspace = self.workspace(workspace)
-        directory = PERSONAL_WORKSPACES_DIR if workspace.personal else WORKSPACES_DIR
-        return coboose_root / directory / f"{workspace.id}.code-workspace"
+        return coboose_root / WORKSPACES_DIR / f"{workspace.id}.code-workspace"
 
     def workspace_start_file(self, coboose_root: Path, workspace: Workspace | str) -> Path:
         """YAML start sequence saved next to the .code-workspace file."""
@@ -273,14 +269,6 @@ def load_catalog(
     repos, parent_dir = load_repositories(repos_file)
     repo_names = {repo.name for repo in repos}
     workspaces, jira, figma, bruno = load_stack(stack_file, repo_names)
-    workspaces = [
-        *workspaces,
-        *load_personal_workspaces(
-            coboose_root,
-            repo_names,
-            reserved_ids={workspace.id for workspace in workspaces},
-        ),
-    ]
     templates = load_templates(templates_file)
     from coboose.envspec import load_env_spec, validate_env_spec
 
@@ -727,69 +715,6 @@ def _parse_bruno_services(raw: Any, repo_names: set[str]) -> list[BrunoService]:
     return services
 
 
-def load_personal_workspaces(
-    coboose_root: Path,
-    repo_names: set[str],
-    reserved_ids: set[str] | None = None,
-) -> list[Workspace]:
-    """Load local-only workspaces from workspaces/personal/ (gitignored)."""
-    directory = Path(coboose_root) / PERSONAL_WORKSPACES_DIR
-    if not directory.is_dir():
-        return []
-    reserved = set(reserved_ids or ())
-    workspaces: list[Workspace] = []
-    seen: set[str] = set()
-    for path in sorted(directory.glob("*.code-workspace")):
-        workspace = parse_personal_workspace(path, repo_names)
-        if workspace is None:
-            continue
-        if workspace.id in reserved or workspace.id in seen:
-            continue
-        seen.add(workspace.id)
-        workspaces.append(workspace)
-    return workspaces
-
-
-def parse_personal_workspace(path: Path, repo_names: set[str]) -> Workspace | None:
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-        return None
-    if not isinstance(raw, dict):
-        return None
-    meta = raw.get("coboose") if isinstance(raw.get("coboose"), dict) else {}
-    workspace_id = str(meta.get("id") or path.stem).strip()
-    if not workspace_id:
-        return None
-    folders = _as_list(meta.get("folders"))
-    if not folders:
-        folders = [
-            str(folder.get("name"))
-            for folder in (raw.get("folders") or [])
-            if isinstance(folder, dict)
-            and folder.get("name")
-            and str(folder.get("name")) != "coboose"
-        ]
-    folders = [name for name in folders if name in repo_names]
-    include_coboose = meta.get("include_coboose")
-    if include_coboose is None:
-        include_coboose = any(
-            isinstance(folder, dict) and folder.get("name") == "coboose"
-            for folder in (raw.get("folders") or [])
-        )
-    return Workspace(
-        id=workspace_id,
-        name=str(meta.get("name") or workspace_id.replace("-", " ").replace("_", " ").title()),
-        description=str(meta.get("description") or ""),
-        folders=folders,
-        tags=_as_list(meta.get("tags")),
-        include_coboose=bool(include_coboose),
-        fallback=False,
-        env=_as_list(meta.get("env")),
-        personal=True,
-    )
-
-
 def catalog_to_dict(catalog: Catalog, coboose_root: Path) -> dict[str, Any]:
     sibling_root = catalog.sibling_root(coboose_root)
     return {
@@ -826,7 +751,6 @@ def catalog_to_dict(catalog: Catalog, coboose_root: Path) -> dict[str, Any]:
                 "include_coboose": workspace.include_coboose,
                 "fallback": workspace.fallback,
                 "env": workspace.env,
-                "personal": workspace.personal,
                 "file": str(catalog.workspace_file(coboose_root, workspace)),
                 "start_file": str(catalog.workspace_start_file(coboose_root, workspace)),
                 "start_plan": catalog.workspace_start_file(

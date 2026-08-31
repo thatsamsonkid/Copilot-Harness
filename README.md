@@ -58,7 +58,7 @@ Then:
 4. Clone product repos: `./scripts/clone-repos.sh`
 5. Generate local workspaces: `coboose workspace generate` (gitignored `.code-workspace` files from `catalog/stack.yaml`)
 6. Open a catalog starter (`coboose workspace open frontend`) or create your own:
-   `coboose workspace create` (or `/new-workspace` in chat). Choose **shared** to add an id to the team catalog, or **personal** for a local-only mix under `workspaces/personal/`.
+   `coboose workspace create` (or `/new-workspace` in chat). That adds an id to `catalog/stack.yaml` and generates a local `.code-workspace` file.
 7. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
 
 `setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, install this package in editable mode, and register a `coboose` shim on PATH (`~/.local/bin`). Prefer `uv` over pip. Do not `pip install` this repo. After `cd` into a sibling clone, bare `uv run coboose` cannot spawn — use the global shim, `--project`, or the wrapper script:
@@ -129,15 +129,7 @@ coboose workspace create checkout --projects frontend,backend --no-prompt
 coboose workspace create mobile-api --tag mobile,api --name "Mobile + API"
 ```
 
-Shared create writes `catalog/stack.yaml` (the team catalog) and generates a local `.code-workspace` file. Use `--force` to replace an existing id, `--dry-run` to preview, or `--no-prompt` when flags must be complete.
-
-For a scratch mix you do not want to commit, pass `--personal` (or choose **personal** at the prompt):
-
-```bash
-coboose workspace create scratch --projects frontend,backend --personal --no-prompt
-```
-
-Personal workspaces go in `workspaces/personal/` and are gitignored. They are not added to `catalog/stack.yaml` and do not participate in Jira routing. Shared create stays the default so the team catalog only changes when you add a starter for everyone. Generated shared `.code-workspace` files are also gitignored.
+That writes `catalog/stack.yaml` (the team catalog) and generates a local `.code-workspace` file (gitignored). Use `--force` to replace an existing id, `--dry-run` to preview, or `--no-prompt` when flags must be complete.
 
 Workspace files always include this coboose as the first root so Copilot still sees the CLI and instructions.
 
@@ -270,7 +262,7 @@ The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads 
 
 `status` is a read-only git snapshot of the scoped siblings (branch, dirty, ahead/behind, Graphify staleness). `branch PROJ-123` suggests the same Jira-key branch in each in-scope clone; `--create` only runs on a clean tree. `handoff` writes a gitignored session note under `handoffs/` so the next chat can resume without re-fetching the world. `jira mine` lists unresolved issues assigned to you.
 
-`coboose start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files, redacted `launch.json` names and env keys). It does not launch processes. After the first good plan, pin it next to the workspace with `coboose start --save` (or `--workspace <id> --save`). That writes `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. When a repo keeps args or secrets in `.vscode/launch.json`, the plan sets `run_via: coboose` and Copilot runs `coboose start run --repo <name>` so those values stay in-process (or the user uses VS Code **Run Without Debugging**). `start run` applies env to the child process only. `coboose start env --repo <name>` lists keys and collisions; `--shell` execs a terminal that already has the values. Application keys are unprefixed by default (same names as VS Code). `--keep-existing` leaves current terminal values alone; `--prefix BACKEND` is opt-in namespacing and will not satisfy an app looking up `DB_PASSWORD`. Do not put `start:` on `repositories.yml` entries — edit the workspace plan when discovery is wrong.
+`coboose start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files, redacted `launch.json` names and env keys). It does not launch processes. After the first good plan, pin it next to the workspace with `coboose start --save` (or `--workspace <id> --save`). That writes `workspaces/<id>.start.yml`. Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. When a repo keeps args or secrets in `.vscode/launch.json`, the plan sets `run_via: coboose` and Copilot runs `coboose start run --repo <name>` so those values stay in-process (or the user uses VS Code **Run Without Debugging**). `start run` applies env to the child process only. `coboose start env --repo <name>` lists keys and collisions; `--shell` execs a terminal that already has the values. Application keys are unprefixed by default (same names as VS Code). `--keep-existing` leaves current terminal values alone; `--prefix BACKEND` is opt-in namespacing and will not satisfy an app looking up `DB_PASSWORD`. Do not put `start:` on `repositories.yml` entries — edit the workspace plan when discovery is wrong.
 
 Stdout is JSON by default (`--format markdown` or `text` if you want a human view). Errors are JSON on stderr.
 

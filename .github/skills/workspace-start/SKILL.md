@@ -7,7 +7,7 @@ description: Plan and start local apps in the current feature workspace (Java, A
 
 The coboose does **not** own product start scripts. `coboose start` inspects sibling clones and prints a plan. You start processes one at a time so real ports and proxy rewrites can be applied after each backend is up.
 
-A workspace start sequence rarely changes. After the first good plan, save it next to the workspace file as `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later `coboose start --workspace <id>` prefers that file over rediscovery. Live clone status, proxy files, and compose markers are still inspected. Do not put `start:` on `repositories.yml` entries.
+A workspace start sequence rarely changes. After the first good plan, save it next to the workspace file as `workspaces/<id>.start.yml`. Later `coboose start --workspace <id>` prefers that file over rediscovery. Live clone status, proxy files, and compose markers are still inspected. Do not put `start:` on `repositories.yml` entries.
 
 Java apps often keep args and environment variables in `.vscode/launch.json`. Those values must not enter chat. The plan only lists configuration names and env **keys**. Start those apps with `coboose start run` or VS Code **Run Without Debugging** — not by reading `launch.json` and not by forcing Debug.
 
@@ -113,7 +113,7 @@ The coboose does not open terminals. You do, via the chat terminal / `runCommand
 
 ## Workspace start plan
 
-`workspaces/<id>.start.yml` sits next to `workspaces/<id>.code-workspace`. Shared plans are committed so the team reuses the same sequence. Personal workspaces use `workspaces/personal/<id>.start.yml` (gitignored with the rest of that folder). Do not add `start:` to `repositories.yml`.
+`workspaces/<id>.start.yml` sits next to `workspaces/<id>.code-workspace`. Plans can be committed so the team reuses the same sequence. Do not add `start:` to `repositories.yml`.
 
 ```yaml
 workspace: frontend

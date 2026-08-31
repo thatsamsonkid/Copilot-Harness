@@ -310,7 +310,7 @@ def test_save_requires_workspace_and_rejects_repo_filter(coboose_root: Path, cat
         )
 
 
-def test_personal_workspace_saves_start_plan_beside_file(catalog, coboose_root: Path):
+def test_created_workspace_saves_start_plan_beside_file(catalog, coboose_root: Path):
     _write_angular(coboose_root)
     _write_spring(coboose_root)
     create_workspace(
@@ -318,7 +318,6 @@ def test_personal_workspace_saves_start_plan_beside_file(catalog, coboose_root: 
         coboose_root,
         workspace_id="scratch",
         folders=["frontend", "backend"],
-        personal=True,
         prompt=PromptSession(interactive=False),
     )
     refreshed = load_catalog(coboose_root)
@@ -326,7 +325,7 @@ def test_personal_workspace_saves_start_plan_beside_file(catalog, coboose_root: 
         refreshed, coboose_root, workspace_id="scratch", save=True
     )
     path = Path(payload["saved"]["path"])
-    assert path.as_posix().endswith("workspaces/personal/scratch.start.yml")
+    assert path.as_posix().endswith("workspaces/scratch.start.yml")
     assert path.is_file()
     assert refreshed.workspace_start_file(coboose_root, "scratch") == path
 
