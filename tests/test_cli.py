@@ -183,6 +183,7 @@ def test_clone_dry_run_and_doctor(coboose_root: Path, capsys, monkeypatch):
         "JIRA_API_TOKEN",
     }
     assert any(check["name"] == "uv" for check in doctor["checks"])
+    assert any(check["name"] == "cli_path" for check in doctor["checks"])
     assert "onboarding" in doctor
     assert "uv" in doctor
     assert any(check["name"] == "env_age" for check in doctor["checks"])

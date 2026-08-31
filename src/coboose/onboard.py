@@ -11,6 +11,7 @@ from typing import Any
 from coboose import CobooseError
 from coboose.catalog import Catalog
 from coboose.envfile import env_file_keys
+from coboose.install import cli_path_status
 from coboose.envspec import (
     list_env,
     set_env_value,
@@ -152,6 +153,18 @@ def onboarding_steps(
             f"uv is on PATH ({uv.get('path')})" if uv.get("present") else "uv is not on PATH",
             action=None if uv.get("present") else uv_missing_action(uv),
         ),
+    ]
+    path_status = cli_path_status(coboose_root)
+    steps.append(
+        _step(
+            "cli_path",
+            bool(path_status["on_path"]),
+            path_status["detail"],
+            action=None if path_status["on_path"] else "uv run coboose install",
+            optional=True,
+        )
+    )
+    steps.append(
         _step(
             "env_file",
             env_path.exists(),
@@ -160,7 +173,7 @@ def onboarding_steps(
             else "Copy .env.example to .env",
             action="Copy .env.example to .env, then edit it locally. Never paste the token into chat.",
         )
-    ]
+    )
     for variable in catalog.env_vars:
         present = var_is_present(variable, file_keys)
         status = var_status(variable, file_keys)
@@ -338,4 +351,10 @@ def _next_commands(
         commands.append("./scripts/clone-repos.sh")
     commands.append("uv run coboose workspace generate")
     commands.append("uv run coboose skills lift")
+    cli_path = next(
+        (step for step in steps if step["id"] == "cli_path" and not step["ok"]),
+        None,
+    )
+    if cli_path:
+        commands.append("uv run coboose install")
     return commands

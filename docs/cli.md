@@ -1,6 +1,6 @@
 # Coboose CLI quick reference
 
-Run from this repo: `uv run coboose <command>`. After `cd` into a sibling, `uv run coboose` cannot spawn — use `uv run --project "$COBOOSE_ROOT" coboose …` or `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`).
+Run from this repo: `uv run coboose <command>`. After `cd` into a sibling, `uv run coboose` cannot spawn — use `uv run --project "$COBOOSE_ROOT" coboose …` or `./scripts/coboose.sh` (Windows: `.\scripts\coboose.ps1`). To type `coboose` from any directory, run `uv run coboose install` once (macOS, Linux, and Windows). That writes a shim to `~/.local/bin` which pins this kit and calls `uv run --project`.
 
 Stdout is JSON by default. Use `--format markdown` or `text` for a human view. Errors are JSON on stderr.
 
@@ -22,6 +22,8 @@ Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`
 | --- | --- |
 | `coboose commands [GROUP]` | Print this catalog (`help` is an alias) |
 | `coboose init` | First-run checklist for `.env`, Jira token, and repos |
+| `coboose install` | Put `coboose` on PATH (shim in `~/.local/bin`, any cwd) |
+| `coboose uninstall` | Remove the PATH shim written by `coboose install` |
 | `coboose doctor` | Check catalog, clones, Jira, and optional Figma |
 | `coboose env list` | Show declared env vars and whether each is present (never values) |
 | `coboose env set NAME` | Set one declared variable (secrets go in the OS keychain) |
