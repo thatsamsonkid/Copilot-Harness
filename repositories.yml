@@ -1,23 +1,23 @@
 # Full-app repository manifest.
 # Every product repo Copilot may need lives here. Clones land under
-# parent_dir (default: the folder that contains this coboose):
-#   <coboose-parent>/<path or group/name or name>
+# parent_dir (default: the folder that contains this goat):
+#   <goat-parent>/<path or group/name or name>
 #
 # Required per entry: name, url, tags
 # Optional: path, group, default_branch, description, enabled, graphify, knowledge
 # graphify.out defaults to graphify-out inside that clone.
 # knowledge.dirs adds extra note folders when a monorepo does not use docs/features.
 # Do not add start: here. Discover once, then pin the workspace sequence:
-#   coboose start --workspace frontend --save
+#   goat start --workspace frontend --save
 #   → workspaces/frontend.start.yml
 # Java launch.json env/args stay in the sibling. The plan lists names/keys only;
-# start those apps with `coboose start run --repo <name>`.
-# Apply one repo's env in a terminal with `coboose start env --repo <name> --shell`.
+# start those apps with `goat start run --repo <name>`.
+# Apply one repo's env in a terminal with `goat start env --repo <name> --shell`.
 #
 # Use group or a nested path to organize clones without putting git
-# trees inside this coboose:
+# trees inside this goat:
 #   parent/
-#     Coboose/
+#     Goat/
 #     frontend/shop-web/     ← group: frontend
 #     backend/api/           ← path: backend/api
 #     infra/terraform/
@@ -26,7 +26,7 @@
 #
 # Replace YOUR_ORG with your GitHub org, then:
 #   ./scripts/clone-repos.sh
-#   coboose workspace generate
+#   goat workspace generate
 
 parent_dir: ..
 

@@ -45,7 +45,7 @@ def test_skill_body_is_the_cli_contract():
     _, body = _frontmatter_and_body(SKILL)
     lowered = body.lower()
     for token in (
-        "uv run coboose skills list",
+        "uv run goat skills list",
         "--brief",
         "skills lift",
         "skills pull",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from coboose.done import build_done_when, extract_acceptance
+from goat.done import build_done_when, extract_acceptance
 
 
 def test_extract_acceptance_from_heading_and_checkboxes():
@@ -45,4 +45,4 @@ def test_build_done_when_includes_ticket_verify_and_invariants():
     assert "Button is aligned" in texts
     assert "In frontend: pnpm lint" in texts
     assert any("one pull request per sibling" in text.lower() for text in texts)
-    assert {item["source"] for item in items} >= {"ticket", "verify", "coboose"}
+    assert {item["source"] for item in items} >= {"ticket", "verify", "goat"}

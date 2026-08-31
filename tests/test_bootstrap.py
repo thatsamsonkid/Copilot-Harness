@@ -7,11 +7,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from coboose import CobooseError
-from coboose.bootstrap import append_repository, bootstrap_project
-from coboose.catalog import Repo, load_catalog, parse_project_destination
-from coboose.cli import main
-from tests.helpers import write_coboose_config
+from goat import GoatError
+from goat.bootstrap import append_repository, bootstrap_project
+from goat.catalog import Repo, load_catalog, parse_project_destination
+from goat.cli import main
+from tests.helpers import write_goat_config
 
 
 def _git(cwd: Path, *args: str) -> None:
@@ -36,10 +36,10 @@ def _bare_repo(path: Path, branch: str = "main") -> Path:
     return path
 
 
-def test_bootstrap_dry_run(catalog, coboose_root: Path):
+def test_bootstrap_dry_run(catalog, goat_root: Path):
     payload = bootstrap_project(
         catalog,
-        coboose_root,
+        goat_root,
         template_name="web-starter",
         dest_name="shop-web",
         dry_run=True,
@@ -47,24 +47,24 @@ def test_bootstrap_dry_run(catalog, coboose_root: Path):
     assert payload["dry_run"] is True
     assert payload["project"]["name"] == "shop-web"
     assert payload["project"]["action"] == "bootstrap"
-    assert not (coboose_root.parent / "shop-web").exists()
+    assert not (goat_root.parent / "shop-web").exists()
 
 
 def test_bootstrap_clones_and_detaches_origin(
-    coboose_root: Path, sample_catalog_data: dict, tmp_path: Path
+    goat_root: Path, sample_catalog_data: dict, tmp_path: Path
 ):
     remotes = tmp_path / "remotes"
     sample_catalog_data["templates"][0]["url"] = str(_bare_repo(remotes / "web-starter.git"))
-    write_coboose_config(coboose_root, sample_catalog_data)
-    catalog = load_catalog(coboose_root)
+    write_goat_config(goat_root, sample_catalog_data)
+    catalog = load_catalog(goat_root)
 
     payload = bootstrap_project(
         catalog,
-        coboose_root,
+        goat_root,
         template_name="web-starter",
         dest_name="shop-web",
     )
-    dest = coboose_root.parent / "shop-web"
+    dest = goat_root.parent / "shop-web"
     assert dest.is_dir()
     assert (dest / "README.md").read_text() == "starter\n"
     remotes_now = subprocess.check_output(
@@ -76,17 +76,17 @@ def test_bootstrap_clones_and_detaches_origin(
 
 
 def test_bootstrap_fresh_git_and_register(
-    coboose_root: Path, sample_catalog_data: dict, tmp_path: Path
+    goat_root: Path, sample_catalog_data: dict, tmp_path: Path
 ):
     remotes = tmp_path / "remotes"
     sample_catalog_data["templates"][0]["url"] = str(_bare_repo(remotes / "web-starter.git"))
-    write_coboose_config(coboose_root, sample_catalog_data)
-    catalog = load_catalog(coboose_root)
+    write_goat_config(goat_root, sample_catalog_data)
+    catalog = load_catalog(goat_root)
     origin = "git@github.com:acme/shop-web.git"
 
     payload = bootstrap_project(
         catalog,
-        coboose_root,
+        goat_root,
         template_name="web-starter",
         dest_name="shop-web",
         fresh_git=True,
@@ -94,7 +94,7 @@ def test_bootstrap_fresh_git_and_register(
         remote=origin,
         tags=["ui", "web"],
     )
-    dest = coboose_root.parent / "shop-web"
+    dest = goat_root.parent / "shop-web"
     log = subprocess.check_output(
         ["git", "-C", str(dest), "log", "--oneline"], text=True
     )
@@ -107,7 +107,7 @@ def test_bootstrap_fresh_git_and_register(
     assert "acme/shop-web.git" in remotes_now
     assert payload["registered"] is True
 
-    manifest = yaml.safe_load((coboose_root / "repositories.yml").read_text())
+    manifest = yaml.safe_load((goat_root / "repositories.yml").read_text())
     names = [item["name"] for item in manifest["repositories"]]
     assert "shop-web" in names
     added = next(item for item in manifest["repositories"] if item["name"] == "shop-web")
@@ -126,21 +126,21 @@ def test_parse_project_destination_group_and_nested_name():
         "frontend/shop-web",
         "frontend",
     )
-    with pytest.raises(CobooseError, match="inside group"):
+    with pytest.raises(GoatError, match="inside group"):
         parse_project_destination("backend/api", "frontend")
 
 
 def test_bootstrap_into_group_and_register(
-    coboose_root: Path, sample_catalog_data: dict, tmp_path: Path
+    goat_root: Path, sample_catalog_data: dict, tmp_path: Path
 ):
     remotes = tmp_path / "remotes"
     sample_catalog_data["templates"][0]["url"] = str(_bare_repo(remotes / "web-starter.git"))
-    write_coboose_config(coboose_root, sample_catalog_data)
-    catalog = load_catalog(coboose_root)
+    write_goat_config(goat_root, sample_catalog_data)
+    catalog = load_catalog(goat_root)
 
     payload = bootstrap_project(
         catalog,
-        coboose_root,
+        goat_root,
         template_name="web-starter",
         dest_name="shop-web",
         group="apps",
@@ -148,45 +148,45 @@ def test_bootstrap_into_group_and_register(
         remote="git@github.com:acme/shop-web.git",
         tags=["ui", "web"],
     )
-    dest = coboose_root.parent / "apps" / "shop-web"
+    dest = goat_root.parent / "apps" / "shop-web"
     assert dest.is_dir()
     assert payload["project"]["name"] == "shop-web"
     assert payload["project"]["group"] == "apps"
     assert payload["project"]["relpath"] == "apps/shop-web"
     assert payload["registered"] is True
 
-    manifest = yaml.safe_load((coboose_root / "repositories.yml").read_text())
+    manifest = yaml.safe_load((goat_root / "repositories.yml").read_text())
     added = next(item for item in manifest["repositories"] if item["name"] == "shop-web")
     assert added["group"] == "apps"
     assert "path" not in added
 
 
 def test_bootstrap_refuses_existing_destination(
-    coboose_root: Path, sample_catalog_data: dict, tmp_path: Path
+    goat_root: Path, sample_catalog_data: dict, tmp_path: Path
 ):
     remotes = tmp_path / "remotes"
     sample_catalog_data["templates"][0]["url"] = str(_bare_repo(remotes / "web-starter.git"))
-    write_coboose_config(coboose_root, sample_catalog_data)
-    dest = coboose_root.parent / "shop-web"
+    write_goat_config(goat_root, sample_catalog_data)
+    dest = goat_root.parent / "shop-web"
     dest.mkdir()
-    catalog = load_catalog(coboose_root)
-    with pytest.raises(CobooseError, match="already exists"):
+    catalog = load_catalog(goat_root)
+    with pytest.raises(GoatError, match="already exists"):
         bootstrap_project(
-            catalog, coboose_root, template_name="web-starter", dest_name="shop-web"
+            catalog, goat_root, template_name="web-starter", dest_name="shop-web"
         )
 
 
 def test_bootstrap_blocks_placeholder_url(
-    coboose_root: Path, sample_catalog_data: dict
+    goat_root: Path, sample_catalog_data: dict
 ):
     sample_catalog_data["templates"][0]["url"] = (
         "git@github.com:YOUR_ORG/web-starter.git"
     )
-    write_coboose_config(coboose_root, sample_catalog_data)
-    catalog = load_catalog(coboose_root)
-    with pytest.raises(CobooseError, match="placeholder"):
+    write_goat_config(goat_root, sample_catalog_data)
+    catalog = load_catalog(goat_root)
+    with pytest.raises(GoatError, match="placeholder"):
         bootstrap_project(
-            catalog, coboose_root, template_name="web-starter", dest_name="shop-web"
+            catalog, goat_root, template_name="web-starter", dest_name="shop-web"
         )
 
 
@@ -217,8 +217,8 @@ def test_append_repository_matches_shipped_indent(tmp_path: Path):
     assert "# comment" in path.read_text(encoding="utf-8")
 
 
-def test_append_repository_preserves_existing_entries(coboose_root: Path):
-    path = coboose_root / "repositories.yml"
+def test_append_repository_preserves_existing_entries(goat_root: Path):
+    path = goat_root / "repositories.yml"
     original = path.read_text(encoding="utf-8")
     append_repository(
         path,
@@ -233,7 +233,7 @@ def test_append_repository_preserves_existing_entries(coboose_root: Path):
     text = path.read_text(encoding="utf-8")
     assert original.strip() in text
     assert "name: new-service" in text
-    with pytest.raises(CobooseError, match="already listed"):
+    with pytest.raises(GoatError, match="already listed"):
         append_repository(
             path,
             Repo(
@@ -245,33 +245,33 @@ def test_append_repository_preserves_existing_entries(coboose_root: Path):
         )
 
 
-def test_cli_templates_and_bootstrap_dry_run(coboose_root: Path, capsys, monkeypatch):
-    monkeypatch.chdir(coboose_root)
-    assert main(["--root", str(coboose_root), "templates"]) == 0
+def test_cli_templates_and_bootstrap_dry_run(goat_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(goat_root)
+    assert main(["--root", str(goat_root), "templates"]) == 0
     listed = json.loads(capsys.readouterr().out)
     assert [item["name"] for item in listed["templates"]] == [
         "web-starter",
         "api-starter",
     ]
 
-    assert main(["--root", str(coboose_root), "templates", "--tag", "api"]) == 0
+    assert main(["--root", str(goat_root), "templates", "--tag", "api"]) == 0
     filtered = json.loads(capsys.readouterr().out)
     assert [item["name"] for item in filtered["templates"]] == ["api-starter"]
 
-    assert main(["--root", str(coboose_root), "templates", "web-starter"]) == 0
+    assert main(["--root", str(goat_root), "templates", "web-starter"]) == 0
     shown = json.loads(capsys.readouterr().out)
     assert shown["template"]["name"] == "web-starter"
 
-    assert main(["--root", str(coboose_root), "templates", "--format", "text"]) == 0
+    assert main(["--root", str(goat_root), "templates", "--format", "text"]) == 0
     text = capsys.readouterr().out
     assert "web-starter" in text
-    assert "Bootstrap: coboose bootstrap --template" in text
+    assert "Bootstrap: goat bootstrap --template" in text
 
     assert (
         main(
             [
                 "--root",
-                str(coboose_root),
+                str(goat_root),
                 "bootstrap",
                 "--template",
                 "web-starter",
@@ -290,7 +290,7 @@ def test_cli_templates_and_bootstrap_dry_run(coboose_root: Path, capsys, monkeyp
         main(
             [
                 "--root",
-                str(coboose_root),
+                str(goat_root),
                 "bootstrap",
                 "api-starter",
                 "--name",
@@ -307,7 +307,7 @@ def test_cli_templates_and_bootstrap_dry_run(coboose_root: Path, capsys, monkeyp
         main(
             [
                 "--root",
-                str(coboose_root),
+                str(goat_root),
                 "bootstrap",
                 "--template",
                 "web-starter",
@@ -326,8 +326,8 @@ def test_cli_templates_and_bootstrap_dry_run(coboose_root: Path, capsys, monkeyp
     assert grouped["project"]["relpath"] == "apps/shop-web"
 
 
-def test_cli_bootstrap_requires_template(coboose_root: Path, capsys, monkeypatch):
-    monkeypatch.chdir(coboose_root)
-    assert main(["--root", str(coboose_root), "bootstrap", "--name", "x"]) == 1
+def test_cli_bootstrap_requires_template(goat_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(goat_root)
+    assert main(["--root", str(goat_root), "bootstrap", "--name", "x"]) == 1
     error = json.loads(capsys.readouterr().err)
     assert "listed template" in error["error"]

@@ -6,9 +6,9 @@ applyTo: "**"
 
 Jira access is CLI-only. There is no Jira MCP server in this workspace. Load `.github/skills/jira-cli/SKILL.md` for commands, flags, and output shapes.
 
-- Run `uv run coboose prepare <KEY> --format json` unless the user asked for a narrower `jira` subcommand.
+- Run `uv run goat prepare <KEY> --format json` unless the user asked for a narrower `jira` subcommand.
 - The CLI returns a field allowlist from `catalog/stack.yaml` (`jira.fields`). Treat that JSON as complete. Do not request additional Jira fields.
-- Never curl Atlassian URLs, never read `.env`, never print `JIRA_API_TOKEN`, and never ask the user to paste credentials. Missing tokens: tell them to run `uv run coboose jira login`.
+- Never curl Atlassian URLs, never read `.env`, never print `JIRA_API_TOKEN`, and never ask the user to paste credentials. Missing tokens: tell them to run `uv run goat jira login`.
 - If auth fails, tell the user to set values in `.env` themselves.
 
 Parse issue keys from either `PROJ-123` or a browse URL. Prefer `prepare` over assembling get/match/clone yourself.

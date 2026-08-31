@@ -4,8 +4,8 @@
 # Required per entry: name, url, tags
 # Optional: description, language, kind, default_branch, enabled
 #
-# List templates:     coboose templates
-# Bootstrap one:      coboose bootstrap --template <name> --name <new-folder>
+# List templates:     goat templates
+# Bootstrap one:      goat bootstrap --template <name> --name <new-folder>
 # Copilot can run the same commands when asked to start a new project.
 
 templates:

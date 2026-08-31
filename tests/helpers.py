@@ -6,8 +6,8 @@ from typing import Any
 
 import yaml
 
-from coboose.catalog import load_catalog
-from coboose.http import HttpResponse
+from goat.catalog import load_catalog
+from goat.http import HttpResponse
 
 
 def write_yaml(path: Path, data: Any) -> Path:
@@ -16,7 +16,7 @@ def write_yaml(path: Path, data: Any) -> Path:
     return path
 
 
-def write_coboose_config(root: Path, data: dict) -> Path:
+def write_goat_config(root: Path, data: dict) -> Path:
     """Write repositories.yml + catalog/stack.yaml from the combined test fixture."""
     repo_items = data.get("repositories") or data.get("repos") or []
     repositories = []

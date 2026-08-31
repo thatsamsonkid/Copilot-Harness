@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from coboose import CobooseError
-from coboose.catalog import load_catalog
-from coboose.cli import main
-from coboose.output import render
-from coboose.prompt import PromptSession
-from coboose.envapply import COBOOSE_ENV_REPO
-from coboose.start import (
+from goat import GoatError
+from goat.catalog import load_catalog
+from goat.cli import main
+from goat.output import render
+from goat.prompt import PromptSession
+from goat.envapply import GOAT_ENV_REPO
+from goat.start import (
     collect_start_plan,
     execute_start_env,
     execute_start_run,
@@ -19,8 +19,8 @@ from coboose.start import (
     redacted_exec_command,
     start_run_preview,
 )
-from coboose.workspace_create import create_workspace
-from tests.helpers import write_coboose_config
+from goat.workspace_create import create_workspace
+from tests.helpers import write_goat_config
 
 
 def _write_angular(root: Path, name: str = "frontend") -> Path:
@@ -96,13 +96,13 @@ def _write_spring(root: Path, name: str = "backend") -> Path:
     return repo
 
 
-def test_start_discovers_angular_and_spring(coboose_root: Path, catalog):
-    _write_angular(coboose_root)
-    _write_spring(coboose_root)
-    payload = collect_start_plan(catalog, coboose_root, workspace_id="frontend")
+def test_start_discovers_angular_and_spring(goat_root: Path, catalog):
+    _write_angular(goat_root)
+    _write_spring(goat_root)
+    payload = collect_start_plan(catalog, goat_root, workspace_id="frontend")
     assert payload["order"] == ["backend", "frontend"]
-    assert payload["coboose_root"] == str(coboose_root.resolve())
-    assert payload["invoke"]["cwd"] == str(coboose_root.resolve())
+    assert payload["goat_root"] == str(goat_root.resolve())
+    assert payload["invoke"]["cwd"] == str(goat_root.resolve())
     assert "--project" in payload["invoke"]["command"]
     assert any("cannot spawn" in item.lower() for item in payload["guidance"])
     by_name = {item["name"]: item for item in payload["services"]}
@@ -136,35 +136,35 @@ def test_start_discovers_angular_and_spring(coboose_root: Path, catalog):
 
 
 def test_repositories_yml_rejects_start_block(
-    sample_catalog_data: dict, coboose_root: Path
+    sample_catalog_data: dict, goat_root: Path
 ):
     sample_catalog_data["repos"][1]["start"] = {
         "command": "java -jar app.jar",
         "port": 9000,
         "role": "backend",
     }
-    write_coboose_config(coboose_root, sample_catalog_data)
-    with pytest.raises(CobooseError, match="no longer owns start commands"):
-        load_catalog(coboose_root)
+    write_goat_config(goat_root, sample_catalog_data)
+    with pytest.raises(GoatError, match="no longer owns start commands"):
+        load_catalog(goat_root)
 
 
-def test_start_marks_uncloned_and_unknown(coboose_root: Path, catalog):
-    payload = collect_start_plan(catalog, coboose_root, only=["frontend"])
+def test_start_marks_uncloned_and_unknown(goat_root: Path, catalog):
+    payload = collect_start_plan(catalog, goat_root, only=["frontend"])
     service = payload["services"][0]
     assert service["cloned"] is False
     assert service["blocked"] == "repo is not cloned"
     assert payload["blocked"][0]["name"] == "frontend"
 
 
-def test_start_cli_and_markdown(coboose_root: Path, capsys, monkeypatch):
-    _write_angular(coboose_root)
-    _write_spring(coboose_root)
-    monkeypatch.chdir(coboose_root)
+def test_start_cli_and_markdown(goat_root: Path, capsys, monkeypatch):
+    _write_angular(goat_root)
+    _write_spring(goat_root)
+    monkeypatch.chdir(goat_root)
     assert (
         main(
             [
                 "--root",
-                str(coboose_root),
+                str(goat_root),
                 "start",
                 "--workspace",
                 "frontend",
@@ -188,21 +188,21 @@ def test_start_cli_and_markdown(coboose_root: Path, capsys, monkeypatch):
     assert "No saved sequence" in text
 
 
-def test_catalog_to_dict_lists_workspace_start_file(coboose_root: Path, catalog):
-    from coboose.catalog import catalog_to_dict
+def test_catalog_to_dict_lists_workspace_start_file(goat_root: Path, catalog):
+    from goat.catalog import catalog_to_dict
 
-    payload = catalog_to_dict(catalog, coboose_root)
+    payload = catalog_to_dict(catalog, goat_root)
     assert "start" not in payload["repos"][0]
     frontend_ws = next(item for item in payload["workspaces"] if item["id"] == "frontend")
     assert frontend_ws["start_file"].endswith("workspaces/frontend.start.yml")
     assert frontend_ws["start_plan"] is False
 
 
-def test_start_save_and_reuse_workspace_plan(coboose_root: Path, catalog):
-    _write_angular(coboose_root)
-    _write_spring(coboose_root)
+def test_start_save_and_reuse_workspace_plan(goat_root: Path, catalog):
+    _write_angular(goat_root)
+    _write_spring(goat_root)
     first = collect_start_plan(
-        catalog, coboose_root, workspace_id="frontend", save=True
+        catalog, goat_root, workspace_id="frontend", save=True
     )
     plan_path = Path(first["saved"]["path"])
     assert first["saved"]["action"] == "created"
@@ -234,7 +234,7 @@ services:
 """,
         encoding="utf-8",
     )
-    reused = collect_start_plan(catalog, coboose_root, workspace_id="frontend")
+    reused = collect_start_plan(catalog, goat_root, workspace_id="frontend")
     assert reused["plan_source"] == "saved"
     assert reused["plan_exists"] is True
     assert reused["order"] == ["frontend", "backend"]
@@ -249,18 +249,18 @@ services:
     assert "Saved sequence" in markdown
 
 
-def test_start_refresh_ignores_saved_plan(coboose_root: Path, catalog):
-    _write_angular(coboose_root)
-    _write_spring(coboose_root)
-    collect_start_plan(catalog, coboose_root, workspace_id="frontend", save=True)
-    plan_path = catalog.workspace_start_file(coboose_root, "frontend")
+def test_start_refresh_ignores_saved_plan(goat_root: Path, catalog):
+    _write_angular(goat_root)
+    _write_spring(goat_root)
+    collect_start_plan(catalog, goat_root, workspace_id="frontend", save=True)
+    plan_path = catalog.workspace_start_file(goat_root, "frontend")
     plan_path.write_text(
         "workspace: frontend\norder: [backend]\nservices:\n"
         "  - name: backend\n    command: echo nope\n    port: 1\n    role: backend\n",
         encoding="utf-8",
     )
     refreshed = collect_start_plan(
-        catalog, coboose_root, workspace_id="frontend", refresh=True
+        catalog, goat_root, workspace_id="frontend", refresh=True
     )
     assert refreshed["plan_source"] == "discovered"
     assert refreshed["order"] == ["backend", "frontend"]
@@ -270,10 +270,10 @@ def test_start_refresh_ignores_saved_plan(coboose_root: Path, catalog):
     assert any("this run rediscovered" in item.lower() for item in refreshed["guidance"])
 
 
-def test_saved_plan_reports_unplanned_and_stale(coboose_root: Path, catalog):
-    _write_angular(coboose_root)
-    _write_spring(coboose_root)
-    plan_path = catalog.workspace_start_file(coboose_root, "frontend")
+def test_saved_plan_reports_unplanned_and_stale(goat_root: Path, catalog):
+    _write_angular(goat_root)
+    _write_spring(goat_root)
+    plan_path = catalog.workspace_start_file(goat_root, "frontend")
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(
         """workspace: frontend
@@ -288,7 +288,7 @@ services:
 """,
         encoding="utf-8",
     )
-    payload = collect_start_plan(catalog, coboose_root, workspace_id="frontend")
+    payload = collect_start_plan(catalog, goat_root, workspace_id="frontend")
     assert payload["plan_source"] == "saved"
     assert payload["order"] == ["backend", "frontend"]
     assert payload["unplanned"] == ["frontend"]
@@ -297,49 +297,49 @@ services:
     assert any("not in the saved" in note.lower() for note in frontend["notes"])
 
 
-def test_save_requires_workspace_and_rejects_repo_filter(coboose_root: Path, catalog):
-    with pytest.raises(CobooseError, match="--save needs a workspace"):
-        collect_start_plan(catalog, coboose_root, save=True)
-    with pytest.raises(CobooseError, match="Do not combine it with --repo"):
+def test_save_requires_workspace_and_rejects_repo_filter(goat_root: Path, catalog):
+    with pytest.raises(GoatError, match="--save needs a workspace"):
+        collect_start_plan(catalog, goat_root, save=True)
+    with pytest.raises(GoatError, match="Do not combine it with --repo"):
         collect_start_plan(
             catalog,
-            coboose_root,
+            goat_root,
             workspace_id="frontend",
             only=["backend"],
             save=True,
         )
 
 
-def test_personal_workspace_saves_start_plan_beside_file(catalog, coboose_root: Path):
-    _write_angular(coboose_root)
-    _write_spring(coboose_root)
+def test_personal_workspace_saves_start_plan_beside_file(catalog, goat_root: Path):
+    _write_angular(goat_root)
+    _write_spring(goat_root)
     create_workspace(
         catalog,
-        coboose_root,
+        goat_root,
         workspace_id="scratch",
         folders=["frontend", "backend"],
         personal=True,
         prompt=PromptSession(interactive=False),
     )
-    refreshed = load_catalog(coboose_root)
+    refreshed = load_catalog(goat_root)
     payload = collect_start_plan(
-        refreshed, coboose_root, workspace_id="scratch", save=True
+        refreshed, goat_root, workspace_id="scratch", save=True
     )
     path = Path(payload["saved"]["path"])
     assert path.as_posix().endswith("workspaces/personal/scratch.start.yml")
     assert path.is_file()
-    assert refreshed.workspace_start_file(coboose_root, "scratch") == path
+    assert refreshed.workspace_start_file(goat_root, "scratch") == path
 
 
-def test_start_save_cli(coboose_root: Path, capsys, monkeypatch):
-    _write_angular(coboose_root)
-    _write_spring(coboose_root)
-    monkeypatch.chdir(coboose_root)
+def test_start_save_cli(goat_root: Path, capsys, monkeypatch):
+    _write_angular(goat_root)
+    _write_spring(goat_root)
+    monkeypatch.chdir(goat_root)
     assert (
         main(
             [
                 "--root",
-                str(coboose_root),
+                str(goat_root),
                 "start",
                 "--workspace",
                 "frontend",
@@ -356,7 +356,7 @@ def test_start_save_cli(coboose_root: Path, capsys, monkeypatch):
         main(
             [
                 "--root",
-                str(coboose_root),
+                str(goat_root),
                 "start",
                 "--workspace",
                 "frontend",
@@ -419,11 +419,11 @@ def _write_java_launch(
     )
 
 
-def test_start_redacts_launch_json_secrets(coboose_root: Path, catalog):
-    repo = _write_spring(coboose_root)
+def test_start_redacts_launch_json_secrets(goat_root: Path, catalog):
+    repo = _write_spring(goat_root)
     _write_java_launch(repo)
     (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
-    payload = collect_start_plan(catalog, coboose_root, only=["backend"])
+    payload = collect_start_plan(catalog, goat_root, only=["backend"])
     dumped = json.dumps(payload)
     assert "s3cret-do-not-print" not in dumped
     assert "tok_live_xxx" not in dumped
@@ -431,8 +431,8 @@ def test_start_redacts_launch_json_secrets(coboose_root: Path, catalog):
     assert "another-hidden-value" not in dumped
 
     service = payload["services"][0]
-    assert service["run_via"] == "coboose"
-    assert "coboose start run --repo backend" in service["copilot_command"]
+    assert service["run_via"] == "goat"
+    assert "goat start run --repo backend" in service["copilot_command"]
     assert "--project" in service["copilot_command"]
     launch = service["launch"]
     assert launch["configuration"] == "Launch Backend"
@@ -442,15 +442,15 @@ def test_start_redacts_launch_json_secrets(coboose_root: Path, catalog):
     assert "DB_PASSWORD" in launch["env_keys"]
     assert launch["env_file"] == ".env"
     assert "MORE_SECRET" in launch["env_file_keys"]
-    assert any("coboose start run" in note for note in service["notes"])
+    assert any("goat start run" in note for note in service["notes"])
     assert any("never read launch.json" in item.lower() for item in payload["guidance"])
     markdown = render(payload, "markdown")
     assert "Launch Backend" in markdown
     assert "s3cret-do-not-print" not in markdown
 
 
-def test_start_run_applies_env_without_leaking(coboose_root: Path, catalog):
-    repo = _write_spring(coboose_root)
+def test_start_run_applies_env_without_leaking(goat_root: Path, catalog):
+    repo = _write_spring(goat_root)
     _write_java_launch(repo)
     (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
     recorded: dict = {}
@@ -464,11 +464,11 @@ def test_start_run_applies_env_without_leaking(coboose_root: Path, catalog):
         return 0
 
     payload = execute_start_run(
-        catalog, coboose_root, "backend", dry_run=False, run=fake_run
+        catalog, goat_root, "backend", dry_run=False, run=fake_run
     )
     assert recorded["password"] == "s3cret-do-not-print"
     assert recorded["file_secret"] == "another-hidden-value"
-    assert recorded["env"][COBOOSE_ENV_REPO] == "backend"
+    assert recorded["env"][GOAT_ENV_REPO] == "backend"
     assert "spring-boot.run.arguments" in recorded["command"]
     dumped = json.dumps(payload)
     assert "s3cret-do-not-print" not in dumped
@@ -484,20 +484,20 @@ def test_start_run_applies_env_without_leaking(coboose_root: Path, catalog):
     assert payload["vm_arg_count"] == 1
     assert payload["java_tool_options"] is False
     assert payload["env_keys"] == ["API_TOKEN", "DB_PASSWORD", "MORE_SECRET"]
-    assert payload["marker_keys"] == ["COBOOSE_ENV_CONFIGURATION", "COBOOSE_ENV_REPO"]
+    assert payload["marker_keys"] == ["GOAT_ENV_CONFIGURATION", "GOAT_ENV_REPO"]
     assert payload["applied_args"] is True
     assert payload["exit_code"] == 0
 
 
-def test_start_run_dry_run_cli(coboose_root: Path, capsys, monkeypatch):
-    repo = _write_spring(coboose_root)
+def test_start_run_dry_run_cli(goat_root: Path, capsys, monkeypatch):
+    repo = _write_spring(goat_root)
     _write_java_launch(repo)
-    monkeypatch.chdir(coboose_root)
+    monkeypatch.chdir(goat_root)
     assert (
         main(
             [
                 "--root",
-                str(coboose_root),
+                str(goat_root),
                 "start",
                 "run",
                 "--repo",
@@ -571,15 +571,15 @@ def test_redacted_exec_command_shapes():
     assert redacted_exec_command("pnpm start", None, "-Xmx512m") == "pnpm start"
 
 
-def test_start_run_banner_uses_redacted_exec(coboose_root: Path, catalog, capsys):
-    repo = _write_spring(coboose_root)
+def test_start_run_banner_uses_redacted_exec(goat_root: Path, catalog, capsys):
+    repo = _write_spring(goat_root)
     _write_java_launch(repo)
 
     def fake_run(command: str, cwd: Path, env: dict[str, str]) -> int:
         assert "dont-print-me" in command
         return 0
 
-    execute_start_run(catalog, coboose_root, "backend", run=fake_run)
+    execute_start_run(catalog, goat_root, "backend", run=fake_run)
     err = capsys.readouterr().err
     assert "exec_command ./mvnw spring-boot:run" in err
     assert "-Dspring-boot.run.arguments=<redacted>" in err
@@ -587,8 +587,8 @@ def test_start_run_banner_uses_redacted_exec(coboose_root: Path, catalog, capsys
     assert "s3cret-do-not-print" not in err
 
 
-def test_start_run_keep_existing_and_prefix(coboose_root: Path, catalog, monkeypatch):
-    repo = _write_spring(coboose_root)
+def test_start_run_keep_existing_and_prefix(goat_root: Path, catalog, monkeypatch):
+    repo = _write_spring(goat_root)
     _write_java_launch(repo)
     (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
     monkeypatch.setenv("DB_PASSWORD", "already-in-terminal")
@@ -600,7 +600,7 @@ def test_start_run_keep_existing_and_prefix(coboose_root: Path, catalog, monkeyp
 
     kept = execute_start_run(
         catalog,
-        coboose_root,
+        goat_root,
         "backend",
         keep_existing=True,
         run=fake_run,
@@ -614,7 +614,7 @@ def test_start_run_keep_existing_and_prefix(coboose_root: Path, catalog, monkeyp
 
     prefixed = execute_start_run(
         catalog,
-        coboose_root,
+        goat_root,
         "backend",
         prefix="BACKEND",
         dry_run=True,
@@ -626,18 +626,18 @@ def test_start_run_keep_existing_and_prefix(coboose_root: Path, catalog, monkeyp
 
 
 def test_start_env_lists_collisions_without_values(
-    coboose_root: Path, catalog, monkeypatch
+    goat_root: Path, catalog, monkeypatch
 ):
-    repo = _write_spring(coboose_root)
+    repo = _write_spring(goat_root)
     _write_java_launch(repo)
     (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
     monkeypatch.setenv("API_TOKEN", "parent-token")
-    payload = execute_start_env(catalog, coboose_root, "backend")
+    payload = execute_start_env(catalog, goat_root, "backend")
     assert payload["name"] == "backend"
     assert payload["shell"] is False
     assert "API_TOKEN" in payload["env_keys"]
     assert "API_TOKEN" in payload["overwritten_keys"]
-    assert payload["marker_keys"] == ["COBOOSE_ENV_CONFIGURATION", "COBOOSE_ENV_REPO"]
+    assert payload["marker_keys"] == ["GOAT_ENV_CONFIGURATION", "GOAT_ENV_REPO"]
     dumped = json.dumps(payload)
     assert "s3cret-do-not-print" not in dumped
     assert "parent-token" not in dumped
@@ -645,8 +645,8 @@ def test_start_env_lists_collisions_without_values(
     assert payload.get("env") is None
 
 
-def test_start_env_shell_execs_with_env(coboose_root: Path, catalog):
-    repo = _write_spring(coboose_root)
+def test_start_env_shell_execs_with_env(goat_root: Path, catalog):
+    repo = _write_spring(goat_root)
     _write_java_launch(repo)
     (repo / ".env").write_text("MORE_SECRET=another-hidden-value\n", encoding="utf-8")
     recorded: dict = {}
@@ -656,25 +656,25 @@ def test_start_env_shell_execs_with_env(coboose_root: Path, catalog):
         recorded["cwd"] = cwd
 
     payload = execute_start_env(
-        catalog, coboose_root, "backend", shell=True, exec_fn=fake_exec
+        catalog, goat_root, "backend", shell=True, exec_fn=fake_exec
     )
     assert payload["shell"] is True
     assert recorded["env"]["DB_PASSWORD"] == "s3cret-do-not-print"
-    assert recorded["env"][COBOOSE_ENV_REPO] == "backend"
+    assert recorded["env"][GOAT_ENV_REPO] == "backend"
     assert recorded["cwd"] == repo
     assert "s3cret-do-not-print" not in json.dumps(payload)
 
 
-def test_start_env_cli_and_launch_only_repo(coboose_root: Path, capsys, monkeypatch):
-    repo = coboose_root.parent / "backend"
+def test_start_env_cli_and_launch_only_repo(goat_root: Path, capsys, monkeypatch):
+    repo = goat_root.parent / "backend"
     repo.mkdir(parents=True)
     _write_java_launch(repo)
-    monkeypatch.chdir(coboose_root)
+    monkeypatch.chdir(goat_root)
     assert (
         main(
             [
                 "--root",
-                str(coboose_root),
+                str(goat_root),
                 "start",
                 "env",
                 "--repo",
@@ -694,7 +694,7 @@ def test_start_env_cli_and_launch_only_repo(coboose_root: Path, capsys, monkeypa
         main(
             [
                 "--root",
-                str(coboose_root),
+                str(goat_root),
                 "start",
                 "run",
                 "--repo",
@@ -708,8 +708,8 @@ def test_start_env_cli_and_launch_only_repo(coboose_root: Path, capsys, monkeypa
     assert "start env" in error["error"]
 
 
-def test_start_vscode_inputs_force_vscode_run(coboose_root: Path, catalog):
-    repo = _write_spring(coboose_root)
+def test_start_vscode_inputs_force_vscode_run(goat_root: Path, catalog):
+    repo = _write_spring(goat_root)
     _write_java_launch(
         repo,
         extra_config={
@@ -720,7 +720,7 @@ def test_start_vscode_inputs_force_vscode_run(coboose_root: Path, catalog):
             "env": {"DB_PASSWORD": "${input:dbPassword}"},
         },
     )
-    plan_path = catalog.workspace_start_file(coboose_root, "frontend")
+    plan_path = catalog.workspace_start_file(goat_root, "frontend")
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(
         """workspace: frontend
@@ -734,7 +734,7 @@ services:
 """,
         encoding="utf-8",
     )
-    payload = collect_start_plan(catalog, coboose_root, workspace_id="frontend")
+    payload = collect_start_plan(catalog, goat_root, workspace_id="frontend")
     service = next(item for item in payload["services"] if item["name"] == "backend")
     assert service["launch"]["configuration"] == "Prompted"
     assert service["launch"]["uses_vscode_inputs"] is True
@@ -742,17 +742,17 @@ services:
     assert service["copilot_command"] is None
     dumped = json.dumps(payload)
     assert "${input:dbPassword}" not in dumped
-    with pytest.raises(CobooseError, match="input variables"):
+    with pytest.raises(GoatError, match="input variables"):
         execute_start_run(
-            catalog, coboose_root, "backend", configuration="Prompted"
+            catalog, goat_root, "backend", configuration="Prompted"
         )
 
 
-def test_start_launch_only_uses_vscode_without_blocking(coboose_root: Path, catalog):
-    repo = coboose_root.parent / "backend"
+def test_start_launch_only_uses_vscode_without_blocking(goat_root: Path, catalog):
+    repo = goat_root.parent / "backend"
     repo.mkdir(parents=True)
     _write_java_launch(repo)
-    payload = collect_start_plan(catalog, coboose_root, only=["backend"])
+    payload = collect_start_plan(catalog, goat_root, only=["backend"])
     service = payload["services"][0]
     assert service["command"] is None
     assert service["run_via"] == "vscode"
@@ -760,12 +760,12 @@ def test_start_launch_only_uses_vscode_without_blocking(coboose_root: Path, cata
     assert any("Run Without Debugging" in note for note in service["notes"])
 
 
-def test_saved_plan_rejects_bad_method(coboose_root: Path, catalog):
-    plan_path = catalog.workspace_start_file(coboose_root, "frontend")
+def test_saved_plan_rejects_bad_method(goat_root: Path, catalog):
+    plan_path = catalog.workspace_start_file(goat_root, "frontend")
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(
         "workspace: frontend\nservices:\n  - name: backend\n    method: debug\n",
         encoding="utf-8",
     )
-    with pytest.raises(CobooseError, match="method must be terminal"):
-        collect_start_plan(catalog, coboose_root, workspace_id="frontend")
+    with pytest.raises(GoatError, match="method must be terminal"):
+        collect_start_plan(catalog, goat_root, workspace_id="frontend")

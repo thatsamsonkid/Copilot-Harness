@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from coboose.uv_check import detect_uv, os_family, uv_missing_action
+from goat.uv_check import detect_uv, os_family, uv_missing_action
 
 
 def test_os_family():

@@ -1,10 +1,10 @@
 # Feature workspaces and Jira routing.
 # Repository remotes live in ../repositories.yml — reference them by name
 # in `folders`, or pull a set in by `tags`.
-# Local-only mixes: `coboose workspace create --personal` (workspaces/personal/).
+# Local-only mixes: `goat workspace create --personal` (workspaces/personal/).
 
 # Copilot-facing API allowlists. Every integration should normalize its vendor
-# payload, then clip it with `fields` + `shapes` (see coboose.projection).
+# payload, then clip it with `fields` + `shapes` (see goat.projection).
 # Add or remove keys here — do not expand a client to pass raw REST objects through.
 jira:
   include_comments: true

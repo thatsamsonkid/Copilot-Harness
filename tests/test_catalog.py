@@ -2,33 +2,33 @@ from pathlib import Path
 
 import pytest
 
-from coboose import CobooseError
-from coboose.catalog import catalog_to_dict, load_catalog
-from coboose.paths import find_coboose_root
-from tests.helpers import write_coboose_config
+from goat import GoatError
+from goat.catalog import catalog_to_dict, load_catalog
+from goat.paths import find_goat_root
+from tests.helpers import write_goat_config
 
 
-def test_load_and_resolve_sibling_paths(catalog, coboose_root: Path):
+def test_load_and_resolve_sibling_paths(catalog, goat_root: Path):
     assert catalog.repo("frontend").url.endswith("frontend.git")
     assert catalog.repo("frontend").name == "frontend"
-    assert catalog.sibling_root(coboose_root) == coboose_root.parent
-    assert catalog.repo_path(coboose_root, "backend") == coboose_root.parent / "backend"
+    assert catalog.sibling_root(goat_root) == goat_root.parent
+    assert catalog.repo_path(goat_root, "backend") == goat_root.parent / "backend"
     assert catalog.workspace_repo_names("frontend") == ["frontend", "backend"]
 
 
 def test_rejects_unknown_workspace_folder(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["workspaces"][0]["folders"] = ["frontend", "missing"]
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
-    with pytest.raises(CobooseError, match="unknown repo"):
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    with pytest.raises(GoatError, match="unknown repo"):
         load_catalog(root)
 
 
 def test_rejects_parent_escape_repo_path(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["path"] = "../escape"
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
-    with pytest.raises(CobooseError, match="parent_dir"):
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    with pytest.raises(GoatError, match="parent_dir"):
         load_catalog(root)
 
 
@@ -40,8 +40,8 @@ def test_accepts_group_and_nested_path(tmp_path: Path, sample_catalog_data: dict
     sample_catalog_data["repos"][1]["path"] = "backend/api"
     sample_catalog_data["workspaces"][0]["folders"] = ["shop-web", "api"]
     sample_catalog_data["workspaces"][1]["folders"] = ["api"]
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
     catalog = load_catalog(root)
     assert catalog.repo("shop-web").path == "frontend/shop-web"
     assert catalog.repo("shop-web").group == "frontend"
@@ -55,69 +55,88 @@ def test_accepts_group_and_nested_path(tmp_path: Path, sample_catalog_data: dict
 def test_rejects_inconsistent_group_and_path(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["group"] = "frontend"
     sample_catalog_data["repos"][0]["path"] = "backend/web"
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
-    with pytest.raises(CobooseError, match="inside group"):
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    with pytest.raises(GoatError, match="inside group"):
         load_catalog(root)
 
 
 def test_rejects_path_prefix_collision(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["path"] = "frontend"
     sample_catalog_data["repos"][1]["path"] = "frontend/shop-web"
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
-    with pytest.raises(CobooseError, match="collide"):
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    with pytest.raises(GoatError, match="collide"):
         load_catalog(root)
 
 
 def test_rejects_slash_in_repo_name(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["name"] = "frontend/shop-web"
     sample_catalog_data["workspaces"][0]["folders"] = ["frontend/shop-web", "backend"]
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
-    with pytest.raises(CobooseError, match="single id"):
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    with pytest.raises(GoatError, match="single id"):
         load_catalog(root)
 
 
-def test_find_coboose_root_from_nested_cwd(coboose_root: Path, monkeypatch: pytest.MonkeyPatch):
-    nested = coboose_root / "src" / "coboose"
+def test_find_goat_root_from_nested_cwd(goat_root: Path, monkeypatch: pytest.MonkeyPatch):
+    nested = goat_root / "src" / "goat"
     nested.mkdir(parents=True)
     monkeypatch.chdir(nested)
+    monkeypatch.delenv("GOAT_ROOT", raising=False)
     monkeypatch.delenv("COBOOSE_ROOT", raising=False)
-    assert find_coboose_root() == coboose_root.resolve()
+    assert find_goat_root() == goat_root.resolve()
+
+
+def test_find_goat_root_accepts_legacy_env(
+    goat_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GOAT_ROOT", raising=False)
+    monkeypatch.setenv("COBOOSE_ROOT", str(goat_root))
+    assert find_goat_root() == goat_root.resolve()
+
+
+def test_include_coboose_yaml_still_works(tmp_path: Path, sample_catalog_data: dict):
+    sample_catalog_data["workspaces"][0]["include_coboose"] = False
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    assert catalog.workspace("frontend").include_goat is False
+    assert catalog.workspace("backend").include_goat is True
 
 
 def test_parses_graphify_out_and_rejects_parent_escape(
     tmp_path: Path, sample_catalog_data: dict
 ):
     sample_catalog_data["repos"][0]["graphify"] = {"out": "docs/graphify-out"}
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
     catalog = load_catalog(root)
     assert catalog.repo("frontend").graphify.out == "docs/graphify-out"
     assert catalog.repo("frontend").graphify.enabled is True
 
     sample_catalog_data["repos"][0]["graphify"] = {"out": "../escape"}
-    write_coboose_config(root, sample_catalog_data)
-    with pytest.raises(CobooseError, match="relative path"):
+    write_goat_config(root, sample_catalog_data)
+    with pytest.raises(GoatError, match="relative path"):
         load_catalog(root)
 
 
 def test_parses_knowledge_dirs(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["knowledge"] = {"dirs": ["handbook"]}
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
     catalog = load_catalog(root)
     assert catalog.repo("frontend").knowledge_dirs == ("handbook",)
 
 
-def test_load_catalog_discovers_personal_workspaces(catalog, coboose_root: Path):
-    from coboose.prompt import PromptSession
-    from coboose.workspace_create import create_workspace
+def test_load_catalog_discovers_personal_workspaces(catalog, goat_root: Path):
+    from goat.prompt import PromptSession
+    from goat.workspace_create import create_workspace
 
     create_workspace(
         catalog,
-        coboose_root,
+        goat_root,
         workspace_id="scratch",
         name="Scratch",
         folders=["backend"],
@@ -125,15 +144,15 @@ def test_load_catalog_discovers_personal_workspaces(catalog, coboose_root: Path)
         prompt=PromptSession(interactive=False),
     )
     # Shared id wins if a colliding personal file appears later.
-    colliding = coboose_root / "workspaces" / "personal" / "frontend.code-workspace"
+    colliding = goat_root / "workspaces" / "personal" / "frontend.code-workspace"
     colliding.parent.mkdir(parents=True, exist_ok=True)
     colliding.write_text("{}", encoding="utf-8")
-    (coboose_root / "workspaces" / "personal" / "broken.code-workspace").write_text(
+    (goat_root / "workspaces" / "personal" / "broken.code-workspace").write_text(
         "not-json", encoding="utf-8"
     )
 
-    refreshed = load_catalog(coboose_root)
-    payload = catalog_to_dict(refreshed, coboose_root)
+    refreshed = load_catalog(goat_root)
+    payload = catalog_to_dict(refreshed, goat_root)
     by_id = {item["id"]: item for item in payload["workspaces"]}
     assert by_id["scratch"]["personal"] is True
     assert by_id["scratch"]["folders"] == ["backend"]
@@ -151,8 +170,8 @@ def test_loads_jira_projection_from_stack(tmp_path: Path, sample_catalog_data: d
         "extra_fields": ["customfield_10016"],
         "field_aliases": {"customfield_10016": "story_points"},
     }
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
     catalog = load_catalog(root)
     assert catalog.jira.output_fields() == ["key", "summary", "comments"]
     assert catalog.jira.search_fields == ["key", "summary"]
@@ -176,8 +195,8 @@ def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: 
         "max_depth": 2,
         "drop_empty": False,
     }
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
     catalog = load_catalog(root)
     assert catalog.figma.output_fields() == ["file_key", "images"]
     assert catalog.figma.default_format == "jpg"
@@ -196,8 +215,8 @@ def test_loads_figma_projection_from_stack(tmp_path: Path, sample_catalog_data: 
 
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
-    root = tmp_path / "coboose"
-    write_coboose_config(root, sample_catalog_data)
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
     catalog = load_catalog(root)
     payload = catalog_to_dict(catalog, root)
     assert payload["repos_source"].endswith("repositories.yml")

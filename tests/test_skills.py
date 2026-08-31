@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from coboose import CobooseError
-from coboose.cli import main
-from coboose.onboard import run_init
-from coboose.prompt import PromptSession
-from coboose.skills import (
+from goat import GoatError
+from goat.cli import main
+from goat.onboard import run_init
+from goat.prompt import PromptSession
+from goat.skills import (
     format_skill_menu,
     lift_skills,
     list_skills,
@@ -39,21 +39,21 @@ def _write_skill(
     return directory
 
 
-def _sibling(coboose_root: Path, name: str) -> Path:
-    path = coboose_root.parent / name
+def _sibling(goat_root: Path, name: str) -> Path:
+    path = goat_root.parent / name
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def test_list_finds_coboose_and_sibling_skills(catalog, coboose_root: Path):
-    _write_skill(coboose_root, "get-started", "First run")
-    frontend = _sibling(coboose_root, "frontend")
+def test_list_finds_goat_and_sibling_skills(catalog, goat_root: Path):
+    _write_skill(goat_root, "get-started", "First run")
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout flow")
     _write_skill(frontend, "lint", "Lint the UI", location=".agents/skills")
 
-    payload = list_skills(catalog, coboose_root, all_repos=True)
+    payload = list_skills(catalog, goat_root, all_repos=True)
     names = {(item["source_id"], item["name"]) for item in payload["available"]}
-    assert ("coboose", "get-started") in names
+    assert ("goat", "get-started") in names
     assert ("frontend", "checkout") in names
     assert ("frontend", "lint") in names
     assert payload["dest"].endswith(".github/skills")
@@ -61,12 +61,12 @@ def test_list_finds_coboose_and_sibling_skills(catalog, coboose_root: Path):
     assert "sources" in payload
 
 
-def test_list_brief_is_name_and_description(catalog, coboose_root: Path):
-    _write_skill(coboose_root, "get-started", "First run")
-    frontend = _sibling(coboose_root, "frontend")
+def test_list_brief_is_name_and_description(catalog, goat_root: Path):
+    _write_skill(goat_root, "get-started", "First run")
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout flow")
 
-    payload = list_skills(catalog, coboose_root, all_repos=True, brief=True)
+    payload = list_skills(catalog, goat_root, all_repos=True, brief=True)
     assert payload["brief"] is True
     assert "sources" not in payload
     assert "workspace_scope" not in payload
@@ -81,86 +81,86 @@ def test_list_brief_is_name_and_description(catalog, coboose_root: Path):
     assert set(checkout) == {"name", "description", "source_id", "pick"}
 
 
-def test_lift_copies_sibling_and_skips_native_coboose(catalog, coboose_root: Path):
-    native = _write_skill(coboose_root, "get-started", "First run")
-    frontend = _sibling(coboose_root, "frontend")
+def test_lift_copies_sibling_and_skips_native_goat(catalog, goat_root: Path):
+    native = _write_skill(goat_root, "get-started", "First run")
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout flow", extra="keep me")
 
-    payload = lift_skills(catalog, coboose_root, all_repos=True)
+    payload = lift_skills(catalog, goat_root, all_repos=True)
     assert {item["name"] for item in payload["native"]} == {"get-started"}
     assert {item["name"] for item in payload["copied"]} == {"checkout"}
-    dest = coboose_root / ".github" / "skills" / "checkout"
+    dest = goat_root / ".github" / "skills" / "checkout"
     assert dest.joinpath("SKILL.md").is_file()
     assert dest.joinpath("notes.md").read_text(encoding="utf-8") == "keep me"
-    marker = json.loads(dest.joinpath(".coboose-source.json").read_text(encoding="utf-8"))
+    marker = json.loads(dest.joinpath(".goat-source.json").read_text(encoding="utf-8"))
     assert marker["source_id"] == "frontend"
     assert native.joinpath("SKILL.md").is_file()
-    assert not (native / ".coboose-source.json").exists()
-    ignore = (coboose_root / ".github" / "skills" / ".gitignore").read_text(encoding="utf-8")
+    assert not (native / ".goat-source.json").exists()
+    ignore = (goat_root / ".github" / "skills" / ".gitignore").read_text(encoding="utf-8")
     assert "checkout/" in ignore
     assert "get-started/" not in ignore
 
 
-def test_lift_prefixes_when_name_collides_with_native(catalog, coboose_root: Path):
-    _write_skill(coboose_root, "jira-cli", "Coboose Jira")
-    frontend = _sibling(coboose_root, "frontend")
+def test_lift_prefixes_when_name_collides_with_native(catalog, goat_root: Path):
+    _write_skill(goat_root, "jira-cli", "Goat Jira")
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "jira-cli", "Frontend Jira helper")
 
-    payload = lift_skills(catalog, coboose_root, all_repos=True)
+    payload = lift_skills(catalog, goat_root, all_repos=True)
     assert {item["installed_as"] for item in payload["copied"]} == {"frontend--jira-cli"}
-    assert (coboose_root / ".github" / "skills" / "frontend--jira-cli" / "SKILL.md").is_file()
-    assert not (coboose_root / ".github" / "skills" / "jira-cli" / ".coboose-source.json").exists()
+    assert (goat_root / ".github" / "skills" / "frontend--jira-cli" / "SKILL.md").is_file()
+    assert not (goat_root / ".github" / "skills" / "jira-cli" / ".goat-source.json").exists()
 
 
-def test_lift_is_idempotent_and_updates(catalog, coboose_root: Path):
-    frontend = _sibling(coboose_root, "frontend")
+def test_lift_is_idempotent_and_updates(catalog, goat_root: Path):
+    frontend = _sibling(goat_root, "frontend")
     skill = _write_skill(frontend, "checkout", "v1")
-    first = lift_skills(catalog, coboose_root, all_repos=True)
+    first = lift_skills(catalog, goat_root, all_repos=True)
     assert first["copied"]
     skill.joinpath("SKILL.md").write_text(
         "---\nname: checkout\ndescription: v2\n---\n\n# checkout\n",
         encoding="utf-8",
     )
-    second = lift_skills(catalog, coboose_root, all_repos=True)
+    second = lift_skills(catalog, goat_root, all_repos=True)
     assert not second["copied"]
     assert {item["name"] for item in second["updated"]} == {"checkout"}
-    dest = coboose_root / ".github" / "skills" / "checkout" / "SKILL.md"
+    dest = goat_root / ".github" / "skills" / "checkout" / "SKILL.md"
     assert "v2" in dest.read_text(encoding="utf-8")
 
 
-def test_lift_only_filters_by_pick(catalog, coboose_root: Path):
-    frontend = _sibling(coboose_root, "frontend")
+def test_lift_only_filters_by_pick(catalog, goat_root: Path):
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout")
     _write_skill(frontend, "lint", "Lint")
     payload = lift_skills(
         catalog,
-        coboose_root,
+        goat_root,
         all_repos=True,
         names=["frontend:lint"],
     )
     assert {item["name"] for item in payload["copied"]} == {"lint"}
-    assert not (coboose_root / ".github" / "skills" / "checkout").exists()
+    assert not (goat_root / ".github" / "skills" / "checkout").exists()
 
 
-def test_lift_dry_run_does_not_write(catalog, coboose_root: Path):
-    frontend = _sibling(coboose_root, "frontend")
+def test_lift_dry_run_does_not_write(catalog, goat_root: Path):
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout")
-    payload = lift_skills(catalog, coboose_root, all_repos=True, dry_run=True)
+    payload = lift_skills(catalog, goat_root, all_repos=True, dry_run=True)
     assert payload["copied"]
-    assert not (coboose_root / ".github" / "skills" / "checkout").exists()
+    assert not (goat_root / ".github" / "skills" / "checkout").exists()
 
 
-def test_lift_to_parent_copies_coboose_skills(catalog, coboose_root: Path):
-    _write_skill(coboose_root, "get-started", "First run")
-    payload = lift_skills(catalog, coboose_root, parent=True, all_repos=True)
-    dest = coboose_root.parent / ".github" / "skills" / "get-started"
+def test_lift_to_parent_copies_goat_skills(catalog, goat_root: Path):
+    _write_skill(goat_root, "get-started", "First run")
+    payload = lift_skills(catalog, goat_root, parent=True, all_repos=True)
+    dest = goat_root.parent / ".github" / "skills" / "get-started"
     assert dest.joinpath("SKILL.md").is_file()
-    assert dest.joinpath(".coboose-source.json").is_file()
+    assert dest.joinpath(".goat-source.json").is_file()
     assert payload["dest"] == str(dest.parent)
     assert payload["copied"]
 
 
-def test_pull_lists_when_no_selection(catalog, coboose_root: Path):
+def test_pull_lists_when_no_selection(catalog, goat_root: Path):
     def run(command, cwd):
         dest = Path(command[-1])
         dest.mkdir(parents=True)
@@ -169,7 +169,7 @@ def test_pull_lists_when_no_selection(catalog, coboose_root: Path):
 
     payload = pull_skills(
         catalog,
-        coboose_root,
+        goat_root,
         "https://github.com/acme/agent-skills.git",
         run=run,
     )
@@ -177,10 +177,10 @@ def test_pull_lists_when_no_selection(catalog, coboose_root: Path):
     names = {item["name"] for item in payload["available"]}
     assert names == {"review", "commit"}
     assert "skills pull" in payload["install_command"]
-    assert not (coboose_root / ".github" / "skills" / "review").exists()
+    assert not (goat_root / ".github" / "skills" / "review").exists()
 
 
-def test_pull_installs_selected(catalog, coboose_root: Path):
+def test_pull_installs_selected(catalog, goat_root: Path):
     def run(command, cwd):
         dest = Path(command[-1])
         dest.mkdir(parents=True)
@@ -189,21 +189,21 @@ def test_pull_installs_selected(catalog, coboose_root: Path):
 
     payload = pull_skills(
         catalog,
-        coboose_root,
+        goat_root,
         "https://github.com/acme/agent-skills.git",
         names=["review"],
         run=run,
     )
     assert payload["needs_selection"] is False
     assert {item["name"] for item in payload["copied"]} == {"review"}
-    dest = coboose_root / ".github" / "skills" / "review"
+    dest = goat_root / ".github" / "skills" / "review"
     assert dest.joinpath("notes.md").read_text(encoding="utf-8") == "prompt"
-    marker = json.loads(dest.joinpath(".coboose-source.json").read_text(encoding="utf-8"))
+    marker = json.loads(dest.joinpath(".goat-source.json").read_text(encoding="utf-8"))
     assert marker["source_kind"] == "remote"
-    assert not (coboose_root / ".github" / "skills" / "commit").exists()
+    assert not (goat_root / ".github" / "skills" / "commit").exists()
 
 
-def test_pull_all_installs_every_skill(catalog, coboose_root: Path):
+def test_pull_all_installs_every_skill(catalog, goat_root: Path):
     def run(command, cwd):
         dest = Path(command[-1])
         dest.mkdir(parents=True)
@@ -212,7 +212,7 @@ def test_pull_all_installs_every_skill(catalog, coboose_root: Path):
 
     payload = pull_skills(
         catalog,
-        coboose_root,
+        goat_root,
         "git@github.com:acme/agent-skills.git",
         all_skills=True,
         https=True,
@@ -222,57 +222,57 @@ def test_pull_all_installs_every_skill(catalog, coboose_root: Path):
     assert payload["url"].startswith("https://github.com/")
 
 
-def test_cli_skills_list_and_lift(catalog, coboose_root: Path, capsys, monkeypatch):
-    frontend = _sibling(coboose_root, "frontend")
+def test_cli_skills_list_and_lift(catalog, goat_root: Path, capsys, monkeypatch):
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout")
-    monkeypatch.chdir(coboose_root)
-    assert main(["--root", str(coboose_root), "skills", "list", "--all"]) == 0
+    monkeypatch.chdir(goat_root)
+    assert main(["--root", str(goat_root), "skills", "list", "--all"]) == 0
     listed = json.loads(capsys.readouterr().out)
     assert any(item["name"] == "checkout" for item in listed["available"])
 
-    assert main(["--root", str(coboose_root), "skills", "list", "--all", "--brief"]) == 0
+    assert main(["--root", str(goat_root), "skills", "list", "--all", "--brief"]) == 0
     brief = json.loads(capsys.readouterr().out)
     assert brief["brief"] is True
     assert "sources" not in brief
     checkout = next(item for item in brief["skills"] if item["name"] == "checkout")
     assert set(checkout) == {"name", "description", "source_id", "pick"}
 
-    assert main(["--root", str(coboose_root), "skills", "lift", "--all", "--all-skills"]) == 0
+    assert main(["--root", str(goat_root), "skills", "lift", "--all", "--all-skills"]) == 0
     lifted = json.loads(capsys.readouterr().out)
     assert any(item["name"] == "checkout" for item in lifted["copied"])
-    assert (coboose_root / ".github" / "skills" / "checkout" / "SKILL.md").is_file()
+    assert (goat_root / ".github" / "skills" / "checkout" / "SKILL.md").is_file()
 
 
-def test_cli_lift_without_selection_asks(catalog, coboose_root: Path, capsys, monkeypatch):
-    frontend = _sibling(coboose_root, "frontend")
+def test_cli_lift_without_selection_asks(catalog, goat_root: Path, capsys, monkeypatch):
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout")
-    monkeypatch.chdir(coboose_root)
-    assert main(["--root", str(coboose_root), "skills", "lift", "--all"]) == 0
+    monkeypatch.chdir(goat_root)
+    assert main(["--root", str(goat_root), "skills", "lift", "--all"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["needs_selection"] is True
     assert payload["brief"] is True
     assert any(item["name"] == "checkout" for item in payload["available"])
-    assert not (coboose_root / ".github" / "skills" / "checkout").exists()
+    assert not (goat_root / ".github" / "skills" / "checkout").exists()
 
 
-def test_lift_prompts_in_a_terminal(catalog, coboose_root: Path):
-    frontend = _sibling(coboose_root, "frontend")
+def test_lift_prompts_in_a_terminal(catalog, goat_root: Path):
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout flow")
     _write_skill(frontend, "lint", "Lint the UI")
     stderr = io.StringIO()
     prompt = PromptSession(stdin=io.StringIO("1\n"), stderr=stderr, interactive=True)
-    payload = lift_skills(catalog, coboose_root, all_repos=True, prompt=prompt)
+    payload = lift_skills(catalog, goat_root, all_repos=True, prompt=prompt)
     assert {item["name"] for item in payload["copied"]} == {"checkout"}
     menu = stderr.getvalue()
     assert "1. checkout (frontend)" in menu
     assert "2. lint (frontend)" in menu
     assert "or all" in menu
-    assert not (coboose_root / ".github" / "skills" / "lint").exists()
+    assert not (goat_root / ".github" / "skills" / "lint").exists()
 
 
-def test_lift_prompt_all_copies_siblings(catalog, coboose_root: Path):
-    _write_skill(coboose_root, "get-started", "First run")
-    frontend = _sibling(coboose_root, "frontend")
+def test_lift_prompt_all_copies_siblings(catalog, goat_root: Path):
+    _write_skill(goat_root, "get-started", "First run")
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout")
     _write_skill(frontend, "lint", "Lint")
     prompt = PromptSession(
@@ -280,9 +280,9 @@ def test_lift_prompt_all_copies_siblings(catalog, coboose_root: Path):
         stderr=io.StringIO(),
         interactive=True,
     )
-    payload = lift_skills(catalog, coboose_root, all_repos=True, prompt=prompt)
+    payload = lift_skills(catalog, goat_root, all_repos=True, prompt=prompt)
     assert {item["name"] for item in payload["copied"]} == {"checkout", "lint"}
-    assert not (coboose_root / ".github" / "skills" / "get-started" / ".coboose-source.json").exists()
+    assert not (goat_root / ".github" / "skills" / "get-started" / ".goat-source.json").exists()
 
 
 def test_parse_skill_selection_numbers_ranges_and_all():
@@ -302,9 +302,9 @@ def test_parse_skill_selection_numbers_ranges_and_all():
         "frontend:lint",
         "backend:api",
     ]
-    with pytest.raises(CobooseError, match="out of range"):
+    with pytest.raises(GoatError, match="out of range"):
         parse_skill_selection("9", available)
-    with pytest.raises(CobooseError, match="Unknown skill"):
+    with pytest.raises(GoatError, match="Unknown skill"):
         parse_skill_selection("missing", available)
 
 
@@ -324,7 +324,7 @@ def test_format_skill_menu_is_name_and_description():
     assert "or all" in menu
 
 
-def test_init_lifts_sibling_skills(catalog, coboose_root: Path, monkeypatch):
+def test_init_lifts_sibling_skills(catalog, goat_root: Path, monkeypatch):
     for name in (
         "JIRA_BASE_URL",
         "JIRA_EMAIL",
@@ -333,22 +333,22 @@ def test_init_lifts_sibling_skills(catalog, coboose_root: Path, monkeypatch):
         "JIRA_TOKEN",
     ):
         monkeypatch.delenv(name, raising=False)
-    frontend = _sibling(coboose_root, "frontend")
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout")
-    payload = run_init(catalog, coboose_root)
+    payload = run_init(catalog, goat_root)
     ids = {step["id"]: step for step in payload["steps"]}
     assert "skills" in ids
     assert ids["skills"]["optional"] is True
     assert any(item["name"] == "checkout" for item in payload["skills"]["copied"])
-    assert "uv run coboose skills lift" in payload["next_commands"]
+    assert "uv run goat skills lift" in payload["next_commands"]
 
 
-def test_sync_does_not_raise_when_dest_is_a_file(catalog, coboose_root: Path):
-    dest = coboose_root / ".github" / "skills"
+def test_sync_does_not_raise_when_dest_is_a_file(catalog, goat_root: Path):
+    dest = goat_root / ".github" / "skills"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text("not a directory", encoding="utf-8")
-    frontend = _sibling(coboose_root, "frontend")
+    frontend = _sibling(goat_root, "frontend")
     _write_skill(frontend, "checkout", "Checkout")
-    payload = sync_root_skills(catalog, coboose_root, all_repos=True)
+    payload = sync_root_skills(catalog, goat_root, all_repos=True)
     assert payload["ok"] is False
     assert payload.get("error")
