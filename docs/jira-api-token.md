@@ -2,7 +2,9 @@
 
 The goat talks to Jira Cloud with **email + API token** basic auth. Copilot never sees the token.
 
-Keep the site URL and email in `.env`. Store the API token in the **OS keychain** (macOS Keychain or Windows Credential Manager). The CLI reads it in-process when it talks to Jira.
+Keep the site URL and email as **permanent environment variables** (they are global tool settings, not project-specific). Store the API token in the **OS keychain** (macOS Keychain or Windows Credential Manager). The CLI reads them in-process when it talks to Jira.
+
+`JIRA_BASE_URL` must use `https://` (Basic auth would otherwise travel in cleartext); `http://` is accepted only for `localhost`.
 
 ## 1. Create the token
 
@@ -17,24 +19,24 @@ Keep the site URL and email in `.env`. Store the API token in the **OS keychain*
 
 If your company uses SSO, you can still create a token for your own Atlassian account. Service-account tokens are an admin concern; this goat is meant for personal tokens.
 
-## 2. Put the site URL and email in `.env`
+## 2. Set the site URL and email as permanent environment variables
 
-From the goat repo:
-
-```bash
-cp .env.example .env
-```
-
-Set only the non-secret values:
+These are global settings you set once. Add them to your shell profile so every
+terminal (and `goat`) can see them:
 
 ```bash
-JIRA_BASE_URL=https://your-domain.atlassian.net
-JIRA_EMAIL=you@company.com
+# macOS / Linux: append to ~/.zshrc or ~/.bashrc, then open a new terminal
+export JIRA_BASE_URL=https://your-domain.atlassian.net
+export JIRA_EMAIL=you@company.com
 ```
 
-Leave `JIRA_API_TOKEN` empty. `JIRA_EMAIL` must be the Atlassian account email that owns the token, not a Slack handle.
+On Windows, use **System Settings > Environment Variables** (or `setx JIRA_BASE_URL https://your-domain.atlassian.net`).
 
-These three names are rows in `catalog/env.yaml`. Add other env vars and secrets there (not on generated `.code-workspace` files). `uv run goat env list` shows what is missing without printing values.
+`JIRA_EMAIL` must be the Atlassian account email that owns the token, not a Slack handle. `JIRA_BASE_URL` must be an `https://` URL.
+
+If you cannot set permanent environment variables (for example on CI), a machine-local `.env` in the goat repo is still read as a fallback — copy `.env.example` to `.env` and uncomment those two lines. Note that goat only loads its **own** repo `.env`, never a `.env` in whatever directory you happen to run from.
+
+These names are rows in `catalog/env.yaml`. Add other env vars and secrets there (not on generated `.code-workspace` files). `uv run goat env list` shows what is missing without printing values.
 
 ## 3. Store the token in the OS keychain
 

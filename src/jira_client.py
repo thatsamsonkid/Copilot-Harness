@@ -4,7 +4,7 @@ import base64
 import os
 import re
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from goat import GoatError
 from goat.adf import adf_to_markdown
@@ -48,7 +48,25 @@ def jira_settings_from_env() -> tuple[str, str, str]:
     ]
     if missing:
         raise GoatError(_missing_settings_message(missing))
+    _require_https_base_url(base_url)
     return base_url, email, token
+
+
+def _require_https_base_url(base_url: str) -> None:
+    """Reject non-HTTPS Jira URLs so Basic credentials never travel in cleartext.
+
+    http:// is allowed only for localhost to support local development proxies.
+    """
+    parsed = urlparse(base_url)
+    if parsed.scheme == "https":
+        return
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme == "http" and host in {"localhost", "127.0.0.1", "::1"}:
+        return
+    raise GoatError(
+        "JIRA_BASE_URL must use https:// (http:// is allowed only for localhost). "
+        f"Got: {base_url!r}. Fix it in your environment or .env."
+    )
 
 
 def _missing_settings_message(missing: list[str]) -> str:

@@ -7,6 +7,23 @@ from dataclasses import dataclass
 from typing import Any
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Refuse to follow HTTP redirects.
+
+    urllib's default handler replays request headers (including Authorization /
+    X-Figma-Token) onto the redirect target even across hosts, which would leak
+    credentials to wherever a misconfigured or hostile endpoint points. These
+    are JSON APIs that should never redirect, so a 3xx is surfaced as an error
+    instead of being followed.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirectHandler)
+
+
 @dataclass(frozen=True)
 class HttpResponse:
     status: int
@@ -38,7 +55,7 @@ class HttpClient:
             url, data=data, headers=request_headers, method=method.upper()
         )
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            with _OPENER.open(request, timeout=timeout) as response:
                 body = response.read().decode("utf-8")
                 return HttpResponse(
                     status=response.getcode(),

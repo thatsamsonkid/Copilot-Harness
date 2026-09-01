@@ -65,9 +65,17 @@ def find_goat_root(start: Path | None = None) -> Path:
 
 
 def load_dotenv_files(root: Path) -> None:
+    """Load the Goat repo's own .env into the process environment.
+
+    Only the trusted Goat-root .env is loaded. The current working directory is
+    intentionally NOT read: goat is run from inside sibling product clones, and
+    a clone could commit a .env that would silently override JIRA_BASE_URL,
+    GIT_SSH_COMMAND, and similar, poisoning the environment. Global settings such
+    as JIRA_BASE_URL / JIRA_EMAIL belong in the user's permanent shell
+    environment instead (see docs/jira-api-token.md).
+    """
     try:
         from dotenv import load_dotenv
     except ImportError:
         return
     load_dotenv(root / ".env", override=False)
-    load_dotenv(Path.cwd() / ".env", override=False)

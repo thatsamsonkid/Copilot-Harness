@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -9,6 +10,63 @@ from goat import GoatError
 from goat.catalog import Catalog, Repo
 
 RunFn = Callable[..., subprocess.CompletedProcess[str]]
+
+# git honours "remote helper" transports like `ext::sh -c ...` and `fd::`, which
+# execute arbitrary commands during clone/fetch. We only ever expect real remote
+# URLs, so anything using the `<transport>::` form is rejected outright.
+_REMOTE_HELPER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+.\-]*::")
+# scp-like syntax, e.g. git@github.com:org/repo.git
+_SCP_LIKE_RE = re.compile(r"^[A-Za-z0-9][\w.\-]*@[\w.\-]+:")
+_ALLOWED_URL_SCHEMES = ("https", "ssh")
+# Belt-and-suspenders even after URL validation: never run the ext helper.
+_GIT_SAFE_OPTS = ("-c", "protocol.ext.allow=never")
+
+
+def validate_git_url(url: str) -> str:
+    """Return the URL if it is a safe git remote, else raise GoatError.
+
+    Guards against argument injection (values git would read as options) and
+    command-execution transports (`ext::`, `fd::`, arbitrary `scheme://`).
+    Allowed forms: https://, ssh://, scp-like git@host:path, and plain local
+    filesystem paths (used for mirrors and tests).
+    """
+    cleaned = (url or "").strip()
+    if not cleaned:
+        raise GoatError("A git URL is required")
+    if cleaned.startswith("-"):
+        raise GoatError(
+            f"Refusing git URL that looks like a command-line option: {cleaned!r}"
+        )
+    if _REMOTE_HELPER_RE.match(cleaned):
+        raise GoatError(
+            f"Refusing unsafe git transport (remote-helper syntax): {cleaned!r}"
+        )
+    if "://" in cleaned:
+        scheme = cleaned.split("://", 1)[0].lower()
+        if scheme not in _ALLOWED_URL_SCHEMES:
+            raise GoatError(
+                f"Unsupported git URL scheme {scheme!r} in {cleaned!r}. "
+                "Use https://, ssh://, or git@host:org/repo.git."
+            )
+        return cleaned
+    if _SCP_LIKE_RE.match(cleaned):
+        return cleaned
+    # No scheme and no `::` transport: treat as a local filesystem path.
+    return cleaned
+
+
+def validate_git_ref(ref: str) -> str:
+    """Return a branch/ref name if safe to pass to git, else raise GoatError."""
+    cleaned = (ref or "").strip()
+    if not cleaned:
+        raise GoatError("A git branch/ref is required")
+    if cleaned.startswith("-"):
+        raise GoatError(
+            f"Refusing git ref that looks like a command-line option: {cleaned!r}"
+        )
+    if any(ch.isspace() for ch in cleaned) or any(ord(ch) < 0x20 for ch in cleaned):
+        raise GoatError(f"Invalid git ref: {cleaned!r}")
+    return cleaned
 
 
 def rewrite_clone_url(url: str, *, https: bool) -> str:
@@ -81,6 +139,8 @@ def clone_one(
         raise GoatError(f"Refusing to clone onto sibling root: {dest}")
 
     url = rewrite_clone_url(repo.url, https=https)
+    branch = validate_git_ref(repo.default_branch)
+    validate_git_url(url)
     record: dict[str, Any] = {
         "id": repo.id,
         "url": url,
@@ -105,16 +165,17 @@ def clone_one(
         record["action"] = "update"
         if dry_run:
             return record
-        run(["git", "-C", str(dest), "fetch", "--prune", "origin"], dest)
+        run(["git", "-C", str(dest), *_GIT_SAFE_OPTS, "fetch", "--prune", "origin"], dest)
         run(
             [
                 "git",
                 "-C",
                 str(dest),
+                *_GIT_SAFE_OPTS,
                 "pull",
                 "--ff-only",
                 "origin",
-                repo.default_branch,
+                branch,
             ],
             dest,
         )
@@ -128,10 +189,12 @@ def clone_one(
     run(
         [
             "git",
+            *_GIT_SAFE_OPTS,
             "clone",
             "--branch",
-            repo.default_branch,
+            branch,
             "--single-branch",
+            "--",
             url,
             str(dest),
         ],

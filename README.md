@@ -56,7 +56,7 @@ Then:
 
 1. Edit `repositories.yml` — add each product repo (`name`, GitHub `url`, `tags`).
 2. Edit `templates.yml` — add starter remotes you want Copilot or `goat bootstrap` to offer.
-3. Copy `.env.example` to `.env` and set `JIRA_BASE_URL` / `JIRA_EMAIL`. Store the Jira API token with `uv run goat jira login` (macOS Keychain or Windows Credential Manager). See [docs/jira-api-token.md](docs/jira-api-token.md). Optional Figma: `uv run goat figma login` ([docs/figma-access-token.md](docs/figma-access-token.md)).
+3. Export `JIRA_BASE_URL` (https) and `JIRA_EMAIL` as permanent environment variables (they are global tool settings). Store the Jira API token with `uv run goat jira login` (macOS Keychain or Windows Credential Manager). See [docs/jira-api-token.md](docs/jira-api-token.md). Optional Figma: `uv run goat figma login` ([docs/figma-access-token.md](docs/figma-access-token.md)).
 4. Clone product repos: `./scripts/clone-repos.sh`
 5. Generate local workspaces: `goat workspace generate` (gitignored `.code-workspace` files from `catalog/stack.yaml`)
 6. Open a catalog starter (`goat workspace open frontend`) or create your own:
@@ -112,7 +112,7 @@ Cross-repo architecture (APIs, events, ADRs) is `goat graph` — see [docs/works
 
 One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this Yard Goat repo.
 
-`catalog/env.yaml` is the env/secrets table. Each row is a name, whether it is a secret, and optional workspace scope. Non-secrets go in `.env`. Secrets go in macOS Keychain or Windows Credential Manager via `goat env set NAME` (or `goat jira login` for the Jira token). Copilot walks missing rows from `goat init` / `goat env list` JSON and never reads values. Do not put this table on generated `workspaces/*.code-workspace` files — `goat workspace generate` rewrites those. To attach extra names to one feature workspace, set `env: [NAME]` on that workspace in `catalog/stack.yaml` (the name must still be declared in `catalog/env.yaml`).
+`catalog/env.yaml` is the env/secrets table. Each row is a name, whether it is a secret, and optional workspace scope. Non-secret globals (like `JIRA_BASE_URL` / `JIRA_EMAIL`) are best exported as permanent environment variables; a repo-local `.env` still works as a fallback. Secrets go in macOS Keychain or Windows Credential Manager via `goat env set NAME` (or `goat jira login` for the Jira token). Copilot walks missing rows from `goat init` / `goat env list` JSON and never reads values. Do not put this table on generated `workspaces/*.code-workspace` files — `goat workspace generate` rewrites those. To attach extra names to one feature workspace, set `env: [NAME]` on that workspace in `catalog/stack.yaml` (the name must still be declared in `catalog/env.yaml`).
 
 ```bash
 goat repos
@@ -192,18 +192,18 @@ Copilot uses the same commands. If you ask it to bootstrap a new project, it sho
 
 Jira Cloud MCP is not available here. Copilot talks to Jira by running `goat`. The **jira-cli** skill (`.github/skills/jira-cli/SKILL.md`) is the on-demand contract for those commands.
 
-Create an API token using [docs/jira-api-token.md](docs/jira-api-token.md) (or the [Atlassian token page](https://id.atlassian.com/manage-profile/security/api-tokens)). Put the site URL and email in `.env`, then store the token in the OS keychain:
+Create an API token using [docs/jira-api-token.md](docs/jira-api-token.md) (or the [Atlassian token page](https://id.atlassian.com/manage-profile/security/api-tokens)). `JIRA_BASE_URL` and `JIRA_EMAIL` are global tool settings — export them permanently (once) rather than per-repo, then store the token in the OS keychain:
 
 ```bash
-JIRA_BASE_URL=https://your-domain.atlassian.net
-JIRA_EMAIL=you@company.com
-# leave JIRA_API_TOKEN empty
+# add to ~/.zshrc or ~/.bashrc (Windows: System Settings > Environment Variables)
+export JIRA_BASE_URL=https://your-domain.atlassian.net   # must be https://
+export JIRA_EMAIL=you@company.com
 
 uv run goat jira login
 uv run goat env list
 ```
 
-`jira login` writes to macOS Keychain or Windows Credential Manager. `jira login --from-env` moves a token that is already in `.env`. `.env` remains a fallback for CI or machines without a keychain.
+`jira login` writes to macOS Keychain or Windows Credential Manager. `jira login --from-env` moves a token that is already in `.env`. A machine-local `.env` remains a fallback for CI or machines without a keychain (goat only reads its own repo `.env`, never one from the directory you run in).
 
 ```bash
 uv run goat init
