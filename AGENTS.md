@@ -2,7 +2,7 @@
 
 This repo is **Goat** (Yard Goat), a Copilot Kit — not the product codebase.
 
-Application repositories are cloned **next to** this folder (flat siblings, or grouped under `parent_dir` folders such as `frontend/`, `backend/`, `infra/`, `shared/`). The full-app list lives in `repositories.yml`. Starter remotes for new projects live in `templates.yml`. Feature workspaces and Jira routing live in `catalog/stack.yaml`. `workspaces/*.code-workspace` files are generated locally from that catalog (`goat workspace generate`) and are gitignored — do not commit them. See also `.github/copilot-instructions.md`.
+Application repositories are cloned **next to** this folder (flat siblings, or grouped under `parent_dir` folders such as `frontend/`, `backend/`, `infra/`, `shared/`). The full-app list lives in `repositories.yml`. Starter remotes for new projects live in `templates.yml`. Feature workspaces and Jira routing live in `catalog/stack.yaml`. If clones already exist elsewhere, `goat workspace map --write --generate` pins them in gitignored `repositories.local.yml` and writes workspaces from the catalog. `workspaces/*.code-workspace` files are generated locally (`goat workspace generate`) and are gitignored — do not commit them. See also `.github/copilot-instructions.md`.
 
 Run `uv run goat …` from this Goat repo (or `uv run --project "$GOAT_ROOT" goat …` / `./scripts/goat.sh`). After `cd` into a sibling clone, bare `uv run goat` cannot spawn. `uv run goat install` writes a `~/.local/bin` shim so `goat` works from any cwd (macOS, Linux, Windows). Full command catalog: `uv run goat commands --format json` or [docs/cli.md](docs/cli.md).
 

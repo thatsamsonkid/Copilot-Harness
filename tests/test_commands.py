@@ -62,6 +62,7 @@ EXPECTED = {
     "workspace current",
     "workspace generate",
     "workspace list",
+    "workspace map",
     "workspace match",
     "workspace open",
     "workspace path",

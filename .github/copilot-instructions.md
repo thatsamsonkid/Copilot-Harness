@@ -69,6 +69,7 @@ Bruno collections are git files plus the `bru` CLI. These rules apply even if th
 ## Repo layout
 
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
+- Local overlay: gitignored `repositories.local.yml` — maps catalog names to clones already on disk (`goat workspace map`). Do not put machine paths in the shared manifest.
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
 - CLI: `src/` (imported as `goat`) — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, Bruno collection discovery / bru wrap, workspace create/generate/match, prepare, init, context, status, branch, handoff, start, skills list/lift/pull. `goat commands` (alias `help`) is the live catalog; `docs/cli.md` is the human cheat sheet.

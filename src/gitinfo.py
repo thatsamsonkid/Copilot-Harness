@@ -46,6 +46,30 @@ def inspect_git(
     }
 
 
+def list_remotes(path: Path, *, run: RunFn | None = None) -> list[str]:
+    """Return unique remote URLs for a working tree (origin first)."""
+    runner = run or _run
+    if not path.exists() or not _looks_like_git(path, runner):
+        return []
+    raw = _stdout(runner, path, ["remote", "-v"], check=False) or ""
+    origin: list[str] = []
+    others: list[str] = []
+    seen: set[str] = set()
+    for line in raw.splitlines():
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        name, url = parts[0], parts[1]
+        if url in seen:
+            continue
+        seen.add(url)
+        if name == "origin":
+            origin.append(url)
+        else:
+            others.append(url)
+    return [*origin, *others]
+
+
 def last_commit_unix(path: Path, *, run: RunFn | None = None) -> int | None:
     runner = run or _run
     raw = _stdout(runner, path, ["log", "-1", "--format=%ct"], check=False)

@@ -106,7 +106,7 @@ These are separate from the themes above but fit the same goat:
 
 - **Jira write path** — `goat jira comment` / transition, still CLI-only, still no token in chat. Wait until read-only onboarding stays boringly reliable.
 - **Worktrees** — `goat worktree PROJ-123` so Implementer does not dirty a shared checkout that someone else has open.
-- **Personal overlay** — optional gitignored `repositories.local.yml` for extra remotes you do not want to commit.
+- **Personal overlay** — gitignored `repositories.local.yml` remaps catalog names to clones you already have (`goat workspace map --write`). Extra remotes you do not want to commit can wait.
 - **Sparse / partial clone hints** — for a huge monorepo, `clone` can suggest `git clone --filter=blob:none` / sparse-checkout of the package Graphify named. Do not invent the sparse paths here.
 - **Pinned SHAs** — a `lock` file of sibling commit SHAs so a Cloud Agent / eval run is reproducible. Optional, not for daily work.
 - **CI awareness** — `gh pr checks` per sibling before anyone says “ship it.” GitHub MCP is fine; Jira MCP is not.

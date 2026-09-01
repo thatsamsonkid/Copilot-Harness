@@ -47,17 +47,18 @@ def clone_repos(
     for repo in catalog.enabled_repos(only, tags):
         dest = catalog.repo_path(goat_root, repo)
         _refuse_goat_destination(dest, goat_root)
-        results.append(
-            clone_one(
-                repo,
-                dest,
-                sibling_root=sibling_root,
-                update=update,
-                dry_run=dry_run,
-                https=https,
-                run=runner,
-            )
+        record = clone_one(
+            repo,
+            dest,
+            sibling_root=sibling_root,
+            update=update,
+            dry_run=dry_run,
+            https=https,
+            run=runner,
         )
+        record["mapped"] = catalog.is_mapped(repo)
+        record["expected"] = str(catalog.expected_repo_path(goat_root, repo))
+        results.append(record)
     return results
 
 

@@ -19,6 +19,9 @@ handoffs/*.md
 # Generated VS Code workspaces from catalog/stack.yaml (local only)
 workspaces/*.code-workspace
 
+# Machine-specific clone path remaps (do not commit)
+repositories.local.yml
+
 # Lifted / pulled agent skills (VS Code Agents multi-root shim)
 .goat/
 .coboose/

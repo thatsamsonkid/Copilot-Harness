@@ -17,6 +17,7 @@ from goat.bootstrap import bootstrap_project
 from goat.branch import align_branches
 from goat.catalog import catalog_to_dict, load_catalog
 from goat.clone import clone_repos
+from goat.clone_map import apply_workspace_map, parse_set_paths
 from goat.commands import command_reference
 from goat.context import collect_context
 from goat.doctor import run_doctor
@@ -399,6 +400,45 @@ def build_parser() -> argparse.ArgumentParser:
             "Fail if workspaces/*.code-workspace drift from catalog/stack.yaml; "
             "do not write files"
         ),
+    )
+    workspace_map = workspace_sub.add_parser(
+        "map",
+        parents=[shared],
+        help="Map existing clones to repositories.yml and generate workspaces",
+    )
+    workspace_map.add_argument(
+        "--search",
+        action="append",
+        default=[],
+        help="Extra directory to scan for git clones (repeatable)",
+    )
+    workspace_map.add_argument(
+        "--write",
+        action="store_true",
+        help="Write remaps to gitignored repositories.local.yml",
+    )
+    workspace_map.add_argument(
+        "--generate",
+        action="store_true",
+        help="Write workspaces/*.code-workspace using resolved clone paths",
+    )
+    workspace_map.add_argument(
+        "--adopt",
+        action="store_true",
+        help="Write the overlay and generate workspaces",
+    )
+    workspace_map.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        dest="set_paths",
+        help="Pin a catalog name to a path (NAME=PATH)",
+    )
+    workspace_map.add_argument("--only", help="Comma-separated repository names")
+    workspace_map.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Discover only; do not write overlay or workspaces",
     )
     workspace_create = workspace_sub.add_parser(
         "create",
@@ -965,6 +1005,8 @@ def dispatch(args: argparse.Namespace) -> Any:
         payload = catalog_to_dict(catalog, goat_root)
         return {
             "manifest": payload["repos_source"],
+            "local_source": payload.get("local_source"),
+            "local_paths": payload.get("local_paths") or {},
             "parent_dir": payload["parent_dir"],
             "sibling_root": payload["sibling_root"],
             "repositories": payload["repos"],
@@ -1143,6 +1185,28 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, goat_root: Path)
             "workspaces": workspaces,
             "skills": sync_root_skills(catalog, goat_root),
         }
+    if args.workspace_command == "map":
+        write = bool(args.write or args.adopt)
+        generate = bool(args.generate or args.adopt)
+        payload = apply_workspace_map(
+            catalog,
+            goat_root,
+            extra_search=list(args.search or []),
+            only=_split_ids(args.only),
+            pins=parse_set_paths(args.set_paths),
+            write=write,
+            generate=generate,
+            dry_run=args.dry_run,
+        )
+        if generate and not args.dry_run:
+            mapped = load_catalog(
+                goat_root,
+                stack_path=catalog.source,
+                repos_path=catalog.repos_source,
+                templates_path=catalog.templates_source,
+            )
+            payload["skills"] = sync_root_skills(mapped, goat_root)
+        return payload
     if args.workspace_command == "create":
         prompt = PromptSession(interactive=False if args.no_prompt else None)
         return create_workspace(

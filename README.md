@@ -106,7 +106,7 @@ repositories:
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
 | `knowledge` | no | `{ dirs: [handbook] }` extra folders to treat as feature notes |
 
-`catalog/stack.yaml` is the source of truth for feature workspaces and Jira routing. `workspaces/*.code-workspace` files are generated locally from it and gitignored — do not commit or hand-edit them. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
+`catalog/stack.yaml` is the source of truth for feature workspaces and Jira routing. `workspaces/*.code-workspace` files are generated locally from it and gitignored — do not commit or hand-edit them. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder. If a clone already lives somewhere else, pin it in gitignored `repositories.local.yml` with `goat workspace map --write` — do not put machine-specific paths in this manifest or in `catalog/stack.yaml`.
 
 One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this Yard Goat repo.
 
@@ -116,6 +116,7 @@ One clone cannot live inside another (`frontend` and `frontend/shop-web` togethe
 goat repos
 goat templates
 goat clone --tag api
+goat workspace map --write --generate
 ```
 
 One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `goat workspace generate` on your machine. `goat workspace generate --check` compares local files to the catalog without writing.
@@ -279,6 +280,8 @@ Stdout is JSON by default (`--format markdown` or `text` if you want a human vie
 ```
 
 Clones always land in `parent_dir` from `repositories.yml` (default `..`), including grouped paths such as `frontend/shop-web`. Placeholder URLs that still contain `YOUR_ORG` are refused so a half-edited manifest cannot create junk remotes.
+
+If you already have some of those remotes cloned under other folder names, do not clone a second copy. `goat workspace map` scans `parent_dir` (plus `--search`) and matches `git remote` URLs to `repositories.yml`. Unambiguous matches can be pinned with `--write` and turned into workspaces with `--generate` (or `--adopt` for both). Folder names are only a hint; a name match with the wrong remote is not auto-mapped. Pin a path yourself with `--set frontend=~/code/shop-web`.
 
 ## Copilot in VS Code
 

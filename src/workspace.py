@@ -186,9 +186,11 @@ def list_workspaces(catalog: Catalog, goat_root: Path) -> list[dict[str, Any]]:
                 {
                     "id": repo_id,
                     "path": str(repo_path),
+                    "expected_path": str(catalog.expected_repo_path(goat_root, repo_id)),
                     "relpath": catalog.repo(repo_id).path,
                     "group": catalog.repo(repo_id).group,
                     "cloned": repo_path.exists(),
+                    "mapped": catalog.is_mapped(repo_id),
                 }
             )
         sync = workspace_file_status(catalog, goat_root, workspace)

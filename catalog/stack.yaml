@@ -3,6 +3,8 @@
 # in `folders`, or pull a set in by `tags`.
 # workspaces/*.code-workspace files are generated locally from this catalog —
 # do not commit them. setup / init / doctor run `goat workspace generate`.
+# Existing clones: `goat workspace map --write --generate` (do not put local
+# paths in this file).
 # Open a starter with `goat workspace open <id>`, or make your own with
 # `goat workspace create` / `/new-workspace`.
 

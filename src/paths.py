@@ -7,6 +7,7 @@ from typing import Mapping
 from goat import GoatError
 
 REPOS_RELATIVE = Path("repositories.yml")
+REPOS_LOCAL_RELATIVE = Path("repositories.local.yml")
 STACK_RELATIVE = Path("catalog") / "stack.yaml"
 TEMPLATES_RELATIVE = Path("templates.yml")
 ENV_RELATIVE = Path("catalog") / "env.yaml"

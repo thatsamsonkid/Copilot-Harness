@@ -39,6 +39,7 @@ from goat.jira_fields import (
 )
 from goat.paths import (
     ENV_RELATIVE,
+    REPOS_LOCAL_RELATIVE,
     REPOS_RELATIVE,
     STACK_RELATIVE,
     TEMPLATES_RELATIVE,
@@ -192,6 +193,9 @@ class Catalog:
     templates_source: Path | None = None
     env_vars: list[EnvVar] = field(default_factory=list)
     env_source: Path | None = None
+    local_paths: dict[str, str] = field(default_factory=dict)
+    local_search: list[str] = field(default_factory=list)
+    local_source: Path | None = None
 
     def workspace_env_names(self, workspace: Workspace | str) -> list[str]:
         if isinstance(workspace, str):
@@ -261,10 +265,22 @@ class Catalog:
             )
         return root
 
-    def repo_path(self, goat_root: Path, repo: Repo | str) -> Path:
+    def expected_repo_path(self, goat_root: Path, repo: Repo | str) -> Path:
         if isinstance(repo, str):
             repo = self.repo(repo)
         return self.sibling_root(goat_root) / repo.path
+
+    def is_mapped(self, repo: Repo | str) -> bool:
+        name = repo if isinstance(repo, str) else repo.name
+        return name in self.local_paths
+
+    def repo_path(self, goat_root: Path, repo: Repo | str) -> Path:
+        if isinstance(repo, str):
+            repo = self.repo(repo)
+        override = self.local_paths.get(repo.name)
+        if override:
+            return resolve_local_clone_path(goat_root, override)
+        return self.expected_repo_path(goat_root, repo)
 
     def workspace_file(self, goat_root: Path, workspace: Workspace | str) -> Path:
         if isinstance(workspace, str):
@@ -306,7 +322,9 @@ def load_catalog(
         {workspace.id: workspace.env for workspace in workspaces},
         source=env_source,
     )
-    return Catalog(
+    local_file = goat_root / REPOS_LOCAL_RELATIVE
+    local_paths, local_search = load_local_overlay(local_file, repo_names, goat_root)
+    catalog = Catalog(
         parent_dir=parent_dir,
         repos=repos,
         workspaces=workspaces,
@@ -319,7 +337,91 @@ def load_catalog(
         templates_source=templates_file,
         env_vars=env_vars,
         env_source=env_source,
+        local_paths=local_paths,
+        local_search=local_search,
+        local_source=local_file if local_file.exists() else None,
     )
+    _assert_unique_resolved_paths(catalog, goat_root)
+    return catalog
+
+
+def resolve_local_clone_path(goat_root: Path, raw: str) -> Path:
+    text = str(raw).strip()
+    if not text:
+        raise GoatError("Local clone path is empty")
+    path = Path(text).expanduser()
+    if not path.is_absolute():
+        path = Path(goat_root) / path
+    return path.resolve()
+
+
+def refuse_local_clone_in_goat(dest: Path, goat_root: Path) -> None:
+    dest_resolved = dest.resolve()
+    goat = Path(goat_root).resolve()
+    if dest_resolved == goat or goat in dest_resolved.parents:
+        raise GoatError(
+            f"Refusing local overlay path inside the Goat repo: {dest}. "
+            "Keep product clones outside this repository."
+        )
+
+
+def load_local_overlay(
+    path: Path, repo_names: set[str], goat_root: Path
+) -> tuple[dict[str, str], list[str]]:
+    if not path.exists():
+        return {}, []
+    raw = _read_yaml(path)
+    if raw is None:
+        return {}, []
+    if not isinstance(raw, dict):
+        raise GoatError(f"{path} must be a mapping with a paths: table")
+    search = as_list(raw.get("search"))
+    paths_raw = raw.get("paths")
+    if paths_raw is None:
+        reserved = {"paths", "search"}
+        leftover = {key: value for key, value in raw.items() if key not in reserved}
+        if leftover and all(isinstance(value, (str, int)) for value in leftover.values()):
+            raise GoatError(
+                f"{path} must use a paths: table (paths:\\n  frontend: ~/code/shop-web)."
+            )
+        return {}, search
+    if not isinstance(paths_raw, dict):
+        raise GoatError(f"{path} paths: must be a mapping of repo name to directory")
+    paths: dict[str, str] = {}
+    resolved: dict[str, Path] = {}
+    for name, dest in paths_raw.items():
+        name = str(name)
+        if name not in repo_names:
+            raise GoatError(
+                f"{path} maps unknown repo {name!r}. "
+                "Names must match repositories.yml."
+            )
+        if dest is None or str(dest).strip() == "":
+            raise GoatError(f"{path} path for {name} is empty")
+        dest_text = str(dest).strip()
+        target = resolve_local_clone_path(goat_root, dest_text)
+        refuse_local_clone_in_goat(target, goat_root)
+        for other, other_path in resolved.items():
+            if other_path == target:
+                raise GoatError(
+                    f"{path} maps {name} and {other} to the same directory: {target}"
+                )
+        paths[name] = dest_text
+        resolved[name] = target
+    return paths, search
+
+
+def _assert_unique_resolved_paths(catalog: Catalog, goat_root: Path) -> None:
+    seen: dict[Path, str] = {}
+    for repo in catalog.repos:
+        path = catalog.repo_path(goat_root, repo)
+        other = seen.get(path)
+        if other:
+            raise GoatError(
+                f"Repositories {other} and {repo.name} resolve to the same "
+                f"directory: {path}"
+            )
+        seen[path] = repo.name
 
 
 def load_repositories(path: Path) -> tuple[list[Repo], str]:
@@ -748,6 +850,9 @@ def catalog_to_dict(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
     return {
         "source": str(catalog.source),
         "repos_source": str(catalog.repos_source),
+        "local_source": str(catalog.local_source) if catalog.local_source else None,
+        "local_paths": dict(catalog.local_paths),
+        "local_search": list(catalog.local_search),
         "parent_dir": catalog.parent_dir,
         "sibling_root": str(sibling_root),
         "repos": [
@@ -756,7 +861,9 @@ def catalog_to_dict(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
                 "url": repo.url,
                 "path": repo.path,
                 "group": repo.group,
+                "expected_path": str(catalog.expected_repo_path(goat_root, repo)),
                 "resolved_path": str(catalog.repo_path(goat_root, repo)),
+                "mapped": catalog.is_mapped(repo),
                 "default_branch": repo.default_branch,
                 "description": repo.description,
                 "tags": repo.tags,

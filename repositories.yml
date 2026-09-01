@@ -27,6 +27,11 @@
 # Replace YOUR_ORG with your GitHub org, then:
 #   ./scripts/clone-repos.sh
 #   goat workspace generate
+#
+# Already have clones (different folder names or parent)?
+#   goat workspace map --search ~/code --write --generate
+# That writes gitignored repositories.local.yml (name → existing path).
+# Do not put those machine paths in this file or catalog/stack.yaml.
 
 parent_dir: ..
 

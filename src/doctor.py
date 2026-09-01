@@ -27,6 +27,7 @@ from goat.keychain import (
 from goat.onboard import onboarding_steps
 from goat.skills import sync_root_skills
 from goat.uv_check import detect_uv, uv_missing_action
+from goat.clone_map import discover_remap_hints
 from goat.workspace import check_workspaces, generate_workspaces
 from goat.workspace_detect import resolve_workspace_scope, scoped_repos
 
@@ -180,25 +181,45 @@ def run_doctor(
         source=catalog.env_source,
     )
 
+    remap_hints = discover_remap_hints(catalog, goat_root)
     repos = []
     for repo in scoped_repos(catalog, scope):
         path = catalog.repo_path(goat_root, repo)
         cloned = path.exists()
+        mapped = catalog.is_mapped(repo)
         repos.append(
             {
                 "id": repo.id,
                 "path": str(path),
+                "expected_path": str(catalog.expected_repo_path(goat_root, repo)),
                 "relpath": repo.path,
                 "group": repo.group,
                 "cloned": cloned,
+                "mapped": mapped,
                 "placeholder": repo.is_placeholder,
             }
         )
+        if cloned:
+            detail = (
+                f"{path} is present (mapped in repositories.local.yml)"
+                if mapped
+                else f"{path} is present"
+            )
+        elif repo.id in remap_hints:
+            detail = (
+                f"{path} is not cloned; matching remote found at "
+                f"{remap_hints[repo.id]}. Run `goat workspace map --write --generate`"
+            )
+        else:
+            detail = (
+                f"{path} is not cloned. Run `goat workspace map` if you already "
+                "have this repo, or `goat clone`"
+            )
         checks.append(
             _check(
                 f"repo:{repo.id}",
                 cloned,
-                f"{path} is present" if cloned else f"{path} is not cloned",
+                detail,
                 ok_when_false=True,
             )
         )

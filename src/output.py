@@ -51,6 +51,8 @@ def to_text(payload: Any) -> str:
         return _bruno_text(payload)
     if _is_cli_install(payload):
         return _cli_install_text(payload)
+    if _is_workspace_map(payload):
+        return _workspace_map_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -93,6 +95,8 @@ def to_markdown(payload: Any) -> str:
         return _bruno_markdown(payload)
     if _is_cli_install(payload):
         return _cli_install_markdown(payload)
+    if _is_workspace_map(payload):
+        return _workspace_map_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -664,6 +668,43 @@ def _is_skills(payload: Any) -> bool:
 
 def _is_cli_install(payload: Any) -> bool:
     return isinstance(payload, dict) and payload.get("kind") == "cli_install"
+
+
+def _is_workspace_map(payload: Any) -> bool:
+    return isinstance(payload, dict) and payload.get("kind") == "workspace_map"
+
+
+def _workspace_map_text(payload: dict[str, Any]) -> str:
+    lines = ["Existing clones → catalog repos", ""]
+    for row in payload.get("repos") or []:
+        found = row.get("found") or row.get("expected")
+        lines.append(f"{row.get('id')}: {row.get('status')}  {found}")
+        if row.get("detail"):
+            lines.append(f"  {row['detail']}")
+    unmatched = payload.get("unmatched") or []
+    if unmatched:
+        lines.append("")
+        lines.append("Unmatched local clones:")
+        for clone in unmatched:
+            lines.append(f"- {clone.get('path')}")
+    if payload.get("hint"):
+        lines.extend(["", payload["hint"]])
+    return "\n".join(lines).strip() + "\n"
+
+
+def _workspace_map_markdown(payload: dict[str, Any]) -> str:
+    lines = ["# Existing clones → catalog repos", ""]
+    for row in payload.get("repos") or []:
+        found = row.get("found") or row.get("expected")
+        lines.append(f"- **{row.get('id')}** — `{row.get('status')}` `{found}`")
+    unmatched = payload.get("unmatched") or []
+    if unmatched:
+        lines.extend(["", "Unmatched local clones:", ""])
+        for clone in unmatched:
+            lines.append(f"- `{clone.get('path')}`")
+    if payload.get("hint"):
+        lines.extend(["", payload["hint"], ""])
+    return "\n".join(lines).strip() + "\n"
 
 
 def _cli_install_text(payload: dict[str, Any]) -> str:

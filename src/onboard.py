@@ -224,7 +224,12 @@ def onboarding_steps(
             "clones",
             not missing,
             f"cloned: {', '.join(cloned) or 'none'}",
-            action=None if not missing else "Run ./scripts/clone-repos.sh (or goat clone)",
+            action=None
+            if not missing
+            else (
+                "If clones already exist elsewhere: goat workspace map --write --generate. "
+                "Otherwise run goat clone (or ./scripts/clone-repos.sh)"
+            ),
             optional=True,
         )
     )
