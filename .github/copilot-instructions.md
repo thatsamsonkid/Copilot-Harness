@@ -17,7 +17,7 @@ When the user gives a Jira key or browse URL, load the **jira-cli** skill (`.git
 2. Use that CLI JSON as the only ticket source. It is already field-filtered. Do not ask Jira for more.
 3. Tell the user to open `routing.open_command` so the feature workspace loads the right roots. Do not assume sibling repos are already in the current window.
 4. If `routing.missing_repos` is non-empty, recommend `routing.clone_command`. Never `git clone` into this goat folder.
-5. Write a plan covering impacted repos, likely files, risks, and tests. Do not implement until the user asks.
+5. Write a plan covering impacted repos, likely files, risks, and tests. Do not implement until the user asks. If the plan should be saved for later or handed to another model, load `.github/skills/planning/SKILL.md` and write it to `plans/` (gitignored) from `templates/plan.md` — detailed enough for a zero-context executor.
 
 When the user gives a Figma file/design/proto URL or asks to look at a frame, load the **figma-cli** skill (`.github/skills/figma-cli/SKILL.md`) and follow it.
 
