@@ -93,7 +93,7 @@ This skill is the CLI contract, not an implementer.
 - First-run setup: get-started skill or `/get-started`
 - Vague / large-repo orientation: workspace-context skill or `/orient`
 - Local stack start: workspace-start skill or `/start-workspace`
-- Plan a ticket: Jira Planner agent or `/jira-ticket`
+- Plan a ticket: jira-ticket skill, `/jira-ticket`, or Jira Planner agent
 - Figma frames: figma-cli skill or `/figma-frame`
 - Bruno collections: bruno-cli skill or `/bruno`
 - Create a feature workspace: Workspace Creator agent or `/new-workspace`

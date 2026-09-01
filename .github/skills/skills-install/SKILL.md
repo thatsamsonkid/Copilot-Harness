@@ -45,7 +45,7 @@ Run these from the goat repo. After `cd` into a sibling, use `uv run --project "
 ## Hard rules
 
 - Never nest a skills clone inside this goat.
-- Never overwrite a first-party goat skill (`get-started`, `jira-cli`, and the other committed folders).
+- Never overwrite a first-party goat skill (`get-started`, `jira-cli`, `jira-ticket`, and the other committed folders).
 - Never commit lifted product skills or remote copies here.
 - Do not treat every clone under `parent_dir` as in scope. Pass `--all` only when they asked.
 - Do not execute files from a pulled skills repo. Copy `SKILL.md` folders only.
@@ -63,5 +63,5 @@ Run these from the goat repo. After `cd` into a sibling, use `uv run --project "
 
 - First-run setup: get-started skill or `/get-started`
 - Vague / large-repo orientation: workspace-context skill or `/orient`
-- Ticket routing: jira-cli skill or `/jira-ticket`
+- Ticket routing: jira-cli skill, jira-ticket skill, or `/jira-ticket`
 - Local stack start: workspace-start skill or `/start-workspace`

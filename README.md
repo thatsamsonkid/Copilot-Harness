@@ -292,6 +292,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
 | `.github/skills/workspace-start/SKILL.md` | Local stack plan + sequential start (`/start-workspace`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
+| `.github/skills/jira-ticket/SKILL.md` | Plan work from a Jira key (`/jira-ticket`) |
 | `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images / comments / nodes CLI contract (`/figma-frame`) |
 | `.github/skills/bruno-cli/SKILL.md` | On-demand Bruno collections / workflows / bru wrap (`/bruno`) |
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
@@ -314,7 +315,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/prompts/review.prompt.md` | `/review` |
 | `.github/prompts/skills-install.prompt.md` | `/skills-install` |
 
-The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
+The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. The **jira-ticket** skill (and `/jira-ticket` prompt) is the planning workflow; both point at jira-cli instead of restating the command catalog. Jira Planner is the same workflow as a custom agent.
 
 `/get-started` is the human onboarding path. It runs `goat init` and points at the token doc. Copilot must never ask anyone to paste the API token into chat.
 

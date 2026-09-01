@@ -118,7 +118,7 @@ This skill is the CLI contract, not an implementer.
 - Always-on rules: `.github/copilot-instructions.md`
 - Convention + workflow YAML: `docs/bruno.md`
 - First-run setup: get-started skill or `/get-started`
-- Ticket routing: jira-cli skill or `/jira-ticket`
+- Ticket routing: jira-cli skill, jira-ticket skill, or `/jira-ticket`
 - Figma frames: figma-cli skill or `/figma-frame`
 - Local stack start: workspace-start skill or `/start-workspace`
 - Implement an agreed plan: Implementer agent

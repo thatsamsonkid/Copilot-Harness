@@ -64,4 +64,4 @@ Run these from the goat repo. After `cd` into a sibling, `uv run goat` cannot sp
 | `whoami` ever includes a token | Stop. Treat it as a leak. |
 | `Failed to spawn: goat` | Cwd is a sibling clone. Re-run from this repo or `uv run --project "$GOAT_ROOT" goat …` |
 
-After `ready` is true, point them at `/jira-ticket` or `/orient`.
+After `ready` is true, point them at the jira-ticket skill (`/jira-ticket`) or `/orient`.
