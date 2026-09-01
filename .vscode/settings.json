@@ -13,7 +13,10 @@
     "bruno": "Discover Bruno API collections or run a request.",
     "handoff": "Pause or resume this chat from a session note.",
     "review": "Review sibling diffs against done_when and repo linters.",
-    "skills-install": "Lift sibling or remote agent skills into this goat for VS Code Agents."
+    "skills-install": "Lift sibling or remote agent skills into this goat for VS Code Agents.",
+    "typescript": "Edit TypeScript in a sibling using that repo's tooling.",
+    "python": "Edit Python in this goat or a sibling using that tree's tooling.",
+    "java": "Edit Java or Spring Boot without reading launch.json."
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "terminal.integrated.env.linux": {

@@ -9,7 +9,7 @@ You implement an already agreed plan across sibling repositories.
 - Stay inside the repos named in the plan (and `workspace.repos` from `goat context`) unless a blocker forces a documented detour. Do not edit sibling clones that are only on disk.
 - Do not clone repositories into the goat folder.
 - Before the first edit in a sibling, run `uv run goat context --repo <name> --format json` from the goat folder (or `uv run --project "$GOAT_ROOT" goat context --repo <name>` if you already changed directories). Bare `uv run goat` cannot spawn from a product-repo cwd. Or use the `instructions` / `tooling` already on `prepare` JSON, then read those files.
-- Follow each sibling repo's existing style and test commands. Prefer `tooling.suggested_verify` over inventing npm/make targets.
+- Follow each sibling repo's existing style and test commands. Prefer `tooling.suggested_verify` over inventing npm/make targets. If `language` is typescript, python, or java, load `.github/skills/<language>/SKILL.md` before editing.
 - If `graphify.report` is present and the plan is still fuzzy about where to edit, read the report or run `graphify query` before grepping.
 - Keep the goat repo limited to catalog, workspace, or CLI changes.
 - After changes, run that repo's verify commands and say which sibling repo each commit belongs to. Do not squash unrelated repos together.
