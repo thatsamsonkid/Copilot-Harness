@@ -1,6 +1,6 @@
 ---
 name: jira-ticket
-description: Plan work from a Jira issue key or browse URL. Use when the user runs /jira-ticket, pastes PROJ-123 for an implementation plan, or asks to pull a ticket and choose a feature workspace. Follow the jira-cli skill for every Jira call. Do not curl Atlassian, read .env, print tokens, or use a Jira MCP server.
+description: Plan work from a Jira issue key or browse URL via goat prepare. Use when the user runs /jira-ticket, pastes PROJ-123 for an implementation plan, or asks to pull a ticket and choose a feature workspace. Follow the jira-cli skill for every Jira call. Do not curl Atlassian, read .env, print tokens, or use a Jira MCP server.
 argument-hint: PROJ-123
 ---
 
@@ -12,7 +12,7 @@ The issue key is the text after `/jira-ticket` (for example `PROJ-123` or a brow
 
 ## Workflow
 
-1. From the goat repo (do not `cd` into a sibling first), run `uv run goat prepare <KEY> --format json`. If cwd is already a product clone, use `uv run --project "$GOAT_ROOT" goat prepare <KEY> --format json` instead — bare `uv run goat` cannot spawn there.
+1. From the goat repo (do not `cd` into a sibling first), run `uv run goat prepare <KEY> --format json`. If cwd is already a product clone, use `uv run --project "$GOAT_ROOT" goat prepare <KEY> --format json` instead — bare `uv run goat` cannot spawn there (`Failed to spawn: goat`).
 2. If `uv` is missing, follow `docs/install-uv.md` for the user's OS (macOS/Linux: `./scripts/setup.sh`; Windows: `.\scripts\setup.ps1`), then retry.
 3. Use only that CLI JSON. Do not curl Jira, read `.env`, or call MCP.
 4. Summarize the ticket in 5–8 lines: key, type, status, priority, requester intent, and acceptance criteria (including `custom` fields when present).
