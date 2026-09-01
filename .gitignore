@@ -15,6 +15,8 @@ build/
 .uv/
 handoffs/*.md
 !handoffs/.gitkeep
+plans/*.md
+!plans/.gitkeep
 
 # Generated VS Code workspaces from catalog/stack.yaml (local only)
 workspaces/*.code-workspace
