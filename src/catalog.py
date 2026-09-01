@@ -259,6 +259,11 @@ class Catalog:
                 f"parent_dir resolves to the filesystem root ({root}). "
                 "Keep Goat in a project folder so clones land as siblings, not in /."
             )
+        if Path(self.parent_dir).is_absolute():
+            raise GoatError(
+                "parent_dir must be a relative path such as '..' so clones land as "
+                f"siblings of the Goat repo, not an absolute location: {self.parent_dir}"
+            )
         return root
 
     def repo_path(self, goat_root: Path, repo: Repo | str) -> Path:
@@ -269,7 +274,13 @@ class Catalog:
     def workspace_file(self, goat_root: Path, workspace: Workspace | str) -> Path:
         if isinstance(workspace, str):
             workspace = self.workspace(workspace)
-        return goat_root / WORKSPACES_DIR / f"{workspace.id}.code-workspace"
+        workspaces_dir = goat_root / WORKSPACES_DIR
+        target = workspaces_dir / f"{workspace.id}.code-workspace"
+        if workspaces_dir.resolve() not in target.resolve().parents:
+            raise GoatError(
+                f"Workspace id {workspace.id!r} escapes the workspaces directory."
+            )
+        return target
 
     def workspace_start_file(self, goat_root: Path, workspace: Workspace | str) -> Path:
         """YAML start sequence saved next to the .code-workspace file."""
@@ -532,6 +543,27 @@ def _require_relative_dir(label: str, value: str) -> None:
         raise GoatError(f"{label} must be a relative path inside the repo: {value}")
 
 
+def _reject_unsafe_workspace_id(workspace_id: str) -> None:
+    """Reject workspace ids that could escape the workspaces directory.
+
+    The create path slugifies ids, but stack.yaml is read raw here, so an id
+    like ``../../evil`` would otherwise let generate/write place a
+    ``.code-workspace`` file outside ``workspaces/``.
+    """
+    if (
+        not workspace_id
+        or workspace_id in {".", ".."}
+        or "/" in workspace_id
+        or "\\" in workspace_id
+        or any(ord(ch) < 0x20 for ch in workspace_id)
+        or Path(workspace_id).is_absolute()
+    ):
+        raise GoatError(
+            f"Invalid workspace id {workspace_id!r}: it must not contain path "
+            "separators, '..', or control characters."
+        )
+
+
 def load_stack(
     path: Path, repo_names: set[str]
 ) -> tuple[list[Workspace], JiraSettings, FigmaSettings, BrunoSettings]:
@@ -551,6 +583,7 @@ def load_stack(
         if not isinstance(item, dict) or "id" not in item:
             raise GoatError("Each workspace needs an id")
         workspace_id = str(item["id"])
+        _reject_unsafe_workspace_id(workspace_id)
         if workspace_id in seen_workspace_ids:
             raise GoatError(f"Duplicate workspace id: {workspace_id}")
         seen_workspace_ids.add(workspace_id)
