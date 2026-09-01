@@ -51,6 +51,8 @@ def to_text(payload: Any) -> str:
         return _bruno_text(payload)
     if _is_cli_install(payload):
         return _cli_install_text(payload)
+    if _is_workspace_graph(payload):
+        return _workspace_graph_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -93,6 +95,8 @@ def to_markdown(payload: Any) -> str:
         return _bruno_markdown(payload)
     if _is_cli_install(payload):
         return _cli_install_markdown(payload)
+    if _is_workspace_graph(payload):
+        return _workspace_graph_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -664,6 +668,49 @@ def _is_skills(payload: Any) -> bool:
 
 def _is_cli_install(payload: Any) -> bool:
     return isinstance(payload, dict) and payload.get("kind") == "cli_install"
+
+
+def _is_workspace_graph(payload: Any) -> bool:
+    return isinstance(payload, dict) and str(payload.get("kind") or "").startswith(
+        "workspace_graph"
+    )
+
+
+def _workspace_graph_text(payload: dict[str, Any]) -> str:
+    kind = payload.get("kind")
+    if kind == "workspace_graph_scan":
+        lines = ["Workspace graph scan", ""]
+        for row in payload.get("extractors") or []:
+            lines.append(
+                f"{row.get('name')}: {row.get('nodes')} nodes, "
+                f"{row.get('candidates')} candidates"
+            )
+        return "\n".join(lines).strip() + "\n"
+    if kind == "workspace_graph_build":
+        return (
+            f"Wrote {payload.get('file')}\n"
+            f"nodes: {payload.get('nodes')}  edges: {payload.get('edges')}\n"
+        )
+    if kind == "workspace_graph_explain":
+        lines = []
+        for edge in payload.get("edges") or []:
+            lines.append(
+                f"{edge.get('source')} {edge.get('relationship')} {edge.get('target')}"
+            )
+            lines.append(f"Classification: {edge.get('classification')}")
+            lines.append(f"Confidence: {edge.get('confidence')}")
+            lines.append("Evidence:")
+            for index, item in enumerate(edge.get("evidence") or [], start=1):
+                label = item.get("key") or item.get("value") or item.get("type")
+                where = item.get("file") or item.get("extractor")
+                lines.append(f"{index}. {label} ({where})")
+            lines.append("")
+        return "\n".join(lines).strip() + "\n"
+    return json.dumps(payload, indent=2, ensure_ascii=False)
+
+
+def _workspace_graph_markdown(payload: dict[str, Any]) -> str:
+    return _workspace_graph_text(payload)
 
 
 def _cli_install_text(payload: dict[str, Any]) -> str:

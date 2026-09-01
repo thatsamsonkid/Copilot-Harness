@@ -11,6 +11,12 @@ EXPANDED_HELPS = {
     "start": "Print a workspace start plan (does not launch)",
     "start run": "Start one repo with launch.json env loaded in-process",
     "start env": "List or apply one repo's launch env (keys only on stdout)",
+    "graph scan": "Run extractors and report evidence counts (no write)",
+    "graph build": "Write .workspace/generated/workspace-graph.json",
+    "graph validate": "Validate workspace-graph.json",
+    "graph explain": "Show why an edge exists",
+    "graph neighbors": "List inbound and outbound edges for one node",
+    "graph path": "Directed path between two nodes",
 }
 
 GROUP_ORDER = (
@@ -26,6 +32,7 @@ GROUP_ORDER = (
     "templates",
     "bootstrap",
     "workspace",
+    "graph",
     "prepare",
     "jira",
     "figma",

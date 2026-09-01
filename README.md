@@ -108,6 +108,8 @@ repositories:
 
 `catalog/stack.yaml` is the source of truth for feature workspaces and Jira routing. `workspaces/*.code-workspace` files are generated locally from it and gitignored — do not commit or hand-edit them. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
 
+Cross-repo architecture (APIs, events, ADRs) is `goat graph` — see [docs/workspace-graph.md](docs/workspace-graph.md). Declare implicit edges in `catalog/graph.yaml` or `<repo>/.workspace/component.yaml`. The generated file is `.workspace/generated/workspace-graph.json` (gitignored). Graphify remains a per-repo index, not the workspace graph.
+
 One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this Yard Goat repo.
 
 `catalog/env.yaml` is the env/secrets table. Each row is a name, whether it is a secret, and optional workspace scope. Non-secrets go in `.env`. Secrets go in macOS Keychain or Windows Credential Manager via `goat env set NAME` (or `goat jira login` for the Jira token). Copilot walks missing rows from `goat init` / `goat env list` JSON and never reads values. Do not put this table on generated `workspaces/*.code-workspace` files — `goat workspace generate` rewrites those. To attach extra names to one feature workspace, set `env: [NAME]` on that workspace in `catalog/stack.yaml` (the name must still be declared in `catalog/env.yaml`).
@@ -116,6 +118,8 @@ One clone cannot live inside another (`frontend` and `frontend/shop-web` togethe
 goat repos
 goat templates
 goat clone --tag api
+goat graph build
+goat graph explain application:frontend api:booking-v2
 ```
 
 One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `goat workspace generate` on your machine. `goat workspace generate --check` compares local files to the catalog without writing.

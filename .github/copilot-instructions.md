@@ -71,7 +71,7 @@ Bruno collections are git files plus the `bru` CLI. These rules apply even if th
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
 - Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
-- CLI: `src/` (imported as `goat`) — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, Bruno collection discovery / bru wrap, workspace create/generate/match, prepare, init, context, status, branch, handoff, start, skills list/lift/pull. `goat commands` (alias `help`) is the live catalog; `docs/cli.md` is the human cheat sheet.
+- CLI: `src/` (imported as `goat`) — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, Bruno collection discovery / bru wrap, workspace create/generate/match, workspace graph (`goat graph`), prepare, init, context, status, branch, handoff, start, skills list/lift/pull. `goat commands` (alias `help`) is the live catalog; `docs/cli.md` is the human cheat sheet.
 - Feature workspaces: `catalog/stack.yaml` is the committed catalog. `workspaces/*.code-workspace` files are generated locally (gitignored); first folder is this Goat repo.
 - Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `goat env set NAME` / `goat jira login` / `goat figma login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 

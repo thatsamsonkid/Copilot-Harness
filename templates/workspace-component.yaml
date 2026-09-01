@@ -1,0 +1,17 @@
+# Copy to <clone>/.workspace/component.yaml
+# Architectural intent this repo cannot express in code.
+# Do not duplicate extractable facts (package deps, OpenAPI paths).
+
+id: booking-service
+type: service
+# domain: booking
+provides:
+  - api:booking-v2
+resources:
+  - database:booking-db
+publishes:
+  - event:booking.updated
+# consumes:
+#   - api:payments-v1
+# subscribes:
+#   - event:user.created

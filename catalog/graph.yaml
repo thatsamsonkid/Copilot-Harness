@@ -1,0 +1,17 @@
+# Workspace-level architectural intent. This file is an input.
+# Generated output: .workspace/generated/workspace-graph.json (gitignored).
+# Per-repo intent: <clone>/.workspace/component.yaml
+#
+# declare:
+#   - source: application:frontend
+#     target: api:booking-v2
+#     relationship: CONSUMES
+#     note: implicit; no package dependency
+# reject:
+#   - source: application:frontend
+#     target: service:legacy-booking
+#     relationship: DEPENDS_ON
+#     note: false positive from a shared env key
+
+declare: []
+reject: []
