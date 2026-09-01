@@ -16,7 +16,20 @@ Everything a model with zero prior context needs before step 1: what the feature
 
 ## Out of scope
 
-Explicit non-goals. Anything listed here must not be touched, even if it looks related.
+Explicit non-goals. Anything listed here must not be touched, even if it looks related. List by file path any files an executor might plausibly edit but must not.
+
+## Preconditions
+
+What must be true before step 1, each with the command that checks it (services running, dependencies installed, feature workspace open). Write "None" if there are none.
+
+## File map
+
+Every file this plan creates, edits, or deletes — the complete set. Paths verified against the actual repos; mark new files `(new)`. The executor must never have to search for where a change goes.
+
+| Repo | File | Action | Change | Steps |
+| --- | --- | --- | --- | --- |
+| <repo> | `src/…` | edit | <one line: what and why> | 1, 3 |
+| <repo> | `src/… (new)` | create | <one line> | 2 |
 
 ## Steps
 
@@ -24,8 +37,10 @@ Number every step. Each step must name the repo and cwd, exact file paths and sy
 
 - [ ] **Step 1 — <short name>**
   - Repo / cwd:
-  - Files:
-  - Change:
+  - Files: (from the file map)
+  - Locate: (symbol name or a short unique fragment to search for — never a line number)
+  - Model after: (an existing file in the repo that already follows the target pattern, or "none")
+  - Change: (concrete: signatures, field names, snippets; for edits quote current → desired fragments)
   - Commands:
   - Expected result:
   - Verify:

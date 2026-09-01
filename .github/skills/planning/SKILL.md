@@ -34,13 +34,32 @@ Write for an executor that has: the plan file, the repo checkouts, and nothing e
 - Define repo-specific terms and name the exact conventions to follow (with the instruction file that mandates them).
 - State what is **out of scope** explicitly, so the executor does not wander.
 
+## The file map
+
+Every plan must contain a **File map**: one table listing every file the executor will create, edit, or delete — the complete set, across all repos. The executor should never have to search the codebase to find where a change goes; the planning model does that research once, here.
+
+| Column | Content |
+| --- | --- |
+| Repo | Sibling repo name from the workspace |
+| File | Exact path from that repo's root. Mark new files `(new)` |
+| Action | create / edit / delete |
+| Change | One line: what changes in this file and why |
+| Steps | Which step numbers touch it |
+
+Rules for the file map:
+
+- Verified paths only. Open each file while planning; do not name a path from memory.
+- **Anchor by symbol, not line number.** Line numbers drift; point at function/class/config-key names or a short unique code fragment the executor can search for.
+- When a repo already has a file that follows the target pattern, name it as **"model after"** — imitating a verified example beats prose instructions for a small executor.
+- If a file might plausibly be touched but must not be, put it in **Out of scope** by path.
+
 ## Step depth requirements
 
 Every step in the plan must contain:
 
 - **Repo and working directory** the step runs in.
-- **Exact file paths** to create or edit, and the exact symbols (function, class, config key) to touch.
-- **What to change**, concretely: new signatures, field names, route paths, and short code or config snippets whenever the change is non-obvious. Prose like "add validation" is not a step.
+- **Exact file paths** to create or edit (drawn from the file map), and the exact symbols (function, class, config key) to touch.
+- **What to change**, concretely: new signatures, field names, route paths, and short code or config snippets whenever the change is non-obvious. For edits, quote the current fragment and the desired fragment so the executor can match by content. Prose like "add validation" is not a step.
 - **Exact commands** to run, copy-pasteable, with the cwd they must run from.
 - **Expected result**: what output, diff, or behavior proves the step worked.
 - **Verify**: the check to run before moving on (test command, lint, curl via a `.bru` request — never raw curl to a product API).
@@ -49,6 +68,7 @@ Order steps by dependency, number them, and give each a checkbox (`- [ ]`) so th
 
 ## Finish the plan
 
+- Fill in **Preconditions**: what must already be true before step 1 (services running, dependencies installed, workspace open), each with the command that checks it. An executor that starts in a broken environment will misattribute every failure to its own changes.
 - End with **Verification** (the full test/lint commands per repo, from that repo's `tooling.suggested_verify`) and **Done when** (the stop condition; from Jira `done_when` when present).
 - Include risks and a rollback note when the change touches shared contracts (APIs, events, schemas).
 - Tell the user the plan's relative path. Planning and executing are separate: do not start implementing the plan in the same breath unless the user asks.

@@ -35,7 +35,11 @@ def test_skill_targets_low_context_executors():
         "uv run goat prepare",
         "uv run goat context",
         "done_when",
+        "file map",
         "exact file paths",
+        "anchor by symbol",
+        "model after",
+        "preconditions",
         "exact commands",
         "expected result",
         "out of scope",
@@ -50,6 +54,8 @@ def test_plan_template_has_required_sections():
         "## Objective",
         "## Context for the executor",
         "## Out of scope",
+        "## Preconditions",
+        "## File map",
         "## Steps",
         "## Verification",
         "## Done when",
@@ -57,3 +63,5 @@ def test_plan_template_has_required_sections():
     ):
         assert heading in text
     assert "- [ ]" in text
+    assert "never a line number" in text
+    assert "Model after:" in text
