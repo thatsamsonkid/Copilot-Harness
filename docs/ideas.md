@@ -32,10 +32,12 @@ What we should **not** do: copy product architecture or style guides into this r
 - Discover `graphify-out/` per sibling. `context` / `prepare` / `status` report `graphify.stale` by comparing `graph.json` mtime to the latest commit.
 - `doctor` notes when the Graphify CLI is missing and still uses committed artifacts.
 - Instructions: never extract a whole monorepo; offer a scoped rebuild only after the user agrees.
+- Workspace-scale map: `goat graph build` writes `.workspace/generated/workspace-graph.json` from extractors + `catalog/graph.yaml`. Graphify is an evidence source, not the canonical workspace graph.
 
 **Worth adding next**
 
-- Cross-repo tickets: `graphify merge-graphs` into a gitignored `graphify-out/workspace-<id>.json`, namespaced per repo.
+- More extractors only when siblings actually have those files (Terraform, Helm, Maven).
+- Incremental rebuild of one changed repo's evidence shard.
 - After Implementer edits, a one-line reminder is already in the agent. Auto-refresh is still a no.
 - For Nx/Turborepo, prefer Graphify communities + `nx show project` / `turbo run` over opening the whole tree.
 

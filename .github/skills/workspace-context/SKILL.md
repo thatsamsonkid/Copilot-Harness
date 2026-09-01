@@ -20,6 +20,7 @@ Run these from the goat repo. After `cd` into a sibling, use `uv run --project "
 | Every enabled repo | `uv run goat context --all --format json` (only if the user asked for the full catalog) |
 | Ticket plus routing | `uv run goat prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`) |
 | Local stack start plan | `uv run goat start --format json` (see the workspace-start skill). Saved sequences live in `workspaces/<id>.start.yml`. |
+| Cross-repo architecture | `uv run goat graph build` then `goat graph explain <a> <b>` (see `docs/workspace-graph.md`). Prefer this over guessing repo-to-repo imports. |
 | Sibling / remote agent skills | `uv run goat skills list` then `skills lift` or `skills pull <url>` (see the skills-install skill). VS Code Agents does not scan multi-root child folders. |
 
 ## Vague or low-context prompts

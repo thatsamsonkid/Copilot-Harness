@@ -47,8 +47,14 @@ Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`
 | `goat workspace open ID` | Open a workspace in VS Code |
 | `goat workspace path ID` | Print a workspace file path |
 | `goat workspace current` | Detect the open feature workspace |
+| `goat graph scan` | Run workspace-graph extractors (no write) |
+| `goat graph build` | Correlate evidence and write `.workspace/generated/workspace-graph.json` |
+| `goat graph validate` | Validate a workspace-graph.json file |
+| `goat graph explain` | Show why an edge exists (classification, confidence, evidence) |
+| `goat graph neighbors` | Inbound and outbound edges for one node |
+| `goat graph path` | Directed path between two nodes |
 
-Typical bootstrap: `goat bootstrap --template <name> --name <folder>`. Catalog starters: `goat workspace generate` then `goat workspace open <id>`. Your own mix: `goat workspace create`.
+Typical bootstrap: `goat bootstrap --template <name> --name <folder>`. Catalog starters: `goat workspace generate` then `goat workspace open <id>`. Your own mix: `goat workspace create`. Architectural map: `goat graph build` then `goat graph explain` (see [workspace-graph.md](workspace-graph.md)).
 
 ## Tickets (Jira)
 
@@ -107,6 +113,7 @@ These follow the open feature workspace (`GOAT_WORKSPACE`). Pass `--workspace <i
 | Command | What it does |
 | --- | --- |
 | `goat context` | Graphify graphs, instruction files, feature notes, verify commands |
+| `goat graph build` | Canonical workspace graph (APIs, events, ADRs, evidence) |
 | `goat status` | Read-only git snapshot (branch, dirty, ahead/behind) |
 | `goat branch ISSUE` | Suggest the same Jira-key branch in matched clones (`--create` on a clean tree) |
 | `goat handoff write` | Write a session note under `handoffs/` (gitignored) |

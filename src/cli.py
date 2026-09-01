@@ -45,6 +45,11 @@ from goat.workspace import (
 )
 from goat.workspace_create import create_workspace
 from goat.workspace_detect import current_workspace_payload, resolve_workspace_scope
+from goat.graph.build import build_graph, load_graph, scan_workspace
+from goat.graph.query import explain as explain_graph
+from goat.graph.query import neighbors as graph_neighbors
+from goat.graph.query import path_between
+from goat.graph.validate import validate_graph
 
 JIRA_MINE_JQL = "assignee = currentUser() AND resolution = EMPTY ORDER BY updated DESC"
 
@@ -538,6 +543,71 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_install_flags(uninstall)
 
+    graph = sub.add_parser(
+        "graph",
+        parents=[shared],
+        help="Canonical workspace graph (extractors → evidence → JSON)",
+    )
+    graph_sub = graph.add_subparsers(dest="graph_command", required=True)
+    graph_scan = graph_sub.add_parser(
+        "scan",
+        parents=[shared],
+        help="Run extractors and report evidence counts (no write)",
+    )
+    graph_scan.add_argument("--workspace", help="Limit to a catalog workspace id")
+    graph_build = graph_sub.add_parser(
+        "build",
+        parents=[shared],
+        help="Correlate extractors and write .workspace/generated/workspace-graph.json",
+    )
+    graph_build.add_argument("--workspace", help="Limit to a catalog workspace id")
+    graph_build.add_argument(
+        "--no-write",
+        action="store_true",
+        help="Build and validate in memory without writing the generated file",
+    )
+    graph_validate = graph_sub.add_parser(
+        "validate",
+        parents=[shared],
+        help="Validate a workspace-graph.json file",
+    )
+    graph_validate.add_argument(
+        "file",
+        nargs="?",
+        help="Path to workspace-graph.json (default: .workspace/generated/workspace-graph.json)",
+    )
+    graph_explain = graph_sub.add_parser(
+        "explain",
+        parents=[shared],
+        help="Show why an edge exists (evidence, classification, confidence)",
+    )
+    graph_explain.add_argument("source", help="Node id or slug (application:frontend)")
+    graph_explain.add_argument(
+        "target",
+        nargs="?",
+        help="Optional second node; explain edges between the two",
+    )
+    graph_explain.add_argument(
+        "--file",
+        dest="graph_file",
+        help="Graph JSON to read (default: generated workspace-graph.json)",
+    )
+    graph_neighbors = graph_sub.add_parser(
+        "neighbors",
+        parents=[shared],
+        help="List inbound and outbound edges for one node",
+    )
+    graph_neighbors.add_argument("node")
+    graph_neighbors.add_argument("--file", dest="graph_file")
+    graph_path = graph_sub.add_parser(
+        "path",
+        parents=[shared],
+        help="Directed path between two nodes",
+    )
+    graph_path.add_argument("source")
+    graph_path.add_argument("target")
+    graph_path.add_argument("--file", dest="graph_file")
+
     context = sub.add_parser(
         "context",
         parents=[shared],
@@ -850,6 +920,8 @@ def dispatch(args: argparse.Namespace) -> Any:
         return _dispatch_env(args, catalog, goat_root)
     if args.command == "workspace":
         return _dispatch_workspace(args, catalog, goat_root)
+    if args.command == "graph":
+        return _dispatch_graph(args, catalog, goat_root)
     if args.command == "skills":
         return _dispatch_skills(args, catalog, goat_root)
     if args.command == "prepare":
@@ -1127,6 +1199,44 @@ def _dispatch_env(args: argparse.Namespace, catalog: Any, goat_root: Path) -> An
     if args.env_command == "unset":
         return unset_env_value(variable, goat_root, clear_env=args.clear_env)
     raise GoatError(f"Unknown env command: {args.env_command}")
+
+
+def _dispatch_graph(args: argparse.Namespace, catalog: Any, goat_root: Path) -> Any:
+    workspace_id = getattr(args, "workspace", None)
+    if args.graph_command == "scan":
+        return scan_workspace(
+            catalog, goat_root, workspace_id=workspace_id, all_repos=not workspace_id
+        )
+    if args.graph_command == "build":
+        payload = build_graph(
+            catalog,
+            goat_root,
+            workspace_id=workspace_id,
+            all_repos=not workspace_id,
+            write=not args.no_write,
+        )
+        if not args.no_write:
+            payload.pop("graph", None)
+        return payload
+    graph = load_graph(
+        goat_root,
+        Path(args.file).resolve()
+        if getattr(args, "file", None)
+        else (
+            Path(args.graph_file).resolve()
+            if getattr(args, "graph_file", None)
+            else None
+        ),
+    )
+    if args.graph_command == "validate":
+        return {"kind": "workspace_graph_validate", **validate_graph(graph)}
+    if args.graph_command == "explain":
+        return explain_graph(graph, args.source, getattr(args, "target", None))
+    if args.graph_command == "neighbors":
+        return graph_neighbors(graph, args.node)
+    if args.graph_command == "path":
+        return path_between(graph, args.source, args.target)
+    raise GoatError(f"Unknown graph command: {args.graph_command}")
 
 
 def _dispatch_workspace(args: argparse.Namespace, catalog: Any, goat_root: Path) -> Any:

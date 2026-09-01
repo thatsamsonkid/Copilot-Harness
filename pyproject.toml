@@ -28,8 +28,8 @@ default-groups = ["dev"]
 package = true
 
 [tool.setuptools]
-packages = ["goat"]
-package-dir = {goat = "src"}
+packages = ["goat", "goat.graph"]
+package-dir = {goat = "src", "goat.graph" = "src/graph"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -19,6 +19,9 @@ handoffs/*.md
 # Generated VS Code workspaces from catalog/stack.yaml (local only)
 workspaces/*.code-workspace
 
+# Generated workspace graph (inputs stay in catalog/graph.yaml and sibling .workspace/)
+.workspace/generated/
+
 # Lifted / pulled agent skills (VS Code Agents multi-root shim)
 .goat/
 .coboose/
