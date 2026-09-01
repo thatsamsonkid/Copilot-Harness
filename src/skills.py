@@ -18,7 +18,7 @@ from typing import Any, Callable, Mapping
 
 from goat import GoatError
 from goat.catalog import Catalog, Repo
-from goat.clone import rewrite_clone_url
+from goat.clone import rewrite_clone_url, validate_git_ref, validate_git_url
 from goat.prompt import PromptSession
 from goat.workspace_detect import resolve_workspace_scope, scoped_repos
 
@@ -267,6 +267,7 @@ def pull_skills(
         raise GoatError("Pass a git URL for goat skills pull")
     if "your_org" in url.lower() or "example.com" in url.lower():
         raise GoatError("Refusing to clone a placeholder skills URL")
+    validate_git_url(url)
 
     dest = skills_dest(goat_root, catalog, parent=parent)
     prompt = prompt or PromptSession()
@@ -937,10 +938,11 @@ def _clone_skills_repo(
         raise GoatError("git is not installed or not on PATH")
     runner = run or _run_git
     dest.parent.mkdir(parents=True, exist_ok=True)
-    command = ["git", "clone", "--depth", "1", "--single-branch"]
+    validate_git_url(url)
+    command = ["git", "-c", "protocol.ext.allow=never", "clone", "--depth", "1", "--single-branch"]
     if ref:
-        command.extend(["--branch", ref])
-    command.extend([url, str(dest)])
+        command.extend(["--branch", validate_git_ref(ref)])
+    command.extend(["--", url, str(dest)])
     runner(command, dest.parent)
 
 

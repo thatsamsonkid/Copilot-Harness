@@ -266,10 +266,13 @@ def missing_action(variable: EnvVar) -> str:
             "(macOS Keychain or Windows Credential Manager). "
             "Do not paste the secret into chat."
         )
-    hint = f" to {variable.hint}" if variable.hint else ""
+    hint = f" ({variable.hint})" if variable.hint else ""
     return (
-        f"Set {variable.name} in .env{hint}. "
-        "Do not paste secrets into Copilot chat."
+        f"Set {variable.name} as a permanent environment variable{hint}. "
+        f"It is a global tool setting, so add `export {variable.name}=...` to your "
+        "shell profile (~/.zshrc or ~/.bashrc), or set it in System Settings > "
+        "Environment Variables on Windows. A machine-local .env is still read as a "
+        "fallback. Do not paste secrets into Copilot chat."
     )
 
 

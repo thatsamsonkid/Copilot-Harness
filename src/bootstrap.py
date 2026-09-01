@@ -9,7 +9,7 @@ import yaml
 
 from goat import GoatError
 from goat.catalog import Catalog, Repo, parse_project_destination, paths_collide
-from goat.clone import RunFn, clone_one, rewrite_clone_url
+from goat.clone import RunFn, clone_one, rewrite_clone_url, validate_git_url
 from goat.templates import Template, get_template, template_to_dict
 
 
@@ -90,6 +90,8 @@ def bootstrap_project(
     if fresh_git:
         remote_state = "fresh"
     origin_url = rewrite_clone_url(remote, https=https) if remote else None
+    if origin_url:
+        validate_git_url(origin_url)
 
     if not dry_run and clone_record.get("action") == "clone":
         runner = run or _require_run()
