@@ -48,6 +48,7 @@ Every plan must contain a **File map**: one table listing every file the executo
 
 Rules for the file map:
 
+- **Repo-relative paths only.** Never absolute paths, and never paths relative to the goat or the workspace root — sibling clones sit at different disk locations on every machine (flat siblings or grouped under `parent_dir`). The Repo column plus a path from that repo's root is unambiguous in any multi-root window; an absolute path is wrong everywhere except the planner's machine.
 - Verified paths only. Open each file while planning; do not name a path from memory.
 - **Anchor by symbol, not line number.** Line numbers drift; point at function/class/config-key names or a short unique code fragment the executor can search for.
 - When a repo already has a file that follows the target pattern, name it as **"model after"** — imitating a verified example beats prose instructions for a small executor.

@@ -36,6 +36,7 @@ def test_skill_targets_low_context_executors():
         "uv run goat context",
         "done_when",
         "file map",
+        "repo-relative paths only",
         "exact file paths",
         "anchor by symbol",
         "model after",
@@ -65,3 +66,4 @@ def test_plan_template_has_required_sections():
     assert "- [ ]" in text
     assert "never a line number" in text
     assert "Model after:" in text
+    assert "never absolute" in text

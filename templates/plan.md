@@ -24,7 +24,7 @@ What must be true before step 1, each with the command that checks it (services 
 
 ## File map
 
-Every file this plan creates, edits, or deletes — the complete set. Paths verified against the actual repos; mark new files `(new)`. The executor must never have to search for where a change goes.
+Every file this plan creates, edits, or deletes — the complete set. Paths are relative to each repo's root (the Repo column disambiguates); never absolute, never relative to the goat or workspace root. Verified against the actual repos; mark new files `(new)`. The executor must never have to search for where a change goes.
 
 | Repo | File | Action | Change | Steps |
 | --- | --- | --- | --- | --- |
