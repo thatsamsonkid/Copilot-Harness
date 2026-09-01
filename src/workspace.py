@@ -35,7 +35,6 @@ def workspace_document(catalog: Catalog, goat_root: Path, workspace: Workspace) 
         "git.autoRepositoryDetection": True,
         "git.detectSubmodules": False,
         "git.repositoryScanMaxDepth": 1,
-        "git.openRepositoryInParentFolders": "never",
         "github.copilot.chat.codeGeneration.useInstructionFiles": True,
         "chat.useCustomizationsInParentRepositories": True,
     }

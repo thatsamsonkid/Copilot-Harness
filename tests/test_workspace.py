@@ -39,6 +39,7 @@ def test_workspace_paths_point_at_siblings(catalog, goat_root: Path):
     assert document["goat"]["folders"] == ["frontend", "backend"]
     assert "HARNESS_ROOT" not in document["settings"]["terminal.integrated.env.linux"]
     assert "UV_PROJECT" not in document["settings"]["terminal.integrated.env.linux"]
+    assert "git.openRepositoryInParentFolders" not in document["settings"]
 
 
 def test_workspace_paths_for_grouped_repos(tmp_path: Path, sample_catalog_data: dict):
@@ -148,6 +149,13 @@ def test_check_workspaces_reports_missing_stale_and_orphan(catalog, goat_root: P
     assert after_generate["ok"] is False
     rewritten = json.loads(stale_path.read_text(encoding="utf-8"))
     assert rewritten["goat"]["description"] != "hand edited"
+
+
+def test_vscode_settings_show_env_and_allow_parent_git_repos():
+    root = Path(__file__).resolve().parents[1]
+    settings = json.loads((root / ".vscode" / "settings.json").read_text(encoding="utf-8"))
+    assert settings.get("files.exclude", {}).get("**/.env") is not True
+    assert settings.get("git.openRepositoryInParentFolders") != "never"
 
 
 def test_shared_workspace_files_are_gitignored_not_committed():
