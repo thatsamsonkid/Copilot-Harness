@@ -85,7 +85,16 @@ def _join_blocks(content: list[Any]) -> str:
 
 
 def _render_inline(content: list[Any]) -> str:
-    return "".join(_render(child).rstrip("\n") for child in content)
+    parts: list[str] = []
+    for child in content:
+        rendered = _render(child)
+        # Preserve hardBreak newlines; only strip trailing block separators that
+        # a (malformed) nested block child might contribute.
+        if isinstance(child, dict) and child.get("type") == "hardBreak":
+            parts.append(rendered)
+        else:
+            parts.append(rendered.rstrip("\n"))
+    return "".join(parts)
 
 
 def _plain_text(node: Any) -> str:

@@ -112,15 +112,15 @@ def format_workspace_yaml(workspace: Workspace) -> str:
     if workspace.description:
         lines.append(f"    description: {_yaml_scalar(workspace.description)}")
     if workspace.folders:
-        lines.append(f"    folders: [{', '.join(workspace.folders)}]")
+        lines.append(f"    folders: {_yaml_flow_list(workspace.folders)}")
     if workspace.tags:
-        lines.append(f"    tags: [{', '.join(workspace.tags)}]")
+        lines.append(f"    tags: {_yaml_flow_list(workspace.tags)}")
     if not workspace.include_goat:
         lines.append("    include_goat: false")
     if workspace.fallback:
         lines.append("    fallback: true")
     if workspace.env:
-        lines.append(f"    env: [{', '.join(workspace.env)}]")
+        lines.append(f"    env: {_yaml_flow_list(workspace.env)}")
     match = workspace.match
     if any(
         (
@@ -133,15 +133,15 @@ def format_workspace_yaml(workspace: Workspace) -> str:
     ):
         lines.append("    match:")
         if match.projects:
-            lines.append(f"      projects: [{', '.join(match.projects)}]")
+            lines.append(f"      projects: {_yaml_flow_list(match.projects)}")
         if match.components:
-            lines.append(f"      components: [{', '.join(match.components)}]")
+            lines.append(f"      components: {_yaml_flow_list(match.components)}")
         if match.labels:
-            lines.append(f"      labels: [{', '.join(match.labels)}]")
+            lines.append(f"      labels: {_yaml_flow_list(match.labels)}")
         if match.issue_types:
-            lines.append(f"      issue_types: [{', '.join(match.issue_types)}]")
+            lines.append(f"      issue_types: {_yaml_flow_list(match.issue_types)}")
         if match.keywords:
-            lines.append(f"      keywords: [{', '.join(match.keywords)}]")
+            lines.append(f"      keywords: {_yaml_flow_list(match.keywords)}")
     return "\n".join(lines) + "\n"
 
 
@@ -167,6 +167,10 @@ def _format_raw_workspace(item: dict) -> str:
         ),
     )
     return format_workspace_yaml(workspace)
+
+
+def _yaml_flow_list(values) -> str:
+    return "[" + ", ".join(_yaml_scalar(str(item)) for item in values) + "]"
 
 
 def _yaml_scalar(value: str) -> str:

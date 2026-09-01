@@ -53,6 +53,33 @@ def test_copy_ignore_skips_symlinks(tmp_path: Path):
     assert "real.md" not in ignored
 
 
+def test_resolve_workspace_path_honors_named_folders(tmp_path: Path):
+    from goat.launch import _resolve_workspace_path
+
+    repo = tmp_path / "frontend"
+    shared = tmp_path / "shared"
+    resolved = _resolve_workspace_path(
+        repo, "${workspaceFolder:shared}/.env", {"shared": shared}
+    )
+    assert resolved == shared / ".env"
+    # Plain ${workspaceFolder} still resolves to the repo itself.
+    assert _resolve_workspace_path(repo, "${workspaceFolder}/.env") == repo / ".env"
+    # An unknown named folder must not silently resolve to this repo.
+    unresolved = _resolve_workspace_path(repo, "${workspaceFolder:nope}/.env", {})
+    assert "${workspaceFolder:nope}" in str(unresolved)
+    assert unresolved != repo / ".env"
+
+
+def test_quote_cli_args_round_trips_dangerous_tokens():
+    import shlex
+
+    from goat.start import _quote_cli_args
+
+    args = ["--flag", "a b", "; rm -rf /", "$(touch pwned)", "`id`"]
+    quoted = _quote_cli_args(args)
+    assert shlex.split(quoted) == args
+
+
 def test_pull_skills_does_not_dereference_symlinks(
     catalog, goat_root: Path, tmp_path: Path
 ):

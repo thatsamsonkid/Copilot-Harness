@@ -188,6 +188,42 @@ def test_get_comments_uses_configured_shape():
     ]
 
 
+def test_get_comments_requests_newest_first_and_returns_chronological():
+    def _comment(comment_id: str, author: str, created: str, text: str) -> dict:
+        return {
+            "id": comment_id,
+            "author": {"displayName": author},
+            "created": created,
+            "body": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"type": "text", "text": text}],
+                    }
+                ],
+            },
+        }
+
+    http = FakeHttp(
+        {
+            ("GET", "https://acme.atlassian.net/rest/api/3/issue/WEB-42/comment"): _json(
+                {
+                    # The API returns newest-first when orderBy=-created.
+                    "comments": [
+                        _comment("2", "Bea", "2026-02-01T00:00:00.000+0000", "second"),
+                        _comment("1", "Ada", "2026-01-01T00:00:00.000+0000", "first"),
+                    ]
+                }
+            )
+        }
+    )
+    client = JiraClient("https://acme.atlassian.net", "a@b.com", "token", http=http)
+    comments = client.get_comments("WEB-42", max_results=2)
+    assert [item["body"] for item in comments] == ["first", "second"]
+    assert any("orderBy=-created" in url for _, url in http.calls)
+
+
 def test_yaml_toggle_exposes_known_optional_field():
     issue = {
         "id": "100",
