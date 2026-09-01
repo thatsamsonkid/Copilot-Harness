@@ -46,6 +46,7 @@ What we should **not** do: copy product architecture or style guides into this r
 - `goat context` lists instruction files, verify commands, and generated-code markers (Nx, OpenAPI, graphql-codegen).
 - `/review` + Reviewer agent: diff against `done_when`, local linters, generated-code, and goat invariants.
 - Org-wide invariants in always-on instructions: Jira key in the branch, one PR per sibling, no secrets, obey `done_when`.
+- Language packs for TypeScript, Python, and Java: path-scoped `*.instructions.md`, on-demand skills, `/typescript` `/python` `/java`. `context` / `prepare` infer `language` from `repositories.yml`, tags, or lockfiles. Product style still stays in the sibling.
 
 **Worth adding next**
 

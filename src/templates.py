@@ -45,6 +45,7 @@ class Template:
             tags=list(self.tags),
             enabled=True,
             group=group,
+            language=self.language,
         )
 
 

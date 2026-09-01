@@ -118,3 +118,31 @@ def test_graphify_marks_stale_when_commit_is_newer(goat_root: Path, catalog):
     subprocess.run(["git", "commit", "-m", "later"], cwd=repo, check=True, capture_output=True)
     payload = collect_context(catalog, goat_root, only=["frontend"])
     assert payload["repos"][0]["graphify"]["stale"] is True
+
+
+def test_context_infers_typescript_and_java_language(
+    sample_catalog_data: dict, goat_root: Path
+):
+    sample_catalog_data["repos"][0]["language"] = "typescript"
+    sample_catalog_data["repos"][1]["tags"] = ["api", "spring"]
+    write_goat_config(goat_root, sample_catalog_data)
+    from goat.catalog import load_catalog
+
+    catalog = load_catalog(goat_root)
+    frontend = _write_sibling(goat_root, "frontend")
+    (frontend / "tsconfig.json").write_text("{}\n", encoding="utf-8")
+    backend = goat_root.parent / "backend"
+    backend.mkdir()
+    (backend / "pom.xml").write_text("<project/>\n", encoding="utf-8")
+    (backend / "mvnw").write_text("#!/bin/sh\n", encoding="utf-8")
+
+    payload = collect_context(catalog, goat_root, only=["frontend", "backend"])
+    by_name = {repo["name"]: repo for repo in payload["repos"]}
+    assert by_name["frontend"]["language"] == "typescript"
+    assert by_name["frontend"]["language_skill"] == ".github/skills/typescript/SKILL.md"
+    assert by_name["frontend"]["languages"][0]["source"] == "declared"
+    assert "language skill" in " ".join(payload["guidance"]).lower()
+    assert by_name["backend"]["language"] == "java"
+    assert by_name["backend"]["tooling"]["suggested_verify"] == ["./mvnw test"]
+    assert "pom" in by_name["backend"]["tooling"]["markers"]
+    assert "mvnw" in by_name["backend"]["tooling"]["markers"]

@@ -105,6 +105,7 @@ repositories:
 | `default_branch` | no | Defaults to `main` |
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
 | `knowledge` | no | `{ dirs: [handbook] }` extra folders to treat as feature notes |
+| `language` | no | Primary language hint for Copilot (`typescript`, `python`, `java`). Tags and lockfiles also infer it. |
 
 `catalog/stack.yaml` is the source of truth for feature workspaces and Jira routing. `workspaces/*.code-workspace` files are generated locally from it and gitignored — do not commit or hand-edit them. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
 
@@ -292,6 +293,12 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/bruno-cli/SKILL.md` | On-demand Bruno collections / workflows / bru wrap (`/bruno`) |
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
 | `.github/skills/skills-install/SKILL.md` | Lift sibling or remote skills into this Yard Goat repo for VS Code Agents (`/skills-install`) |
+| `.github/skills/typescript/SKILL.md` | TypeScript / Angular / React / Node in a sibling (`/typescript`) |
+| `.github/skills/python/SKILL.md` | Python in this goat or a sibling (`/python`) |
+| `.github/skills/java/SKILL.md` | Java / Spring Boot in a sibling (`/java`) |
+| `.github/instructions/typescript.instructions.md` | Path-scoped TypeScript rules (`*.ts` / `*.tsx`) |
+| `.github/instructions/python.instructions.md` | Path-scoped Python rules (`*.py`) |
+| `.github/instructions/java.instructions.md` | Path-scoped Java rules (`*.java`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `docs/cli.md` | Human cheat sheet of every `goat` command (`goat commands`) |
@@ -309,12 +316,17 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/prompts/handoff.prompt.md` | `/handoff` |
 | `.github/prompts/review.prompt.md` | `/review` |
 | `.github/prompts/skills-install.prompt.md` | `/skills-install` |
+| `.github/prompts/typescript.prompt.md` | `/typescript` |
+| `.github/prompts/python.prompt.md` | `/python` |
+| `.github/prompts/java.prompt.md` | `/java` |
 
 The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
 
 `/get-started` is the human onboarding path. It runs `goat init` and points at the token doc. Copilot must never ask anyone to paste the API token into chat.
 
 `/orient` is for vague prompts against large repos. It runs `goat context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
+
+`/typescript`, `/python`, and `/java` load the matching language skill. `goat context` / `prepare` set `language` and `language_skill` from an optional `repositories.yml` `language`, from tags (`angular`, `django`, `spring`, …), or from files (`tsconfig.json`, `pyproject.toml`, `pom.xml` / Gradle). Those packs are how to work in the language (tooling, verify, goat start). Product style still lives in the sibling.
 
 `/skills-install` is a temporary shim for the VS Code Agents window, which does not scan skills in multi-root child folders. `goat init`, `prepare`, and `workspace generate` copy goat + in-scope sibling `SKILL.md` folders into this repo's `.github/skills`. `goat skills list --brief` prints each skill's name and description; `skills lift` in a terminal shows a numbered picker (`all` is valid). `skills pull <git-url>` clones a skills repo in a temp dir so you can pick names to install. Those copies are local-only — do not commit them.
 

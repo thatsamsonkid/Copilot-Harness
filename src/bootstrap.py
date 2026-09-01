@@ -114,6 +114,7 @@ def bootstrap_project(
             tags=tags or list(template.tags),
             enabled=True,
             group=project_group,
+            language=template.language,
         )
         if dry_run:
             register_record = {
@@ -123,6 +124,7 @@ def bootstrap_project(
                 "path": register_repo.path,
                 "group": register_repo.group,
                 "tags": register_repo.tags,
+                "language": register_repo.language,
                 "manifest": str(catalog.repos_source),
             }
         else:
@@ -193,6 +195,7 @@ def append_repository(path: Path, repo: Repo) -> dict[str, Any]:
         "path": repo.path,
         "group": repo.group,
         "tags": repo.tags,
+        "language": repo.language,
         "manifest": str(path),
     }
 
@@ -279,6 +282,8 @@ def _repo_yaml_entry(repo: Repo, indent: str = "  ") -> str:
         lines.append(f"{field}path: {repo.path}")
     if repo.description:
         lines.append(f"{field}description: {_yaml_scalar(repo.description)}")
+    if repo.language:
+        lines.append(f"{field}language: {repo.language}")
     return "\n".join(lines) + "\n"
 
 

@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from goat.catalog import Catalog, Repo
 from goat.gitinfo import last_commit_unix
+from goat.languages import discover_languages
 from goat.skills import list_skills
 from goat.workspace_detect import resolve_workspace_scope, scoped_repos
 
@@ -79,7 +80,8 @@ def collect_context(
         "only on disk and not in this feature workspace.",
         "For vague or low-context prompts, read each cloned repo's graphify.report "
         "before grepping the tree.",
-        "Before editing a sibling repo, load its instruction files and use its tooling.",
+        "Before editing a sibling repo, load its instruction files, the matching "
+        "language skill (languages[].skill_path), and use its tooling.",
         "Product knowledge lives in each sibling (docs/features, ADRs, Graphify). "
         "Do not start a second wiki in the Goat repo.",
         "Do not copy product standards into the Goat repo. Do not rebuild a graph "
@@ -121,6 +123,13 @@ def inspect_repo(catalog: Catalog, goat_root: Path, repo: Repo | str) -> dict[st
         repo = catalog.repo(repo)
     path = catalog.repo_path(goat_root, repo)
     cloned = path.exists()
+    tooling = discover_tooling(path) if cloned else _empty_tooling()
+    languages = discover_languages(
+        repo,
+        path,
+        cloned=cloned,
+        markers=tooling.get("markers"),
+    )
     return {
         "name": repo.name,
         "id": repo.name,
@@ -130,10 +139,13 @@ def inspect_repo(catalog: Catalog, goat_root: Path, repo: Repo | str) -> dict[st
         "cloned": cloned,
         "placeholder": repo.is_placeholder,
         "tags": repo.tags,
+        "language": languages["language"],
+        "languages": languages["languages"],
+        "language_skill": languages["skill"],
         "graphify": discover_graphify(path, repo) if cloned else _empty_graphify(repo, cloned=False),
         "instructions": discover_instructions(path) if cloned else [],
         "knowledge": discover_knowledge(path, extra_dirs=repo.knowledge_dirs) if cloned else _empty_knowledge(),
-        "tooling": discover_tooling(path) if cloned else _empty_tooling(),
+        "tooling": tooling,
         "env_example": discover_env_example(path) if cloned else None,
     }
 
@@ -256,6 +268,12 @@ def discover_tooling(repo_path: Path) -> dict[str, Any]:
             ("pre-commit", ".pre-commit-config.yaml"),
             ("ruff", "ruff.toml"),
             ("eslint", "eslint.config.js"),
+            ("tsconfig", "tsconfig.json"),
+            ("pom", "pom.xml"),
+            ("gradle", "build.gradle"),
+            ("gradle-kts", "build.gradle.kts"),
+            ("mvnw", "mvnw"),
+            ("gradlew", "gradlew"),
         )
         if (repo_path / relative).exists() or (repo_path / relative.replace(".js", ".mjs")).exists()
     ]
@@ -458,9 +476,25 @@ def _suggested_verify(
                 for name in package_scripts
                 if name in ("lint", "test", "typecheck", "format")
             )
-    if (repo_path / "pyproject.toml").exists() and not commands:
-        commands.append("uv run pytest")
+    if not commands:
+        commands.extend(_language_verify(repo_path))
     return commands
+
+
+def _language_verify(repo_path: Path) -> list[str]:
+    if (repo_path / "pyproject.toml").exists():
+        return ["uv run pytest"]
+    if (repo_path / "mvnw").is_file() or (repo_path / "mvnw.cmd").is_file():
+        return ["./mvnw test"]
+    if (repo_path / "pom.xml").is_file():
+        return ["mvn test"]
+    if (repo_path / "gradlew").is_file() or (repo_path / "gradlew.bat").is_file():
+        return ["./gradlew test"]
+    if (repo_path / "build.gradle").is_file() or (repo_path / "build.gradle.kts").is_file():
+        return ["gradle test"]
+    if (repo_path / "manage.py").is_file() or (repo_path / "pytest.ini").is_file():
+        return ["pytest"]
+    return []
 
 
 def _js_runner(repo_path: Path) -> str:

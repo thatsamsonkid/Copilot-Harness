@@ -113,6 +113,7 @@ def test_bootstrap_fresh_git_and_register(
     added = next(item for item in manifest["repositories"] if item["name"] == "shop-web")
     assert added["url"] == origin
     assert added["tags"] == ["ui", "web"]
+    assert added["language"] == "typescript"
 
 
 def test_parse_project_destination_group_and_nested_name():
