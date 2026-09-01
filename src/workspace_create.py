@@ -11,9 +11,7 @@ from goat.catalog import (
     Workspace,
     WorkspaceMatch,
     load_catalog,
-    parse_personal_workspace,
 )
-from goat.paths import PERSONAL_WORKSPACES_DIR
 from goat.prompt import PromptSession
 from goat.skills import sync_root_skills
 from goat.stack_edit import upsert_workspace_in_stack
@@ -138,7 +136,6 @@ def create_workspace(
     folders: list[str] | None = None,
     tags: list[str] | None = None,
     include_goat: bool | None = None,
-    personal: bool | None = None,
     fallback: bool = False,
     match_projects: list[str] | None = None,
     match_components: list[str] | None = None,
@@ -151,15 +148,8 @@ def create_workspace(
 ) -> dict[str, Any]:
     prompt = prompt or PromptSession()
 
-    personal = _resolve_personal(personal, prompt)
     workspace_id = _resolve_id(workspace_id, prompt)
-    existing = _existing_workspace(catalog, goat_root, workspace_id)
-    if existing is not None and existing.personal != personal:
-        kind = "personal" if existing.personal else "shared"
-        raise GoatError(
-            f"Workspace {workspace_id} already exists as a {kind} workspace. "
-            "Choose a different id."
-        )
+    existing = _existing_workspace(catalog, workspace_id)
     if existing is not None and not force:
         if prompt.can_prompt() and folders is None and tags is None:
             if prompt.confirm(
@@ -181,20 +171,8 @@ def create_workspace(
     folders, tags = _resolve_projects(catalog, folders, tags, prompt)
     include_goat = _resolve_include_goat(include_goat, prompt)
 
-    if personal and fallback:
-        raise GoatError(
-            "Personal workspaces cannot be fallback=true. "
-            "Jira routing only uses shared catalog/stack.yaml workspaces."
-        )
-    if personal and not generate and not dry_run:
-        raise GoatError(
-            "Personal workspaces only exist as .code-workspace files. "
-            "Omit --no-generate, or pass --dry-run."
-        )
     if fallback:
-        current = [
-            item.id for item in catalog.workspaces if item.fallback and not item.personal
-        ]
+        current = [item.id for item in catalog.workspaces if item.fallback]
         if current and current != [workspace_id]:
             raise GoatError(
                 f"Only one workspace can be fallback=true; {current[0]} already is. "
@@ -209,13 +187,12 @@ def create_workspace(
         tags=tags,
         include_goat=include_goat,
         fallback=fallback,
-        personal=personal,
         match=WorkspaceMatch(
-            projects=[] if personal else (match_projects or []),
-            components=[] if personal else (match_components or []),
-            labels=[] if personal else (match_labels or []),
+            projects=match_projects or [],
+            components=match_components or [],
+            labels=match_labels or [],
             issue_types=[],
-            keywords=[] if personal else (match_keywords or []),
+            keywords=match_keywords or [],
         ),
     )
 
@@ -242,17 +219,13 @@ def create_workspace(
             folders=document_folders,
         )
 
-    if not personal:
-        upsert_workspace_in_stack(stack_path, workspace, replace=force or replaced)
-        refreshed = load_catalog(
-            goat_root,
-            stack_path=stack_path,
-            repos_path=catalog.repos_source,
-        )
-        persisted = refreshed.workspace(workspace_id)
-    else:
-        refreshed = catalog
-        persisted = workspace
+    upsert_workspace_in_stack(stack_path, workspace, replace=force or replaced)
+    refreshed = load_catalog(
+        goat_root,
+        stack_path=stack_path,
+        repos_path=catalog.repos_source,
+    )
+    persisted = refreshed.workspace(workspace_id)
 
     written: dict[str, Any] | None = None
     if generate:
@@ -279,44 +252,10 @@ def create_workspace(
     return payload
 
 
-def _existing_workspace(
-    catalog: Catalog, goat_root: Path, workspace_id: str
-) -> Workspace | None:
-    existing = next(
+def _existing_workspace(catalog: Catalog, workspace_id: str) -> Workspace | None:
+    return next(
         (item for item in catalog.workspaces if item.id == workspace_id), None
     )
-    if existing is not None:
-        return existing
-    personal_path = goat_root / PERSONAL_WORKSPACES_DIR / f"{workspace_id}.code-workspace"
-    if not personal_path.exists():
-        return None
-    return parse_personal_workspace(
-        personal_path, {repo.name for repo in catalog.repos}
-    ) or Workspace(id=workspace_id, name=workspace_id, personal=True)
-
-
-def _resolve_personal(personal: bool | None, prompt: PromptSession) -> bool:
-    if personal is not None:
-        return personal
-    if not prompt.can_prompt():
-        return False
-    prompt.write(
-        "\nShared workspaces go in catalog/stack.yaml and workspaces/ "
-        "for everyone.\n"
-        "Personal workspaces stay in workspaces/personal/ "
-        "(gitignored, local only).\n"
-    )
-    while True:
-        answer = prompt.ask(
-            "Create a personal workspace or a shared Goat workspace?",
-            default="shared",
-        )
-        lowered = answer.strip().lower()
-        if lowered in {"personal", "p", "local", "mine"}:
-            return True
-        if lowered in {"shared", "s", "team", "goat", "coboose"}:
-            return False
-        prompt.write("Choose personal or shared.\n")
 
 
 def _resolve_id(workspace_id: str | None, prompt: PromptSession) -> str:
@@ -460,7 +399,6 @@ def _payload(
             "tags": workspace.tags,
             "include_goat": workspace.include_goat,
             "fallback": workspace.fallback,
-            "personal": workspace.personal,
             "file": file or str(path),
             "catalog": str(catalog.source),
             "exists": path.exists(),

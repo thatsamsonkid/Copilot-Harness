@@ -1,7 +1,10 @@
 # Feature workspaces and Jira routing.
 # Repository remotes live in ../repositories.yml — reference them by name
 # in `folders`, or pull a set in by `tags`.
-# Local-only mixes: `goat workspace create --personal` (workspaces/personal/).
+# workspaces/*.code-workspace files are generated locally from this catalog —
+# do not commit them. setup / init / doctor run `goat workspace generate`.
+# Open a starter with `goat workspace open <id>`, or make your own with
+# `goat workspace create` / `/new-workspace`.
 
 # Copilot-facing API allowlists. Every integration should normalize its vendor
 # payload, then clip it with `fields` + `shapes` (see goat.projection).

@@ -145,6 +145,18 @@ def test_repos_command(goat_root: Path, capsys, monkeypatch):
     assert payload["repositories"][0]["tags"] == ["ui"]
 
 
+def test_workspace_generate_check_does_not_write(goat_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(goat_root)
+    path = goat_root / "workspaces" / "frontend.code-workspace"
+    assert not path.exists()
+    assert main(["--root", str(goat_root), "workspace", "generate", "--check"]) == 1
+    error = json.loads(capsys.readouterr().err)
+    assert "out of sync" in error["error"]
+    assert error["missing"] == ["frontend", "backend"]
+    assert error["ok"] is False
+    assert not path.exists()
+
+
 def test_catalog_and_workspace_generate(goat_root: Path, capsys, monkeypatch):
     monkeypatch.chdir(goat_root)
     assert main(["--root", str(goat_root), "catalog"]) == 0
@@ -157,6 +169,26 @@ def test_catalog_and_workspace_generate(goat_root: Path, capsys, monkeypatch):
     assert (goat_root / "workspaces" / "backend.code-workspace").exists()
     assert "skills" in generated
     assert generated["skills"]["dest"].endswith(".github/skills")
+    assert {item["action"] for item in generated["workspaces"]} == {"created"}
+
+    assert main(["--root", str(goat_root), "workspace", "generate", "--check"]) == 0
+    checked = json.loads(capsys.readouterr().out)
+    assert checked["check"] is True
+    assert checked["ok"] is True
+    assert checked["in_sync"] is True
+    assert checked["missing"] == []
+    assert checked["stale"] == []
+    assert checked["orphans"] == []
+
+    stale = goat_root / "workspaces" / "frontend.code-workspace"
+    original = stale.read_text(encoding="utf-8")
+    stale.write_text(original.replace("Frontend", "Hand Edited"), encoding="utf-8")
+    assert main(["--root", str(goat_root), "workspace", "generate", "--check"]) == 1
+    error = json.loads(capsys.readouterr().err)
+    assert "out of sync" in error["error"]
+    assert error["stale"] == ["frontend"]
+    assert stale.read_text(encoding="utf-8") != original
+    assert "Hand Edited" in stale.read_text(encoding="utf-8")
 
 
 def test_clone_dry_run_and_doctor(goat_root: Path, capsys, monkeypatch):
@@ -193,6 +225,15 @@ def test_clone_dry_run_and_doctor(goat_root: Path, capsys, monkeypatch):
     assert "env_age" in doctor
     assert doctor["invoke"]["cwd"] == str(goat_root.resolve())
     assert "--project" in doctor["invoke"]["command"]
+    assert "workspace_sync" in doctor
+    workspace_check = next(
+        check for check in doctor["checks"] if check["name"] == "workspaces"
+    )
+    assert workspace_check["ok"] is False
+    assert workspace_check["advisory"] is True
+    assert "missing" in workspace_check["detail"]
+    assert doctor["workspace_sync"]["missing"] == ["frontend", "backend"]
+    assert (goat_root / "workspaces" / "frontend.code-workspace").exists()
 
 
 def test_jira_mine_uses_current_user_jql(goat_root: Path, capsys, monkeypatch):

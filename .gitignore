@@ -16,9 +16,8 @@ build/
 handoffs/*.md
 !handoffs/.gitkeep
 
-# Local-only workspaces from `goat workspace create --personal`
-workspaces/personal/*
-!workspaces/personal/README.md
+# Generated VS Code workspaces from catalog/stack.yaml (local only)
+workspaces/*.code-workspace
 
 # Lifted / pulled agent skills (VS Code Agents multi-root shim)
 .goat/

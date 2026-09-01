@@ -58,11 +58,10 @@ Then:
 2. Edit `templates.yml` — add starter remotes you want Copilot or `goat bootstrap` to offer.
 3. Copy `.env.example` to `.env` and set `JIRA_BASE_URL` / `JIRA_EMAIL`. Store the Jira API token with `uv run goat jira login` (macOS Keychain or Windows Credential Manager). See [docs/jira-api-token.md](docs/jira-api-token.md). Optional Figma: `uv run goat figma login` ([docs/figma-access-token.md](docs/figma-access-token.md)).
 4. Clone product repos: `./scripts/clone-repos.sh`
-5. Generate workspaces: `goat workspace generate`
-6. Or create a new feature workspace and pick projects from `repositories.yml`:
-   `goat workspace create` (or `/new-workspace` in chat). Choose **shared** for the team catalog, or **personal** for a local-only file under `workspaces/personal/` (gitignored).
-7. Open a feature workspace, for example `workspaces/frontend.code-workspace`
-8. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
+5. Generate local workspaces: `goat workspace generate` (gitignored `.code-workspace` files from `catalog/stack.yaml`)
+6. Open a catalog starter (`goat workspace open frontend`) or create your own:
+   `goat workspace create` (or `/new-workspace` in chat). That adds an id to `catalog/stack.yaml` and generates a local `.code-workspace` file.
+7. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
 
 `setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, install this package in editable mode, and register a `goat` shim on PATH (`~/.local/bin`). Prefer `uv` over pip. Do not `pip install` this repo. After `cd` into a sibling clone, bare `uv run goat` cannot spawn — use the global shim, `--project`, or the wrapper script:
 
@@ -107,7 +106,7 @@ repositories:
 | `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
 | `knowledge` | no | `{ dirs: [handbook] }` extra folders to treat as feature notes |
 
-`catalog/stack.yaml` only describes feature workspaces and Jira routing. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
+`catalog/stack.yaml` is the source of truth for feature workspaces and Jira routing. `workspaces/*.code-workspace` files are generated locally from it and gitignored — do not commit or hand-edit them. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
 
 One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this Yard Goat repo.
 
@@ -119,7 +118,7 @@ goat templates
 goat clone --tag api
 ```
 
-One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `goat workspace generate`.
+One workspace should set `fallback: true` for tickets that do not match a feature set. After catalog edits, run `goat workspace generate` on your machine. `goat workspace generate --check` compares local files to the catalog without writing.
 
 To add a workspace without editing YAML by hand:
 
@@ -133,15 +132,7 @@ goat workspace create checkout --projects frontend,backend --no-prompt
 goat workspace create mobile-api --tag mobile,api --name "Mobile + API"
 ```
 
-That writes `catalog/stack.yaml` and `workspaces/<id>.code-workspace`. Use `--force` to replace an existing id, `--dry-run` to preview, or `--no-prompt` when flags must be complete.
-
-For a scratch mix you do not want to commit, pass `--personal` (or choose **personal** at the prompt):
-
-```bash
-goat workspace create scratch --projects frontend,backend --personal --no-prompt
-```
-
-Personal workspaces go in `workspaces/personal/` and are gitignored. They are not added to `catalog/stack.yaml` and do not participate in Jira routing. Shared workspaces stay the default so the team catalog does not change unless you ask.
+That writes `catalog/stack.yaml` (the team catalog) and generates a local `.code-workspace` file (gitignored). Use `--force` to replace an existing id, `--dry-run` to preview, or `--no-prompt` when flags must be complete.
 
 Workspace files always include this Yard Goat repo as the first root so Copilot still sees the CLI and instructions.
 
@@ -274,7 +265,7 @@ The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads 
 
 `status` is a read-only git snapshot of the scoped siblings (branch, dirty, ahead/behind, Graphify staleness). `branch PROJ-123` suggests the same Jira-key branch in each in-scope clone; `--create` only runs on a clean tree. `handoff` writes a gitignored session note under `handoffs/` so the next chat can resume without re-fetching the world. `jira mine` lists unresolved issues assigned to you.
 
-`goat start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files, redacted `launch.json` names and env keys). It does not launch processes. After the first good plan, pin it next to the workspace with `goat start --save` (or `--workspace <id> --save`). That writes `workspaces/<id>.start.yml` (or `workspaces/personal/<id>.start.yml`). Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. When a repo keeps args or secrets in `.vscode/launch.json`, the plan sets `run_via: goat` and Copilot runs `goat start run --repo <name>` so those values stay in-process (or the user uses VS Code **Run Without Debugging**). `start run` applies env to the child process only. `goat start env --repo <name>` lists keys and collisions; `--shell` execs a terminal that already has the values. Application keys are unprefixed by default (same names as VS Code). `--keep-existing` leaves current terminal values alone; `--prefix BACKEND` is opt-in namespacing and will not satisfy an app looking up `DB_PASSWORD`. Do not put `start:` on `repositories.yml` entries — edit the workspace plan when discovery is wrong.
+`goat start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files, redacted `launch.json` names and env keys). It does not launch processes. After the first good plan, pin it next to the workspace with `goat start --save` (or `--workspace <id> --save`). That writes `workspaces/<id>.start.yml`. Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. When a repo keeps args or secrets in `.vscode/launch.json`, the plan sets `run_via: goat` and Copilot runs `goat start run --repo <name>` so those values stay in-process (or the user uses VS Code **Run Without Debugging**). `start run` applies env to the child process only. `goat start env --repo <name>` lists keys and collisions; `--shell` execs a terminal that already has the values. Application keys are unprefixed by default (same names as VS Code). `--keep-existing` leaves current terminal values alone; `--prefix BACKEND` is opt-in namespacing and will not satisfy an app looking up `DB_PASSWORD`. Do not put `start:` on `repositories.yml` entries — edit the workspace plan when discovery is wrong.
 
 Stdout is JSON by default (`--format markdown` or `text` if you want a human view). Errors are JSON on stderr.
 

@@ -41,14 +41,14 @@ Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`
 | `goat templates [NAME]` | List starter remotes from `templates.yml` |
 | `goat bootstrap [TEMPLATE]` | Clone a listed template as a new project |
 | `goat workspace list` | List feature workspaces |
-| `goat workspace generate` | Write `.code-workspace` files from the catalog |
+| `goat workspace generate` | Write local `.code-workspace` files from `catalog/stack.yaml` (`--check` reports drift, no write) |
 | `goat workspace create [ID]` | Create a workspace and pick projects from `repositories.yml` |
 | `goat workspace match ISSUE` | Recommend a workspace for an issue |
 | `goat workspace open ID` | Open a workspace in VS Code |
 | `goat workspace path ID` | Print a workspace file path |
 | `goat workspace current` | Detect the open feature workspace |
 
-Typical bootstrap: `goat bootstrap --template <name> --name <folder>`. Personal (gitignored) workspaces: `goat workspace create scratch --projects frontend,backend --personal --no-prompt`.
+Typical bootstrap: `goat bootstrap --template <name> --name <folder>`. Catalog starters: `goat workspace generate` then `goat workspace open <id>`. Your own mix: `goat workspace create`.
 
 ## Tickets (Jira)
 

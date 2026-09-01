@@ -310,7 +310,7 @@ def test_save_requires_workspace_and_rejects_repo_filter(goat_root: Path, catalo
         )
 
 
-def test_personal_workspace_saves_start_plan_beside_file(catalog, goat_root: Path):
+def test_created_workspace_saves_start_plan_beside_file(catalog, goat_root: Path):
     _write_angular(goat_root)
     _write_spring(goat_root)
     create_workspace(
@@ -318,7 +318,6 @@ def test_personal_workspace_saves_start_plan_beside_file(catalog, goat_root: Pat
         goat_root,
         workspace_id="scratch",
         folders=["frontend", "backend"],
-        personal=True,
         prompt=PromptSession(interactive=False),
     )
     refreshed = load_catalog(goat_root)
@@ -326,7 +325,7 @@ def test_personal_workspace_saves_start_plan_beside_file(catalog, goat_root: Pat
         refreshed, goat_root, workspace_id="scratch", save=True
     )
     path = Path(payload["saved"]["path"])
-    assert path.as_posix().endswith("workspaces/personal/scratch.start.yml")
+    assert path.as_posix().endswith("workspaces/scratch.start.yml")
     assert path.is_file()
     assert refreshed.workspace_start_file(goat_root, "scratch") == path
 

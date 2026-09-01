@@ -2,7 +2,7 @@
 
 This repo is **Goat** (Yard Goat), a Copilot Kit — not the product codebase.
 
-Application repositories are cloned **next to** this folder (flat siblings, or grouped under `parent_dir` folders such as `frontend/`, `backend/`, `infra/`, `shared/`). The full-app list lives in `repositories.yml`. Starter remotes for new projects live in `templates.yml`. See also `catalog/stack.yaml` and `.github/copilot-instructions.md`.
+Application repositories are cloned **next to** this folder (flat siblings, or grouped under `parent_dir` folders such as `frontend/`, `backend/`, `infra/`, `shared/`). The full-app list lives in `repositories.yml`. Starter remotes for new projects live in `templates.yml`. Feature workspaces and Jira routing live in `catalog/stack.yaml`. `workspaces/*.code-workspace` files are generated locally from that catalog (`goat workspace generate`) and are gitignored — do not commit them. See also `.github/copilot-instructions.md`.
 
 Run `uv run goat …` from this Goat repo (or `uv run --project "$GOAT_ROOT" goat …` / `./scripts/goat.sh`). After `cd` into a sibling clone, bare `uv run goat` cannot spawn. `uv run goat install` writes a `~/.local/bin` shim so `goat` works from any cwd (macOS, Linux, Windows). Full command catalog: `uv run goat commands --format json` or [docs/cli.md](docs/cli.md).
 
@@ -13,7 +13,7 @@ uv run goat templates --format json
 uv run goat bootstrap --template <name> --name <folder> --format json
 ```
 
-To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through shared vs personal, id, and `repositories.yml` projects, then run `uv run goat workspace create <id> --projects … --no-prompt` (add `--personal` for a local-only file under `workspaces/personal/`). In a terminal, `goat workspace create` prompts on its own.
+To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through id and `repositories.yml` projects, then run `uv run goat workspace create <id> --projects … --no-prompt`. In a terminal, `goat workspace create` prompts on its own.
 
 First-run setup: `.github/skills/get-started/SKILL.md` (`uv run goat init`).
 VS Code Agents does not scan multi-root child skills: `.github/skills/skills-install/SKILL.md` (`uv run goat skills list` / `skills lift` / `skills pull <url>`). `init`, `prepare`, and `workspace generate` already lift goat + in-scope sibling skills into this repo's `.github/skills`.

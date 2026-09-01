@@ -36,7 +36,13 @@ from goat.skills import lift_skills, list_skills, pull_skills, sync_root_skills
 from goat.start import collect_start_plan, execute_start_env, execute_start_run
 from goat.status import collect_status
 from goat.templates import get_template, template_to_dict, templates_payload
-from goat.workspace import generate_workspaces, list_workspaces, open_workspace
+from goat.workspace import (
+    check_workspaces,
+    generate_workspaces,
+    list_workspaces,
+    open_workspace,
+    workspace_sync_error,
+)
 from goat.workspace_create import create_workspace
 from goat.workspace_detect import current_workspace_payload, resolve_workspace_scope
 
@@ -381,8 +387,18 @@ def build_parser() -> argparse.ArgumentParser:
     workspace_sub.add_parser(
         "list", parents=[shared], help="List feature workspaces"
     )
-    workspace_sub.add_parser(
-        "generate", parents=[shared], help="Write .code-workspace files from the catalog"
+    workspace_generate = workspace_sub.add_parser(
+        "generate",
+        parents=[shared],
+        help="Write .code-workspace files from catalog/stack.yaml",
+    )
+    workspace_generate.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "Fail if workspaces/*.code-workspace drift from catalog/stack.yaml; "
+            "do not write files"
+        ),
     )
     workspace_create = workspace_sub.add_parser(
         "create",
@@ -405,25 +421,6 @@ def build_parser() -> argparse.ArgumentParser:
     workspace_create.add_argument(
         "--tag",
         help="Comma-separated tags; include every matching repositories.yml entry",
-    )
-    workspace_create.add_argument(
-        "--personal",
-        dest="personal",
-        action="store_true",
-        default=None,
-        help=(
-            "Create a local-only workspace under workspaces/personal/ "
-            "(gitignored). Does not edit catalog/stack.yaml"
-        ),
-    )
-    workspace_create.add_argument(
-        "--shared",
-        dest="personal",
-        action="store_false",
-        help=(
-            "Add the workspace to catalog/stack.yaml and workspaces/ "
-            "for everyone (default)"
-        ),
     )
     workspace_create.add_argument(
         "--include-goat",
@@ -1136,6 +1133,11 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, goat_root: Path)
     if args.workspace_command == "list":
         return {"workspaces": list_workspaces(catalog, goat_root)}
     if args.workspace_command == "generate":
+        if getattr(args, "check", False):
+            status = check_workspaces(catalog, goat_root)
+            if not status["ok"]:
+                raise GoatError(workspace_sync_error(status), payload=status)
+            return {"check": True, **status}
         workspaces = generate_workspaces(catalog, goat_root)
         return {
             "workspaces": workspaces,
@@ -1152,7 +1154,6 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, goat_root: Path)
             folders=_split_ids(args.projects),
             tags=_split_ids(args.tag),
             include_goat=args.include_goat,
-            personal=args.personal,
             fallback=args.fallback,
             match_projects=_split_ids(args.match_projects),
             match_components=_split_ids(args.match_components),

@@ -31,6 +31,7 @@ from goat.keychain import (
 )
 from goat.skills import sync_root_skills
 from goat.uv_check import UV_DOC, detect_uv, uv_missing_action
+from goat.workspace import catalog_starters, generate_workspaces
 
 TOKEN_DOC = "docs/jira-api-token.md"
 TOKEN_URL = "https://id.atlassian.com/manage-profile/security/api-tokens"
@@ -111,6 +112,8 @@ def run_init(
             )
         )
 
+    generate_workspaces(catalog, goat_root)
+    starters = catalog_starters(catalog, goat_root)
     ready = all(step["ok"] or step.get("optional") for step in steps)
     return {
         "ready": ready,
@@ -133,6 +136,11 @@ def run_init(
         ),
         "steps": steps,
         "skills": skills,
+        "workspaces": starters,
+        "workspace_hint": (
+            "Open a catalog starter with `goat workspace open <id>`, "
+            "or create your own with `goat workspace create` / `/new-workspace`."
+        ),
         "next_commands": _next_commands(steps, uv=uv, variables=catalog.env_vars),
     }
 
@@ -350,6 +358,8 @@ def _next_commands(
     if missing_clones:
         commands.append("./scripts/clone-repos.sh")
     commands.append("uv run goat workspace generate")
+    commands.append("uv run goat workspace list")
+    commands.append("uv run goat workspace create")
     commands.append("uv run goat skills lift")
     cli_path = next(
         (step for step in steps if step["id"] == "cli_path" and not step["ok"]),

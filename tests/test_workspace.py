@@ -1,10 +1,16 @@
 import json
 from pathlib import Path
 
-from goat.catalog import load_catalog, parse_personal_workspace
+from goat.catalog import load_catalog
 from goat.prompt import PromptSession
 from goat.start import collect_start_plan
-from goat.workspace import generate_workspaces, list_workspaces, workspace_document
+from goat.workspace import (
+    check_workspaces,
+    generate_workspaces,
+    list_workspaces,
+    workspace_document,
+    workspace_sync_error,
+)
 from goat.workspace_create import create_workspace
 from tests.helpers import write_goat_config
 
@@ -41,7 +47,7 @@ def test_workspace_paths_for_grouped_repos(tmp_path: Path, sample_catalog_data: 
     sample_catalog_data["repos"][0].pop("path", None)
     sample_catalog_data["repos"][1]["path"] = "backend/api"
     sample_catalog_data["workspaces"][0]["folders"] = ["shop-web", "backend"]
-    root = tmp_path / "parent" / "Goat"
+    root = tmp_path / "parent" / "Coboose"
     write_goat_config(root, sample_catalog_data)
     catalog = load_catalog(root)
     document = workspace_document(catalog, root, catalog.workspace("frontend"))
@@ -59,7 +65,10 @@ def test_generate_and_list(catalog, goat_root: Path):
     listed = list_workspaces(catalog, goat_root)
     frontend = next(item for item in listed if item["id"] == "frontend")
     assert frontend["exists"] is True
-    assert frontend["personal"] is False
+    assert frontend["sync"] == "ok"
+    assert frontend["in_sync"] is True
+    assert frontend["open_command"].endswith("frontend.code-workspace")
+    assert {item["action"] for item in written} == {"created"}
     assert frontend["repos"][0]["cloned"] is False
     assert frontend["start_file"].endswith("workspaces/frontend.start.yml")
     assert frontend["start_plan"] is False
@@ -74,58 +83,82 @@ def test_generate_and_list(catalog, goat_root: Path):
     assert frontend["start_plan"] is True
 
 
-def test_generate_skips_personal_and_list_includes_them(catalog, goat_root: Path):
+def test_generate_includes_created_catalog_workspace(catalog, goat_root: Path):
     create_workspace(
         catalog,
         goat_root,
         workspace_id="scratch",
         folders=["frontend"],
-        personal=True,
         prompt=PromptSession(interactive=False),
     )
-    personal_path = goat_root / "workspaces" / "personal" / "scratch.code-workspace"
-    original = personal_path.read_text(encoding="utf-8")
-    document = json.loads(original)
-    document["goat"]["description"] = "do not overwrite"
-    personal_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
-
     refreshed = load_catalog(goat_root)
     written = generate_workspaces(refreshed, goat_root)
-    assert {item["id"] for item in written} == {"frontend", "backend"}
-    assert all(item["personal"] is False for item in written)
-    assert not (goat_root / "workspaces" / "scratch.code-workspace").exists()
-    assert personal_path.read_text(encoding="utf-8") == json.dumps(document, indent=2) + "\n"
-
+    assert {item["id"] for item in written} == {"frontend", "backend", "scratch"}
     listed = list_workspaces(refreshed, goat_root)
     scratch = next(item for item in listed if item["id"] == "scratch")
-    assert scratch["personal"] is True
     assert scratch["exists"] is True
-    assert scratch["file"] == str(personal_path)
+    assert scratch["sync"] == "ok"
+    assert scratch["file"].endswith("workspaces/scratch.code-workspace")
+    assert check_workspaces(refreshed, goat_root)["ok"] is True
 
 
-def test_parse_personal_workspace_accepts_legacy_coboose_key(tmp_path: Path):
-    path = tmp_path / "legacy.code-workspace"
-    path.write_text(
-        json.dumps(
-            {
-                "folders": [
-                    {"name": "coboose", "path": "../.."},
-                    {"name": "frontend", "path": "../../../frontend"},
-                ],
-                "coboose": {
-                    "id": "legacy",
-                    "name": "Legacy",
-                    "folders": ["frontend"],
-                    "include_coboose": True,
-                    "personal": True,
-                },
-            }
-        ),
-        encoding="utf-8",
-    )
-    workspace = parse_personal_workspace(path, {"frontend", "backend"})
-    assert workspace is not None
-    assert workspace.id == "legacy"
-    assert workspace.folders == ["frontend"]
-    assert workspace.include_goat is True
-    assert workspace.personal is True
+def test_check_workspaces_reports_missing_stale_and_orphan(catalog, goat_root: Path):
+    missing = check_workspaces(catalog, goat_root)
+    assert missing["ok"] is False
+    assert missing["missing"] == ["frontend", "backend"]
+    assert missing["stale"] == []
+    assert missing["orphans"] == []
+    assert "workspace generate" in (missing.get("hint") or "")
+    assert "missing frontend, backend" in workspace_sync_error(missing)
+
+    listed = list_workspaces(catalog, goat_root)
+    assert {item["id"]: item["sync"] for item in listed} == {
+        "frontend": "missing",
+        "backend": "missing",
+    }
+
+    generate_workspaces(catalog, goat_root)
+    ok = check_workspaces(catalog, goat_root)
+    assert ok["ok"] is True
+    assert ok["missing"] == []
+    assert ok["stale"] == []
+    assert ok["orphans"] == []
+
+    stale_path = goat_root / "workspaces" / "frontend.code-workspace"
+    document = json.loads(stale_path.read_text(encoding="utf-8"))
+    document["goat"]["description"] = "hand edited"
+    stale_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    orphan = goat_root / "workspaces" / "legacy.code-workspace"
+    orphan.write_text("{}\n", encoding="utf-8")
+
+    drifted = check_workspaces(catalog, goat_root)
+    assert drifted["ok"] is False
+    assert drifted["missing"] == []
+    assert drifted["stale"] == ["frontend"]
+    assert drifted["orphans"] == ["legacy"]
+    assert drifted["orphan_files"][0]["file"] == str(orphan)
+    error = workspace_sync_error(drifted)
+    assert "stale frontend" in error
+    assert "orphan legacy" in error
+
+    generate_workspaces(catalog, goat_root)
+    after_generate = check_workspaces(catalog, goat_root)
+    assert after_generate["stale"] == []
+    assert after_generate["orphans"] == ["legacy"]
+    assert after_generate["ok"] is False
+    rewritten = json.loads(stale_path.read_text(encoding="utf-8"))
+    assert rewritten["goat"]["description"] != "hand edited"
+
+
+def test_shared_workspace_files_are_gitignored_not_committed():
+    import subprocess
+
+    root = Path(__file__).resolve().parents[1]
+    gitignore = (root / ".gitignore").read_text(encoding="utf-8")
+    assert "workspaces/*.code-workspace" in gitignore
+    tracked = subprocess.check_output(
+        ["git", "ls-files", "--", "workspaces/*.code-workspace"],
+        cwd=root,
+        text=True,
+    ).strip()
+    assert tracked == ""

@@ -125,7 +125,6 @@ def test_generated_document_stamps_workspace_env(catalog, goat_root: Path):
     assert env["GOAT_WORKSPACE"] == "backend"
     assert env["GOAT_WORKSPACE_FILE"] == "${workspaceFile}"
     assert document["goat"]["id"] == "backend"
-    assert document["goat"]["personal"] is False
 
 
 def test_context_stays_inside_open_workspace(catalog, goat_root: Path):

@@ -53,6 +53,12 @@ def test_init_lists_missing_jira_keys_without_reading_secrets(
     assert "figma login" in ids["figma_access_token"]["action"]
     dumped = json.dumps(payload)
     assert "ATLASSIAN-SECRET" not in dumped
+    assert {item["id"] for item in payload["workspaces"]} == {"frontend", "backend"}
+    assert payload["workspaces"][0]["open_command"].startswith("code ")
+    assert "workspace create" in payload["workspace_hint"]
+    assert "uv run goat workspace list" in payload["next_commands"]
+    assert "uv run goat workspace create" in payload["next_commands"]
+    assert (goat_root / "workspaces" / "frontend.code-workspace").exists()
 
 
 def test_interactive_init_stores_token_in_keychain(

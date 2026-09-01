@@ -12,6 +12,6 @@ The user is setting up this Copilot goat for the first time, or something is not
 4. Never ask them to paste `JIRA_API_TOKEN` into chat. Tell them to set URL/email in `.env` and run `uv run goat jira login` (or `uv run goat init --interactive`) in their own terminal. The token goes in macOS Keychain or Windows Credential Manager.
 5. After they say they stored the token, run `uv run goat doctor --ping-jira --format json` and `uv run goat jira whoami --format json`.
 6. If repository URLs are still placeholders, tell them to edit `repositories.yml` and then `./scripts/clone-repos.sh`.
-7. Finish with `goat workspace generate` (it also lifts sibling skills into this goat `.github/skills` for the VS Code Agents window). Confirm the init `skills` step. They can run `/jira-ticket PROJ-123`, `/orient`, or `/skills-install` next.
+7. `init` already generates local `.code-workspace` files from `catalog/stack.yaml` (gitignored). Show `workspaces[]` starters and ask which to open (`open_command`). Offer `/new-workspace` if they want their own mix. Confirm the init `skills` step. They can run `/jira-ticket PROJ-123`, `/orient`, or `/skills-install` next.
 
 Do not read `.env`. Do not curl Atlassian. Do not configure a Jira MCP server.

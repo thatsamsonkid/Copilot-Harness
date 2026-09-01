@@ -39,7 +39,6 @@ from goat.jira_fields import (
 )
 from goat.paths import (
     ENV_RELATIVE,
-    PERSONAL_WORKSPACES_DIR,
     REPOS_RELATIVE,
     STACK_RELATIVE,
     TEMPLATES_RELATIVE,
@@ -176,7 +175,6 @@ class Workspace:
     include_goat: bool = True
     fallback: bool = False
     env: list[str] = field(default_factory=list)
-    personal: bool = False
     match: WorkspaceMatch = field(default_factory=WorkspaceMatch)
 
 
@@ -271,8 +269,7 @@ class Catalog:
     def workspace_file(self, goat_root: Path, workspace: Workspace | str) -> Path:
         if isinstance(workspace, str):
             workspace = self.workspace(workspace)
-        directory = PERSONAL_WORKSPACES_DIR if workspace.personal else WORKSPACES_DIR
-        return goat_root / directory / f"{workspace.id}.code-workspace"
+        return goat_root / WORKSPACES_DIR / f"{workspace.id}.code-workspace"
 
     def workspace_start_file(self, goat_root: Path, workspace: Workspace | str) -> Path:
         """YAML start sequence saved next to the .code-workspace file."""
@@ -299,14 +296,6 @@ def load_catalog(
     repos, parent_dir = load_repositories(repos_file)
     repo_names = {repo.name for repo in repos}
     workspaces, jira, figma, bruno = load_stack(stack_file, repo_names)
-    workspaces = [
-        *workspaces,
-        *load_personal_workspaces(
-            goat_root,
-            repo_names,
-            reserved_ids={workspace.id for workspace in workspaces},
-        ),
-    ]
     templates = load_templates(templates_file)
     from goat.envspec import load_env_spec, validate_env_spec
 
@@ -753,70 +742,6 @@ def _parse_bruno_services(raw: Any, repo_names: set[str]) -> list[BrunoService]:
     return services
 
 
-def load_personal_workspaces(
-    goat_root: Path,
-    repo_names: set[str],
-    reserved_ids: set[str] | None = None,
-) -> list[Workspace]:
-    """Load local-only workspaces from workspaces/personal/ (gitignored)."""
-    directory = Path(goat_root) / PERSONAL_WORKSPACES_DIR
-    if not directory.is_dir():
-        return []
-    reserved = set(reserved_ids or ())
-    workspaces: list[Workspace] = []
-    seen: set[str] = set()
-    for path in sorted(directory.glob("*.code-workspace")):
-        workspace = parse_personal_workspace(path, repo_names)
-        if workspace is None:
-            continue
-        if workspace.id in reserved or workspace.id in seen:
-            continue
-        seen.add(workspace.id)
-        workspaces.append(workspace)
-    return workspaces
-
-
-def parse_personal_workspace(path: Path, repo_names: set[str]) -> Workspace | None:
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-        return None
-    if not isinstance(raw, dict):
-        return None
-    meta = workspace_document_meta(raw)
-    workspace_id = str(meta.get("id") or path.stem).strip()
-    if not workspace_id:
-        return None
-    folders = _as_list(meta.get("folders"))
-    if not folders:
-        folders = [
-            str(folder.get("name"))
-            for folder in (raw.get("folders") or [])
-            if isinstance(folder, dict)
-            and folder.get("name")
-            and not is_kit_folder_name(folder.get("name"))
-        ]
-    folders = [name for name in folders if name in repo_names]
-    include_goat = meta.get("include_goat")
-    if include_goat is None:
-        include_goat = meta.get("include_coboose")
-    if include_goat is None:
-        include_goat = any(
-            isinstance(folder, dict) and is_kit_folder_name(folder.get("name"))
-            for folder in (raw.get("folders") or [])
-        )
-    return Workspace(
-        id=workspace_id,
-        name=str(meta.get("name") or workspace_id.replace("-", " ").replace("_", " ").title()),
-        description=str(meta.get("description") or ""),
-        folders=folders,
-        tags=_as_list(meta.get("tags")),
-        include_goat=bool(include_goat),
-        fallback=False,
-        env=_as_list(meta.get("env")),
-        personal=True,
-    )
-
 
 def catalog_to_dict(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
     sibling_root = catalog.sibling_root(goat_root)
@@ -854,7 +779,6 @@ def catalog_to_dict(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
                 "include_goat": workspace.include_goat,
                 "fallback": workspace.fallback,
                 "env": workspace.env,
-                "personal": workspace.personal,
                 "file": str(catalog.workspace_file(goat_root, workspace)),
                 "start_file": str(catalog.workspace_start_file(goat_root, workspace)),
                 "start_plan": catalog.workspace_start_file(

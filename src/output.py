@@ -243,6 +243,17 @@ def _init_text(payload: dict[str, Any]) -> str:
         mark = "x" if step.get("ok") else " "
         extra = f" — {step.get('action')}" if step.get("action") and not step.get("ok") else ""
         lines.append(f"- [{mark}] {step.get('detail')}{extra}")
+    starters = payload.get("workspaces") or []
+    if starters:
+        lines.extend(["", "Starter workspaces (catalog/stack.yaml):"])
+        for item in starters:
+            detail = f" — {item.get('description')}" if item.get("description") else ""
+            lines.append(f"- {item.get('id')}: {item.get('name')}{detail}")
+            if item.get("open_command"):
+                lines.append(f"  {item['open_command']}")
+        hint = payload.get("workspace_hint")
+        if hint:
+            lines.append(hint)
     commands = payload.get("next_commands") or []
     if commands:
         lines.extend(["", "Next:"])
