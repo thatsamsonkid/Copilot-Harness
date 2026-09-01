@@ -75,7 +75,7 @@ This skill is the CLI contract, not an implementer.
 1. Summarize from returned fields only. Do not invent custom fields.
 2. Name the matched workspace and whether clones are missing.
 3. Ask the user to run `routing.open_command` when those roots are not open.
-4. If the user wants a plan, write one and stop. Do not edit product code until they ask.
+4. If the user wants a plan, write one and stop. Do not edit product code until they ask. If the plan should be saved to a file or executed by another model or agent, follow the planning skill (`.github/skills/planning/SKILL.md`) and write it to `plans/`.
 
 ## Auth and setup failures
 
@@ -94,6 +94,7 @@ This skill is the CLI contract, not an implementer.
 - Vague / large-repo orientation: workspace-context skill or `/orient`
 - Local stack start: workspace-start skill or `/start-workspace`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
+- Write a plan to a file for another model: planning skill or `/goat-plan`
 - Figma frames: figma-cli skill or `/figma-frame`
 - Bruno collections: bruno-cli skill or `/bruno`
 - Create a feature workspace: Workspace Creator agent or `/new-workspace`
