@@ -2,7 +2,6 @@
   "git.autoRepositoryDetection": true,
   "git.detectSubmodules": false,
   "git.repositoryScanMaxDepth": 1,
-  "git.openRepositoryInParentFolders": "never",
   "github.copilot.chat.codeGeneration.useInstructionFiles": true,
   "chat.useCustomizationsInParentRepositories": true,
   "chat.promptFilesRecommendations": {
@@ -26,7 +25,6 @@
     "GOAT_ROOT": "${workspaceFolder}"
   },
   "files.exclude": {
-    "**/.env": true,
     "**/__pycache__": true,
     "**/*.egg-info": true,
     ".pytest_cache": true
