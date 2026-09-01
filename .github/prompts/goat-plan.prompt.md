@@ -1,5 +1,5 @@
 ---
-name: plan
+name: goat-plan
 description: Write a detailed implementation plan into plans/ that a lower-context model can execute
 argument-hint: PROJ-123
 agent: agent
