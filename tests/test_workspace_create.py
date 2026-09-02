@@ -11,7 +11,9 @@ from goat import GoatError
 from goat.catalog import load_catalog
 from goat.cli import main
 from goat.prompt import PromptSession
+from goat.output import to_markdown, to_text
 from goat.workspace_create import (
+    create_menu,
     create_workspace,
     format_project_menu,
     parse_project_selection,
@@ -64,6 +66,29 @@ def test_format_project_menu_shows_grouped_path(tmp_path: Path, sample_catalog_d
     menu = format_project_menu(catalog.repos)
     assert "1. shop-web" in menu
     assert "path: frontend/shop-web" in menu
+
+
+def test_create_workspace_skills_are_names_only(catalog, goat_root: Path):
+    frontend = goat_root.parent / "frontend"
+    skill = frontend / ".github" / "skills" / "checkout"
+    skill.mkdir(parents=True, exist_ok=True)
+    skill.joinpath("SKILL.md").write_text(
+        "---\nname: checkout\ndescription: Checkout flow\n---\n# checkout\n",
+        encoding="utf-8",
+    )
+    payload = create_workspace(
+        catalog,
+        goat_root,
+        workspace_id="checkout",
+        folders=["frontend"],
+        prompt=PromptSession(interactive=False),
+    )
+    assert payload["skills"]["ok"] is True
+    assert payload["skills"]["copied"] == ["checkout"]
+    assert "available" not in payload["skills"]
+    assert "sources" not in payload["skills"]
+    assert "guidance" not in payload["skills"]
+    assert "next_commands" not in payload["skills"]
 
 
 def test_create_workspace_with_flags(catalog, goat_root: Path):
@@ -220,6 +245,49 @@ def test_create_workspace_cli(goat_root: Path, capsys, monkeypatch):
     assert payload["created"] is True
     assert payload["workspace"]["id"] == "checkout"
     assert (goat_root / "workspaces" / "checkout.code-workspace").exists()
+    assert set(payload["skills"]) <= {"ok", "copied", "updated", "conflicts", "error"}
+    assert payload["skills"]["copied"] == []
+    assert payload["repos"] == [
+        {"name": "frontend", "cloned": False},
+        {"name": "backend", "cloned": False},
+    ]
+
+
+def test_create_menu_is_compact_picker(catalog, goat_root: Path):
+    payload = create_menu(catalog, goat_root)
+    assert payload["kind"] == "workspace_create_menu"
+    assert [item["n"] for item in payload["projects"]] == [1, 2]
+    assert payload["projects"][0] == {
+        "n": 1,
+        "name": "frontend",
+        "tags": ["ui"],
+        "description": "UI",
+        "enabled": True,
+        "cloned": False,
+    }
+    assert "url" not in payload["projects"][0]
+    assert "graphify" not in payload["projects"][0]
+    assert payload["workspaces"] == [
+        {"id": "frontend", "name": "Frontend"},
+        {"id": "backend", "name": "Backend"},
+    ]
+    assert payload["tags"] == ["api", "ui"]
+    assert any("goat repos" in line for line in payload["guidance"])
+    assert payload["create_command"].startswith("uv run goat workspace create")
+    text = to_text(payload)
+    assert "1. frontend" in text
+    assert "Existing workspaces: frontend, backend" in text
+    markdown = to_markdown(payload)
+    assert "| 1 | `frontend` |" in markdown
+
+
+def test_create_menu_cli(goat_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(goat_root)
+    assert main(["--root", str(goat_root), "workspace", "create", "--menu"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["kind"] == "workspace_create_menu"
+    assert [item["name"] for item in payload["projects"]] == ["frontend", "backend"]
+    assert not (goat_root / "workspaces" / "checkout.code-workspace").exists()
 
 
 def test_create_workspace_cli_no_prompt_requires_projects(

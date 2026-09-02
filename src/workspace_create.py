@@ -13,7 +13,7 @@ from goat.catalog import (
     load_catalog,
 )
 from goat.prompt import PromptSession
-from goat.skills import sync_root_skills
+from goat.skills import compact_sync_result, sync_root_skills
 from goat.stack_edit import upsert_workspace_in_stack
 from goat.workspace import open_command, write_workspace_file
 
@@ -244,12 +244,60 @@ def create_workspace(
         + refreshed.workspace_repo_names(persisted),
         file=(written or {}).get("file"),
     )
-    payload["skills"] = sync_root_skills(
-        refreshed,
-        goat_root,
-        workspace_id=persisted.id,
+    payload["skills"] = compact_sync_result(
+        sync_root_skills(
+            refreshed,
+            goat_root,
+            workspace_id=persisted.id,
+        )
     )
     return payload
+
+
+def create_menu(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
+    """Compact picker for /new-workspace. No URLs, graphify, skills, or CLI catalog."""
+    projects: list[dict[str, Any]] = []
+    for index, repo in enumerate(catalog.repos, start=1):
+        repo_path = catalog.repo_path(goat_root, repo)
+        item: dict[str, Any] = {
+            "n": index,
+            "name": repo.name,
+            "tags": list(repo.tags),
+            "description": repo.description,
+            "enabled": repo.enabled,
+            "cloned": repo_path.exists(),
+        }
+        if repo.group:
+            item["group"] = repo.group
+        if repo.path != repo.name:
+            item["path"] = repo.path
+        projects.append(item)
+    tags = sorted({tag for repo in catalog.repos for tag in repo.tags})
+    return {
+        "kind": "workspace_create_menu",
+        "projects": [item for item in projects if item["enabled"]],
+        "disabled": [item["name"] for item in projects if not item["enabled"]],
+        "workspaces": [
+            {"id": item.id, "name": item.name} for item in catalog.workspaces
+        ],
+        "tags": tags,
+        "select": "numbers, names, ranges (1-3), all, or tag:<tag>",
+        "create_command": (
+            "uv run goat workspace create <id> --projects <names> "
+            "--no-prompt --format json"
+        ),
+        "defaults": {"include_goat": True},
+        "guidance": [
+            "Show a compact numbered list from projects[] (n, name, tags).",
+            "If there are more than 12 projects, show tags[] first and ask "
+            "whether to filter with tag:<tag> or see the full list.",
+            "Do not run goat repos, goat catalog, goat workspace list, "
+            "goat commands, goat skills list, or goat context.",
+            "Ask for id, then projects. Skip description unless they offer one.",
+            "After confirm, run create_command. Report workspace.file and "
+            "open_command only.",
+        ],
+    }
 
 
 def _existing_workspace(catalog: Catalog, workspace_id: str) -> Workspace | None:
@@ -382,11 +430,6 @@ def _payload(
         repos.append(
             {
                 "name": repo.name,
-                "tags": repo.tags,
-                "description": repo.description,
-                "group": repo.group,
-                "relpath": repo.path,
-                "path": str(repo_path),
                 "cloned": repo_path.exists(),
             }
         )

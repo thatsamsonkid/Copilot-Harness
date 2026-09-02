@@ -126,7 +126,7 @@ One workspace should set `fallback: true` for tickets that do not match a featur
 
 To add a workspace without editing YAML by hand:
 
-- **Chat:** run **Workspace Creator** or `/new-workspace`. Copilot lists `repositories.yml` projects, asks for an id and which to include, then runs the CLI with flags.
+- **Chat:** run **Workspace Creator** or `/new-workspace`. Copilot runs `goat workspace create --menu` (a compact picker: name, tags, existing ids), asks for an id and which projects to include, then creates with flags. It should not dump `goat repos`, `goat commands`, or `goat skills list`.
 - **Terminal:** `goat workspace create` prompts for the same things.
 
 Non-interactive / after Copilot has the answers:
@@ -291,6 +291,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/get-started/SKILL.md` | First-run walkthrough (`/get-started`) |
 | `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
 | `.github/skills/workspace-start/SKILL.md` | Local stack plan + sequential start (`/start-workspace`) |
+| `.github/skills/workspace-create/SKILL.md` | Compact workspace picker (`/new-workspace`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
 | `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images / comments / nodes CLI contract (`/figma-frame`) |
 | `.github/skills/bruno-cli/SKILL.md` | On-demand Bruno collections / workflows / bru wrap (`/bruno`) |

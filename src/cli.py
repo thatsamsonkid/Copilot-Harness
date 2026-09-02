@@ -43,7 +43,7 @@ from goat.workspace import (
     open_workspace,
     workspace_sync_error,
 )
-from goat.workspace_create import create_workspace
+from goat.workspace_create import create_menu, create_workspace
 from goat.workspace_detect import current_workspace_payload, resolve_workspace_scope
 from goat.graph.build import build_graph, load_graph, scan_workspace
 from goat.graph.query import explain as explain_graph
@@ -462,6 +462,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Update catalog/stack.yaml only; do not write the .code-workspace file",
     )
     workspace_create.add_argument("--dry-run", action="store_true")
+    workspace_create.add_argument(
+        "--menu",
+        action="store_true",
+        help="Print a compact project picker (no write). Use this from chat.",
+    )
     workspace_create.add_argument(
         "--no-prompt",
         action="store_true",
@@ -1254,6 +1259,8 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, goat_root: Path)
             "skills": sync_root_skills(catalog, goat_root),
         }
     if args.workspace_command == "create":
+        if getattr(args, "menu", False):
+            return create_menu(catalog, goat_root)
         prompt = PromptSession(interactive=False if args.no_prompt else None)
         return create_workspace(
             catalog,

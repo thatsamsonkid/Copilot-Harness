@@ -13,7 +13,7 @@ uv run goat templates --format json
 uv run goat bootstrap --template <name> --name <folder> --format json
 ```
 
-To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and walk the user through id and `repositories.yml` projects, then run `uv run goat workspace create <id> --projects … --no-prompt`. In a terminal, `goat workspace create` prompts on its own.
+To add a feature workspace, use `/new-workspace` (or the Workspace Creator agent) and `.github/skills/workspace-create/SKILL.md`. Run `uv run goat workspace create --menu --format json` for the picker — do not dump `goat repos`, `goat commands`, or `goat skills list`. Then `uv run goat workspace create <id> --projects … --no-prompt`. In a terminal, `goat workspace create` prompts on its own.
 
 First-run setup: `.github/skills/get-started/SKILL.md` (`uv run goat init`).
 VS Code Agents does not scan multi-root child skills: `.github/skills/skills-install/SKILL.md` (`uv run goat skills list` / `skills lift` / `skills pull <url>`). `init`, `prepare`, and `workspace generate` already lift goat + in-scope sibling skills into this repo's `.github/skills`.
