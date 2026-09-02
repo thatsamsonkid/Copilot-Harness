@@ -100,7 +100,7 @@ This skill is the CLI contract, not an implementer.
 - Write a plan to a file for another model: planning skill or `/goat-plan`
 - Figma frames: figma-cli skill or `/figma-frame`
 - Bruno collections: bruno-cli skill or `/bruno`
-- Create a feature workspace: Workspace Creator agent or `/new-workspace`
+- Create a feature workspace: workspace-create skill, Workspace Creator, or `/new-workspace`
 - Implement an agreed plan: Implementer agent
 - Review a diff: Reviewer agent or `/review`
 - Pause / resume: handoff skill or `/handoff`

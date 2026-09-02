@@ -11,6 +11,7 @@ from goat.cli import main
 from goat.onboard import run_init
 from goat.prompt import PromptSession
 from goat.skills import (
+    compact_sync_result,
     format_skill_menu,
     lift_skills,
     list_skills,
@@ -59,6 +60,27 @@ def test_list_finds_goat_and_sibling_skills(catalog, goat_root: Path):
     assert payload["dest"].endswith(".github/skills")
     assert payload["dest_kind"] == "workspace"
     assert "sources" in payload
+
+
+def test_compact_sync_result_is_names_only():
+    summary = compact_sync_result(
+        {
+            "ok": True,
+            "copied": [{"name": "checkout", "path": "/tmp/checkout"}],
+            "updated": [{"installed_as": "frontend--lint"}],
+            "conflicts": [{"name": "jira-cli"}],
+            "available": [{"name": "checkout", "body": "huge"}],
+            "sources": [{"id": "frontend"}],
+            "guidance": ["do not commit"],
+            "next_commands": ["uv run goat skills lift"],
+        }
+    )
+    assert summary == {
+        "ok": True,
+        "copied": ["checkout"],
+        "updated": ["frontend--lint"],
+        "conflicts": ["jira-cli"],
+    }
 
 
 def test_list_brief_is_name_and_description(catalog, goat_root: Path):

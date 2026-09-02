@@ -53,6 +53,8 @@ def to_text(payload: Any) -> str:
         return _cli_install_text(payload)
     if _is_workspace_graph(payload):
         return _workspace_graph_text(payload)
+    if _is_workspace_create_menu(payload):
+        return _workspace_create_menu_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -97,6 +99,8 @@ def to_markdown(payload: Any) -> str:
         return _cli_install_markdown(payload)
     if _is_workspace_graph(payload):
         return _workspace_graph_markdown(payload)
+    if _is_workspace_create_menu(payload):
+        return _workspace_create_menu_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -1044,4 +1048,61 @@ def _bruno_markdown(payload: dict[str, Any]) -> str:
     for item in payload.get("workflows") or []:
         lines.append(f"- workflow `{item.get('id')}` — {item.get('description') or ''}")
     lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _is_workspace_create_menu(payload: Any) -> bool:
+    return isinstance(payload, dict) and payload.get("kind") == "workspace_create_menu"
+
+
+def _workspace_create_menu_text(payload: dict[str, Any]) -> str:
+    lines = ["Repositories from repositories.yml:", ""]
+    for item in payload.get("projects") or []:
+        tags = ", ".join(item.get("tags") or []) or "(no tags)"
+        extra = []
+        if item.get("path"):
+            extra.append(f"path: {item['path']}")
+        extra.append(f"tags: {tags}")
+        if item.get("description"):
+            extra.append(str(item["description"]))
+        extra.append("cloned" if item.get("cloned") else "not cloned")
+        lines.append(f"  {item.get('n')}. {item.get('name')}")
+        lines.append(f"     {'  ·  '.join(extra)}")
+    disabled = payload.get("disabled") or []
+    if disabled:
+        lines.append("")
+        lines.append("Disabled: " + ", ".join(disabled))
+    workspaces = payload.get("workspaces") or []
+    if workspaces:
+        lines.append("")
+        lines.append(
+            "Existing workspaces: "
+            + ", ".join(item.get("id") or "" for item in workspaces)
+        )
+    lines.append("")
+    lines.append(
+        payload.get("select")
+        or "Enter numbers, names, ranges (1-3), all, or tag:<tag>."
+    )
+    return "\n".join(lines).strip() + "\n"
+
+
+def _workspace_create_menu_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        "# New workspace",
+        "",
+        "| # | Repo | Tags | Cloned |",
+        "| --- | --- | --- | --- |",
+    ]
+    for item in payload.get("projects") or []:
+        tags = ", ".join(f"`{tag}`" for tag in (item.get("tags") or [])) or "—"
+        cloned = "yes" if item.get("cloned") else "no"
+        lines.append(
+            f"| {item.get('n')} | `{item.get('name')}` | {tags} | {cloned} |"
+        )
+    workspaces = payload.get("workspaces") or []
+    if workspaces:
+        ids = ", ".join(f"`{item.get('id')}`" for item in workspaces)
+        lines.extend(["", f"Existing workspaces: {ids}"])
+    lines.extend(["", payload.get("select") or "", ""])
     return "\n".join(lines).strip() + "\n"

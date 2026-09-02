@@ -359,6 +359,32 @@ def brief_skills(skills: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def compact_sync_result(payload: dict[str, Any]) -> dict[str, Any]:
+    """Names-only lift summary for commands that are not about skills."""
+    result: dict[str, Any] = {
+        "ok": bool(payload.get("ok", True)),
+        "copied": _record_names(payload.get("copied")),
+        "updated": _record_names(payload.get("updated")),
+        "conflicts": _record_names(payload.get("conflicts")),
+    }
+    if payload.get("error"):
+        result["ok"] = False
+        result["error"] = str(payload["error"])
+    return result
+
+
+def _record_names(records: Any) -> list[str]:
+    names: list[str] = []
+    for item in records or []:
+        if isinstance(item, str):
+            name = item
+        else:
+            name = str(item.get("name") or item.get("installed_as") or "")
+        if name:
+            names.append(name)
+    return names
+
+
 def format_skill_menu(
     available: list[dict[str, Any]],
     *,
