@@ -22,6 +22,6 @@ Workflow:
 6. If a matched repo has `graphify.report`, read it (and query the graph for named concepts) before proposing file paths. If the prompt is still vague, follow `.github/skills/workspace-context/SKILL.md`.
 7. Before naming coding conventions, read that repo's `instructions` files from the prepare JSON. Do not invent standards.
 8. Include `done_when` and `routing.suggested_branch` in the plan. Mention `/handoff` if the session may pause.
-9. Return a concrete plan. Do not edit product code while this agent is active. If the plan will be saved for later or executed by another model or agent, follow `.github/skills/planning/SKILL.md` and write it to `plans/` from `templates/plan.md`.
+9. Return a concrete plan. Do not edit product code while this agent is active. If the plan will be saved for later or executed by another model or agent, follow `.github/skills/planning/SKILL.md` and write it to `plans/` from `templates/plan.md`. If the ticket is missing acceptance criteria or unlabeled Figma frames, point at `/prepare-jira` and `templates/jira-ticket.md` instead of inventing sections.
 
 Never print `JIRA_API_TOKEN` or `.env` contents.

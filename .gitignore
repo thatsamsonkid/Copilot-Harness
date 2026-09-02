@@ -17,6 +17,8 @@ handoffs/*.md
 !handoffs/.gitkeep
 plans/*.md
 !plans/.gitkeep
+jira-tickets/*.md
+!jira-tickets/.gitkeep
 
 # Generated VS Code workspaces from catalog/stack.yaml (local only)
 workspaces/*.code-workspace

@@ -61,7 +61,7 @@ Then:
 5. Generate local workspaces: `goat workspace generate` (gitignored `.code-workspace` files from `catalog/stack.yaml`)
 6. Open a catalog starter (`goat workspace open frontend`) or create your own:
    `goat workspace create` (or `/new-workspace` in chat). That adds an id to `catalog/stack.yaml` and generates a local `.code-workspace` file.
-7. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
+7. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/prepare-jira`, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
 
 `setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, install this package in editable mode, and register a `goat` shim on PATH (`~/.local/bin`). Prefer `uv` over pip. Do not `pip install` this repo. After `cd` into a sibling clone, bare `uv run goat` cannot spawn — use the global shim, `--project`, or the wrapper script:
 
@@ -263,7 +263,7 @@ Install bru when you want to execute (`npm install -g @usebruno/cli`). Discovery
 
 The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 
-`prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, print the `code` command that opens the matching workspace, and attach `done_when` (ticket acceptance criteria + each repo's verify commands + goat invariants).
+`prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, print the `code` command that opens the matching workspace, and attach `done_when` (ticket acceptance criteria + each repo's verify commands + goat invariants). Draft a new ticket with **`/prepare-jira`** — dump notes, get a formatted file under `jira-tickets/` (gitignored) from [`templates/jira-ticket.md`](templates/jira-ticket.md). Acceptance checkboxes parse into `done_when`; each Figma frame is labeled by role (`default`, `success`, `error`, …) because `figma images` returns `{id, url}` only. Paste the draft into Jira yourself; the CLI cannot create the issue.
 
 `status`, `context`, `start`, `doctor`, and `branch` follow the open feature workspace. Generated `.code-workspace` files set `GOAT_WORKSPACE` so those commands stay on `workspace.repos` instead of every clone under `parent_dir`. `goat workspace current` reports the window. Pass `--workspace <id>` to pin one, or `--all` only when you want the full catalog.
 
@@ -292,6 +292,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
 | `.github/skills/workspace-start/SKILL.md` | Local stack plan + sequential start (`/start-workspace`) |
 | `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
+| `.github/skills/prepare-jira/SKILL.md` | Draft a ticket from notes into `jira-tickets/` (`/prepare-jira`) |
 | `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images / comments / nodes CLI contract (`/figma-frame`) |
 | `.github/skills/bruno-cli/SKILL.md` | On-demand Bruno collections / workflows / bru wrap (`/bruno`) |
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
@@ -300,6 +301,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `AGENTS.md` | Same rules for other agents |
 | `docs/cli.md` | Human cheat sheet of every `goat` command (`goat commands`) |
 | `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
+| `.github/prompts/prepare-jira.prompt.md` | `/prepare-jira` |
 | `.github/prompts/figma-frame.prompt.md` | `/figma-frame` |
 | `.github/prompts/bruno.prompt.md` | `/bruno` |
 | `.github/prompts/new-workspace.prompt.md` | `/new-workspace` |
@@ -329,7 +331,7 @@ Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `doc
 Typical loop:
 
 1. New machine: `/get-started` (or `uv run goat init --interactive` in a terminal)
-2. You paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli` — or ask `jira mine` for assigned work
+2. Draft a ticket with `/prepare-jira` (writes `jira-tickets/`, paste into Jira), or paste `PROJ-123` into chat, Jira Planner, `/jira-ticket`, or `/jira-cli` — or ask `jira mine` for assigned work
 3. Copilot runs `goat prepare PROJ-123` and `goat status`
 4. You open the recommended `.code-workspace` so every needed repo is a root
 5. To run the local apps: `/start-workspace` (or `uv run goat start --workspace <id>`). Save the sequence once with `--save` so later chats reuse `workspaces/<id>.start.yml`.

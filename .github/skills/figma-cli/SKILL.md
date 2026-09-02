@@ -45,6 +45,20 @@ Accept a Figma URL (`/design/`, `/file/`, `/proto/`) or a bare file key. The CLI
 
 Always start with `figma images`. Add `figma comments` when designer notes would help. Use `figma nodes` only for a **small targeted frame** (a button, input, chip, or similarly specific node). Do not run it on a page, a whole file, or a large artboard — the raw tree will overwhelm Copilot context. If the user pasted a large frame, ask them for a tighter node link instead.
 
+## Multi-frame designs
+
+`figma images` returns `{id, url}` only. It does **not** return frame names. A page link with several states is not enough context.
+
+When the ticket (or the user) lists more than one frame:
+
+1. Read the **role** they assigned each node (`default`, `loading`, `success`, `error`, `empty`, …). That label is the meaning of the PNG. Do not infer a state from pixels alone if a role was given.
+2. Open each `images[].url` in Simple Browser and summarize it **as that role**.
+3. Prefer frame URLs (`?node-id=`) over a page. Cap at `figma.max_ids` (12).
+4. If roles are missing, ask for them (or point at `templates/jira-ticket.md` → **Figma frames**) instead of guessing success vs error.
+5. A Figma comment on the node that restates the role is supporting context, not a substitute for the table.
+
+The ticket contract is one **Role** / **Frame** / **Context** block per state (see the filled example in `templates/jira-ticket.md`). Name frames in Figma the same way (`Checkout / Success`) so designers stay aligned; the CLI still will not echo those names.
+
 Prefer these commands over assembling a Figma REST call yourself.
 
 ## `figma images` JSON

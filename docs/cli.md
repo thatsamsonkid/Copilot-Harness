@@ -73,7 +73,7 @@ There is no Jira MCP server. Never read `.env` or paste a token into chat.
 | `goat jira login` | Store the API token in the OS keychain |
 | `goat jira logout` | Remove the API token from the OS keychain |
 
-Prefer `prepare` over assembling get + match + clone yourself. See `.github/skills/jira-cli/SKILL.md`.
+Prefer `prepare` over assembling get + match + clone yourself. See `.github/skills/jira-cli/SKILL.md`. Draft a new ticket from notes with `/prepare-jira` (writes `jira-tickets/`, gitignored) from `templates/jira-ticket.md` so `## Acceptance Criteria` parses into `done_when` and each Figma frame is labeled by role (the Images API returns ids and URLs only). The CLI cannot create or update the issue.
 
 ## Figma
 
@@ -89,7 +89,7 @@ There is no Figma MCP server. Open each `images[].url` in VS Code Simple Browser
 | `goat figma login` | Store the personal access token in the OS keychain |
 | `goat figma logout` | Remove the token from the OS keychain |
 
-`FILE` can be a `https://www.figma.com/design/…` URL or a file key. See `.github/skills/figma-cli/SKILL.md`.
+`FILE` can be a `https://www.figma.com/design/…` URL or a file key. See `.github/skills/figma-cli/SKILL.md`. For several states (success, error, empty), label each frame URL by role in `templates/jira-ticket.md` — `figma images` returns `{id, url}` only.
 
 ## Bruno (API collections)
 
