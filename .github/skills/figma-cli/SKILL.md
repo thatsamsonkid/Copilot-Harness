@@ -57,7 +57,7 @@ When the ticket (or the user) lists more than one frame:
 4. If roles are missing, ask for them (or point at `templates/jira-ticket.md` → **Figma frames**) instead of guessing success vs error.
 5. A Figma comment on the node that restates the role is supporting context, not a substitute for the table.
 
-The ticket table is the contract: role + frame URL + when that state is shown. Name frames in Figma the same way (`Checkout / Success`) so designers stay aligned; the CLI still will not echo those names.
+The ticket contract is one **Role** / **Frame** / **Context** block per state (see the filled example in `templates/jira-ticket.md`). Name frames in Figma the same way (`Checkout / Success`) so designers stay aligned; the CLI still will not echo those names.
 
 Prefer these commands over assembling a Figma REST call yourself.
 

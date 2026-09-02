@@ -67,18 +67,36 @@ Product / human checks only. Do not paste `pnpm test` — `prepare` already appe
 
 ### Figma frames
 
-`goat figma images` returns `{id, url}` only — **no frame names**. Label every linked node with the **role** it represents. Link the frame (`?node-id=`), not the page. One row per state. Stay under `figma.max_ids` (12).
+`goat figma images` returns `{id, url}` only — **no frame names**. Label every linked node with **Role**, **Frame**, and **Context**. Link the frame (`?node-id=`), not the page. One block per state. Stay under `figma.max_ids` (12).
 
-Name the frames in Figma the same way (`Checkout / Default`, `Checkout / Success`) so designers and the table stay aligned. A pinned Figma comment on the frame that restates the role is optional extra context.
+Name the frames in Figma the same way (`Checkout / Success`) so designers stay aligned. A pinned Figma comment that restates the role is optional. Frames may live in different files; still give each one its own block.
 
-| Role | Frame | When |
-| --- | --- | --- |
-| default | https://www.figma.com/design/FILE/Name?node-id=12-34 | Empty cart, first visit |
-| loading | https://www.figma.com/design/FILE/Name?node-id=12-56 | Pay clicked, request in flight |
-| success | https://www.figma.com/design/FILE/Name?node-id=12-78 | Payment accepted |
-| error / declined | https://www.figma.com/design/FILE/Name?node-id=12-90 | Card declined; pay stays enabled |
-| empty | https://www.figma.com/design/FILE/Name?node-id=12-12 | No items in cart |
+Blank shape (copy, then fill):
 
-Roles that usually need their own frame: default, loading, success, error, empty, disabled, dark / compact if those are designed.
+- **Role:** default | loading | success | error | empty | …
+  **Frame:** https://www.figma.com/design/FILE/Name?node-id=12-34
+  **Context:** When this state is shown, and what in the image must be true (copy, enabled/disabled, what replaced what).
+
+Example with several frames (two files):
+
+- **Role:** default
+  **Frame:** https://www.figma.com/design/AbCdEfGh/Checkout?node-id=12-34
+  **Context:** Guest checkout, first visit. Promo field empty. Pay is enabled. No banner. This is the screen before submit.
+
+- **Role:** loading
+  **Frame:** https://www.figma.com/design/AbCdEfGh/Checkout?node-id=12-56
+  **Context:** User tapped Pay. Same form, fields still filled. Button shows a spinner and is disabled. Do not navigate away.
+
+- **Role:** success
+  **Frame:** https://www.figma.com/design/AbCdEfGh/Checkout?node-id=12-78
+  **Context:** Payment accepted. Pay form is gone. Confirmation shows order number, email, and "Continue shopping". Not a toast on the pay form.
+
+- **Role:** error / declined
+  **Frame:** https://www.figma.com/design/XyZ999aa/Checkout-errors?node-id=4-12
+  **Context:** Different file (error explorations). Card declined. Inline error under the card number: "Card declined. Try another card." Pay stays enabled. Totals unchanged.
+
+- **Role:** empty
+  **Frame:** https://www.figma.com/design/AbCdEfGh/Checkout?node-id=12-12
+  **Context:** No line items. Hide the pay form. Show "Your cart is empty" and a catalog CTA.
 
 Do not dump a whole page or file. Do not run `figma nodes` on a page — only on a small targeted control (a button, input, chip).

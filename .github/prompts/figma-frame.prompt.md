@@ -16,6 +16,6 @@ The user will provide a Figma file/design/proto URL or a file key as `${input:fi
 8. If `missing` is set, say which nodes failed.
 9. If they want implementation next, write a short plan and stop unless they ask to implement.
 
-If they passed several frames (or a ticket **Figma frames** table), treat each row's **role** (`default`, `success`, `error`, …) as the meaning of that PNG. `figma images` does not return frame names. Ask for missing roles instead of guessing. See `templates/jira-ticket.md`.
+If they passed several frames (or a ticket **Figma frames** list), treat each block's **Role** / **Frame** / **Context** as the meaning of that PNG. `figma images` does not return frame names. Ask for missing roles instead of guessing. See `templates/jira-ticket.md`.
 
 Do not download the PNG into a product repo unless they asked. Do not reconstruct the design from JSON. The rendered image is the visual source of truth.

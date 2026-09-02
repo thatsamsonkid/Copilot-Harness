@@ -24,6 +24,13 @@ def test_jira_ticket_template_has_required_sections():
     assert "goat prepare" in text
     assert "{id, url}" in text
     assert "do not list clone folder names" in text.lower() or "Not repo folder names" in text
+    assert "**Role:**" in text
+    assert "**Frame:**" in text
+    assert "**Context:**" in text
+    for role in ("default", "loading", "success", "error / declined", "empty"):
+        assert f"**Role:** {role}" in text
+    assert text.count("**Frame:** https://www.figma.com/design/") >= 5
+    assert "Checkout-errors" in text
 
 
 def test_acceptance_heading_is_parsed_into_done_when():
