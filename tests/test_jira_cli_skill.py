@@ -48,6 +48,8 @@ def test_skill_body_is_the_cli_contract():
         "goat context",
         "routing.open_command",
         "templates/jira-ticket.md",
+        "/prepare-jira",
+        "jira-tickets/",
         "jira.fields",
         "do not pass `--clone-missing`",
         "failed to spawn",

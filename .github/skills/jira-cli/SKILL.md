@@ -47,7 +47,7 @@ Accept `PROJ-123` or a browse URL. The CLI extracts the key.
 
 Prefer `prepare` over assembling get + match + clone yourself.
 
-New or thin tickets: authors should start from `templates/jira-ticket.md`. That file is the description shape `prepare` and the planner consume (`## Acceptance Criteria` checkboxes become `done_when`; Figma frames are labeled by role because `figma images` returns ids and URLs only). Do not invent a different heading set.
+New or thin tickets: run `/prepare-jira` (prepare-jira skill) so the user can dump notes and get a formatted draft under `jira-tickets/`. The description shape is `templates/jira-ticket.md` (`## Acceptance Criteria` checkboxes become `done_when`; Figma frames are labeled by role because `figma images` returns ids and URLs only). Do not invent a different heading set. Do not write the issue through the CLI.
 
 Do not pass `--clone-missing` unless the user asked to clone. If `routing.missing_repos` is set, show `routing.clone_command` and let them confirm. Never `git clone` into the goat folder.
 
@@ -95,6 +95,7 @@ This skill is the CLI contract, not an implementer.
 - First-run setup: get-started skill or `/get-started`
 - Vague / large-repo orientation: workspace-context skill or `/orient`
 - Local stack start: workspace-start skill or `/start-workspace`
+- Draft a ticket from notes: prepare-jira skill or `/prepare-jira`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
 - Write a plan to a file for another model: planning skill or `/goat-plan`
 - Figma frames: figma-cli skill or `/figma-frame`

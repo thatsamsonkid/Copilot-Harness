@@ -73,7 +73,7 @@ There is no Jira MCP server. Never read `.env` or paste a token into chat.
 | `goat jira login` | Store the API token in the OS keychain |
 | `goat jira logout` | Remove the API token from the OS keychain |
 
-Prefer `prepare` over assembling get + match + clone yourself. See `.github/skills/jira-cli/SKILL.md`. Write new tickets from `templates/jira-ticket.md` so `## Acceptance Criteria` parses into `done_when` and each Figma frame is labeled by role (the Images API returns ids and URLs only).
+Prefer `prepare` over assembling get + match + clone yourself. See `.github/skills/jira-cli/SKILL.md`. Draft a new ticket from notes with `/prepare-jira` (writes `jira-tickets/`, gitignored) from `templates/jira-ticket.md` so `## Acceptance Criteria` parses into `done_when` and each Figma frame is labeled by role (the Images API returns ids and URLs only). The CLI cannot create or update the issue.
 
 ## Figma
 

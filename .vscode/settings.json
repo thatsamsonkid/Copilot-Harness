@@ -8,6 +8,7 @@
     "get-started": "First time here? Set up Jira email and API token.",
     "orient": "Vague task? Map Graphify and repo instructions first.",
     "jira-ticket": "Plan work from a Jira key.",
+    "prepare-jira": "Draft a Jira ticket from notes for copy-paste.",
     "figma-frame": "Look at a Figma frame from its image URL.",
     "bruno": "Discover Bruno API collections or run a request.",
     "handoff": "Pause or resume this chat from a session note.",

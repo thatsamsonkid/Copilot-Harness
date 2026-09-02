@@ -19,6 +19,8 @@ When the user gives a Jira key or browse URL, load the **jira-cli** skill (`.git
 4. If `routing.missing_repos` is non-empty, recommend `routing.clone_command`. Never `git clone` into this goat folder.
 5. Write a plan covering impacted repos, likely files, risks, and tests. Do not implement until the user asks. If the plan should be saved for later or handed to another model, load `.github/skills/planning/SKILL.md` and write it to `plans/` (gitignored) from `templates/plan.md` — detailed enough for a zero-context executor.
 
+When the user wants to **write or draft** a Jira ticket from notes (or runs `/prepare-jira`), load `.github/skills/prepare-jira/SKILL.md`. Format from `templates/jira-ticket.md`, write `jira-tickets/<YYYY-MM-DD>-<slug>.md` (gitignored), and print copy-paste blocks. Do not create the issue in Jira — the CLI is read-only.
+
 When the user gives a Figma file/design/proto URL or asks to look at a frame, load the **figma-cli** skill (`.github/skills/figma-cli/SKILL.md`) and follow it.
 
 1. Run `uv run goat figma images <URL> --format json` from this repo. If cwd is a sibling clone, use `uv run --project "$GOAT_ROOT" goat figma images <URL> --format json`.

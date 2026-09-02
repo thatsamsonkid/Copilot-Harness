@@ -21,4 +21,4 @@ The user will provide a Jira issue key or browse URL as `${input:issue:Jira issu
    - Test plan
 8. Stop after the plan unless the user asks to implement.
 
-Do not clone into this goat directory. Do not invent Jira fields that were not returned. If the description is thin, point the author at `templates/jira-ticket.md` rather than inventing sections.
+Do not clone into this goat directory. Do not invent Jira fields that were not returned. If the description is thin, tell them to run `/prepare-jira` (or point at `templates/jira-ticket.md`) rather than inventing sections.

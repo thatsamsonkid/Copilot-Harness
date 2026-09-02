@@ -1,5 +1,7 @@
 # Jira ticket (LLM planning)
 
+To draft one from dumped notes, run `/prepare-jira`. That prompt walks the gaps and writes `jira-tickets/<date>-<slug>.md` (gitignored) for copy-paste. The CLI cannot create the issue.
+
 Copy the **Description** body into the Jira issue. Keep the headings.
 `goat prepare` parses `## Acceptance Criteria` (also `Definition of Done`, `Done when`, or `AC`) into `done_when`. Use `- [ ]` **only** under that heading — Goat lifts every checkbox in the description into the stop list. Keep that section as checkboxes only: one observable fact each, no "as discussed", no "etc.", no leftover prose.
 
