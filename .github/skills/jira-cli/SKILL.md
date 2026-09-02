@@ -47,6 +47,8 @@ Accept `PROJ-123` or a browse URL. The CLI extracts the key.
 
 Prefer `prepare` over assembling get + match + clone yourself.
 
+New or thin tickets: authors should start from `templates/jira-ticket.md`. That file is the description shape `prepare` and the planner consume (`## Acceptance Criteria` checkboxes become `done_when`; Figma frames are labeled by role because `figma images` returns ids and URLs only). Do not invent a different heading set.
+
 Do not pass `--clone-missing` unless the user asked to clone. If `routing.missing_repos` is set, show `routing.clone_command` and let them confirm. Never `git clone` into the goat folder.
 
 ## `prepare` JSON

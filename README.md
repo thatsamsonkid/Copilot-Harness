@@ -263,7 +263,7 @@ Install bru when you want to execute (`npm install -g @usebruno/cli`). Discovery
 
 The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads it in-process for Basic auth. Copilot instructions forbid reading `.env`, curling Atlassian, or using a Jira MCP server.
 
-`prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, print the `code` command that opens the matching workspace, and attach `done_when` (ticket acceptance criteria + each repo's verify commands + goat invariants).
+`prepare` is the Copilot entry point: fetch the filtered issue, score feature workspaces, list required sibling repos, print the `code` command that opens the matching workspace, and attach `done_when` (ticket acceptance criteria + each repo's verify commands + goat invariants). Write tickets from [`templates/jira-ticket.md`](templates/jira-ticket.md) so acceptance checkboxes parse cleanly and each Figma frame is labeled by role (`default`, `success`, `error`, …) — `figma images` returns `{id, url}` only, not frame names.
 
 `status`, `context`, `start`, `doctor`, and `branch` follow the open feature workspace. Generated `.code-workspace` files set `GOAT_WORKSPACE` so those commands stay on `workspace.repos` instead of every clone under `parent_dir`. `goat workspace current` reports the window. Pass `--workspace <id>` to pin one, or `--all` only when you want the full catalog.
 

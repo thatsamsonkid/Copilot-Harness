@@ -20,7 +20,7 @@ Plans live in this goat (`plans/`), not in product repos. They are gitignored. A
 
 ## Gather context before writing
 
-1. If a Jira key is in play, run `uv run goat prepare <KEY> --format json` (jira-cli skill) and plan against `routing.repos`. Copy `done_when` into the plan verbatim.
+1. If a Jira key is in play, run `uv run goat prepare <KEY> --format json` (jira-cli skill) and plan against `routing.repos`. Copy `done_when` into the plan verbatim. Tickets written from `templates/jira-ticket.md` already have the headings this flow expects.
 2. Run `uv run goat context --format json` (workspace-context skill). Read each repo's Graphify `GRAPH_REPORT.md` and `instructions` files before naming file paths or conventions.
 3. Verify every file path you name actually exists (or mark it explicitly as "new file"). A wrong path derails a small executor completely.
 4. Record branch names from `uv run goat branch <KEY>` (or the `routing.suggested_branch`).

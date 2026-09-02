@@ -49,5 +49,7 @@ def test_skill_body_is_the_cli_contract():
         "visual source of truth",
         "targeted frame",
         "raw",
+        "role",
+        "templates/jira-ticket.md",
     ):
         assert token in lowered
