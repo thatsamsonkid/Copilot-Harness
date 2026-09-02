@@ -37,6 +37,7 @@ Run these from the goat repo. After `cd` into a sibling, use `uv run --project "
 The goat does not own product patterns.
 
 - Before editing a sibling, read its `instructions` files (`copilot-instructions.md`, `AGENTS.md`, path-specific `*.instructions.md`, skills).
+- If `language` / `languages[]` is set (typescript, python, java), load that `language_skill` before the first edit. Path-scoped goat rules live in `.github/instructions/<language>.instructions.md`.
 - After edits, run that repo's `tooling.suggested_verify`. If it fails, fix or report. Do not skip it.
 - Do not copy those files into the goat. Do not invent style rules that contradict them.
 - Product knowledge stays in the sibling (`docs/features`, ADRs). If you added user-visible or non-obvious behavior, update or create a note there using `templates/feature-note.md`. Do not start a wiki in the goat.
@@ -49,3 +50,11 @@ The goat does not own product patterns.
 - Do not print `.env` or Jira tokens.
 - If `graphify.stale` is true, say so and offer a *scoped* rebuild only after the user agrees.
 - Do not hand-edit `tooling.generated` paths.
+
+## Related Copilot customizations
+
+- TypeScript siblings: typescript skill or `/typescript`
+- Python (goat or sibling): python skill or `/python`
+- Java / Spring siblings: java skill or `/java`
+- Local stack start: workspace-start skill or `/start-workspace`
+- Sibling / remote agent skills: skills-install skill or `/skills-install`

@@ -31,8 +31,11 @@ def write_goat_config(root: Path, data: dict) -> Path:
                 "description": item.get("description") or "",
                 "tags": item.get("tags") or ["untagged"],
                 "enabled": item.get("enabled", True),
+                "language": item.get("language") or "",
             }
         )
+        if not repositories[-1]["language"]:
+            repositories[-1].pop("language")
         if item.get("graphify") is not None:
             repositories[-1]["graphify"] = item["graphify"]
         if item.get("knowledge") is not None:

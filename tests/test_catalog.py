@@ -209,6 +209,18 @@ def test_loads_bruno_settings_from_stack(tmp_path: Path, sample_catalog_data: di
     assert schema["workflows_file"] == "goat.workflows.yml"
 
 
+def test_parses_optional_repo_language(tmp_path: Path, sample_catalog_data: dict):
+    sample_catalog_data["repos"][0]["language"] = "typescript"
+    sample_catalog_data["repos"][1]["language"] = "java"
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    catalog = load_catalog(root)
+    assert catalog.repo("frontend").language == "typescript"
+    assert catalog.repo("backend").language == "java"
+    payload = catalog_to_dict(catalog, root)
+    assert payload["repos"][0]["language"] == "typescript"
+
+
 def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data: dict):
     sample_catalog_data["repos"][0]["url"] = "git@github.com:YOUR_ORG/frontend.git"
     root = tmp_path / "goat"

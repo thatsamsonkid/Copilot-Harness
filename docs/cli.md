@@ -137,3 +137,5 @@ VS Code Agents does not scan multi-root child skills. Lift copies into this goat
 | `goat skills pull URL` | Clone a skills repo temporarily and install selected ones |
 
 `init`, `prepare`, and `workspace generate` already lift goat + in-scope sibling skills. Do not commit those copies. See `.github/skills/skills-install/SKILL.md`.
+
+Language packs (TypeScript, Python, Java) are first-party skills plus path-scoped `.github/instructions/*.instructions.md`. `goat context` / `prepare` set `language` and `language_skill` from `repositories.yml` `language`, tags, or lockfiles.

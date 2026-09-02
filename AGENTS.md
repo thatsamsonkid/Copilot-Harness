@@ -39,6 +39,8 @@ uv run goat figma images 'https://www.figma.com/design/…' --format json
 
 Open each returned `images[].url` in VS Code Simple Browser. Optionally run `figma comments` for designer notes, or `figma nodes` for a small targeted frame only (raw JSON; a page will overwhelm context). Do not curl Figma or reconstruct the layout from JSON.
 
+When editing TypeScript, Python, or Java, load the matching language skill (`.github/skills/typescript/SKILL.md`, `python`, `java`). `goat context` / `prepare` set `language` and `language_skill` from `repositories.yml` `language`, tags, or lockfiles (`tsconfig.json`, `pyproject.toml`, `pom.xml` / Gradle). Path-scoped rules: `.github/instructions/typescript.instructions.md`, `python.instructions.md`, `java.instructions.md`. Product style in the sibling still wins.
+
 For Bruno API collections (`.bru` files, `bru run`, or a multi-step API workflow), follow `.github/skills/bruno-cli/SKILL.md`:
 
 ```bash

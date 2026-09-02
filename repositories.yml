@@ -4,7 +4,7 @@
 #   <goat-parent>/<path or group/name or name>
 #
 # Required per entry: name, url, tags
-# Optional: path, group, default_branch, description, enabled, graphify, knowledge
+# Optional: path, group, default_branch, description, enabled, graphify, knowledge, language
 # graphify.out defaults to graphify-out inside that clone.
 # knowledge.dirs adds extra note folders when a monorepo does not use docs/features.
 # Do not add start: here. Discover once, then pin the workspace sequence:
@@ -35,16 +35,19 @@ repositories:
     url: git@github.com:YOUR_ORG/frontend.git
     tags: [ui, frontend, web]
     description: Customer-facing web UI
+    language: typescript
 
   - name: backend
     url: git@github.com:YOUR_ORG/backend.git
     tags: [api, backend]
     description: API and domain services
+    language: java
 
   - name: mobile
     url: git@github.com:YOUR_ORG/mobile.git
     tags: [mobile, ios, android]
     description: Mobile client
+    language: typescript
 
   - name: infra
     url: git@github.com:YOUR_ORG/infra.git

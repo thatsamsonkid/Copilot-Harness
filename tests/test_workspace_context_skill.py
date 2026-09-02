@@ -43,5 +43,9 @@ def test_skill_covers_graphify_and_standards():
         "whole monorepo",
         "docs/features",
         "cannot spawn",
+        "language_skill",
+        "/typescript",
+        "/python",
+        "/java",
     ):
         assert token in lowered

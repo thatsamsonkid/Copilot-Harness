@@ -145,3 +145,4 @@ This file is the boot **sequence** (order, command, port, wait, optional `launch
 - Figma frames: figma-cli skill or `/figma-frame`
 - Bruno collections: bruno-cli skill or `/bruno`
 - Sibling / remote agent skills: skills-install skill or `/skills-install`
+- TypeScript / Python / Java: `/typescript`, `/python`, `/java`

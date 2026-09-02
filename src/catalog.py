@@ -145,6 +145,7 @@ class Repo:
     graphify: GraphifyConfig = field(default_factory=GraphifyConfig)
     group: str = ""
     knowledge_dirs: tuple[str, ...] = ()
+    language: str = ""
 
     @property
     def id(self) -> str:
@@ -392,6 +393,7 @@ def _parse_repo(item: Any) -> Repo:
         graphify=_parse_graphify(name, item.get("graphify")),
         group=group,
         knowledge_dirs=_parse_knowledge_dirs(name, item.get("knowledge")),
+        language=str(item.get("language") or ""),
     )
 
 
@@ -767,6 +769,7 @@ def catalog_to_dict(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
                     "enabled": repo.graphify.enabled,
                 },
                 "knowledge_dirs": list(repo.knowledge_dirs),
+                "language": repo.language,
             }
             for repo in catalog.repos
         ],
