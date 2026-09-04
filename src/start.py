@@ -175,7 +175,8 @@ SAVED_PLAN_HEADER = """\
 # Saved start sequence for the {workspace} workspace.
 # Written by: goat start --workspace {workspace} --save
 # Edit this file when the boot order or commands change.
-# goat start prefers this over rediscovery.
+# goat start reuses the pinned order and commands here; it still scans the
+# workspace for repos that are new (unplanned) or removed (stale).
 """
 
 
@@ -497,7 +498,8 @@ def _plan_guidance(payload: dict[str, Any]) -> list[str]:
     if saved:
         lines.append(
             f"Saved the sequence to {saved.get('path')} ({saved.get('action')}). "
-            "Later starts will use this file instead of rediscovering."
+            "Later starts reuse this file's pinned order and commands (goat still "
+            "scans the workspace for new or removed repos)."
         )
     elif workspace and payload.get("plan_source") == "saved":
         lines.append(
@@ -515,7 +517,8 @@ def _plan_guidance(payload: dict[str, Any]) -> list[str]:
             "This workspace has no saved start sequence yet. When the order "
             f"looks right, run `goat start --save` "
             f"(or `--workspace {workspace} --save`) "
-            "to write workspaces/<id>.start.yml and skip rediscovery next time."
+            "to write workspaces/<id>.start.yml and pin the order and commands "
+            "for next time."
         )
     unplanned = payload.get("unplanned") or []
     if unplanned:
@@ -1418,7 +1421,8 @@ def _assemble_exec_command(
         suffix = args_out if redact else shlex.quote(args_str)
         return f"{command} --args={suffix}"
     if args_str:
-        return f"{command} {args_out}".strip()
+        rendered = REDACTED_ARG if redact else _quote_cli_args(args)
+        return f"{command} {rendered}".strip()
     return command
 
 
@@ -1443,3 +1447,21 @@ def _join_cli_args(value: Any) -> str:
     if isinstance(value, list):
         return " ".join(str(part) for part in value if part is not None and part != "")
     return str(value)
+
+
+def _cli_arg_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(part) for part in value if part is not None and part != ""]
+    text = str(value).strip()
+    if not text:
+        return []
+    return shlex.split(text)
+
+
+def _quote_cli_args(value: Any) -> str:
+    """Shell-quote each launch arg. The generic exec path runs through a shell,
+    so unquoted tokens with spaces or metacharacters would split or execute.
+    """
+    return " ".join(shlex.quote(part) for part in _cli_arg_list(value))

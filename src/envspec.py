@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from goat import GoatError
-from goat.envfile import env_file_keys, upsert_env_file
+from goat.envfile import blank_env_keys, env_file_keys, upsert_env_file
 from goat.keychain import (
     SOURCE_ENV,
     SOURCE_KEYCHAIN,
@@ -411,13 +411,10 @@ def _prompt_value(
 
 def _clear_env_names(env_path: Path, names: Iterable[str]) -> bool:
     name_list = list(names)
-    had_env = any((os.environ.get(name) or "").strip() for name in name_list)
     for name in name_list:
         os.environ.pop(name, None)
-    if env_path.exists():
-        upsert_env_file(env_path, {name_list[0]: ""})
-        return True
-    return had_env
+    blanked = blank_env_keys(env_path, name_list)
+    return bool(blanked)
 
 
 def _parse_var(item: Any, source: Path) -> EnvVar:

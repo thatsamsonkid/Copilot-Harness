@@ -32,6 +32,18 @@ def test_format_workspace_yaml_matches_catalog_style():
     assert parsed["workspaces"][0]["id"] == "checkout"
 
 
+def test_flow_list_values_with_commas_round_trip():
+    workspace = _workspace(
+        match=WorkspaceMatch(keywords=["react native, expo", "plain"])
+    )
+    text = format_workspace_yaml(workspace)
+    parsed = yaml.safe_load("workspaces:\n" + text)
+    assert parsed["workspaces"][0]["match"]["keywords"] == [
+        "react native, expo",
+        "plain",
+    ]
+
+
 def test_append_to_handwritten_stack():
     original = (
         "# keep me\n"

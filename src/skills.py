@@ -9,6 +9,7 @@ workspace folder so the Agents window can load them.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import tempfile
@@ -843,6 +844,11 @@ def _copy_ignore(directory: str, names: list[str]) -> set[str]:
         for name in names
         if name in SKIP_DIR_NAMES or name in {SOURCE_MARKER, LEGACY_SOURCE_MARKER}
     }
+    # Never dereference symlinks: a pulled skills repo could otherwise point a
+    # link at host files (e.g. /etc/passwd) and pull their contents in.
+    for name in names:
+        if os.path.islink(os.path.join(directory, name)):
+            ignored.add(name)
     return ignored
 
 
