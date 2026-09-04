@@ -19,6 +19,7 @@ from goat.catalog import catalog_to_dict, load_catalog
 from goat.clone import clone_repos
 from goat.commands import command_reference
 from goat.context import collect_context
+from goat.glossary import add_term, collect_glossary
 from goat.doctor import run_doctor
 from goat.envspec import find_var, list_env, set_env_value, unset_env_value
 from goat.figma_client import FigmaClient, figma_token_from_env, figma_var
@@ -95,7 +96,8 @@ def build_parser() -> argparse.ArgumentParser:
             "Clone product git repos under parent_dir, bootstrap projects from "
             "listed templates, query Jira Cloud with basic auth, export Figma "
             "frame images, discover Bruno API collections and wrap bru, inspect "
-            "clone git status, create or select a feature VS Code workspace, "
+            "clone git status, look up workplace terms and acronyms, "
+            "create or select a feature VS Code workspace, "
             "and lift agent skills into the root workspace for the VS Code "
             "Agents window."
         ),
@@ -613,6 +615,86 @@ def build_parser() -> argparse.ArgumentParser:
     graph_path.add_argument("target")
     graph_path.add_argument("--file", dest="graph_file")
 
+    glossary = sub.add_parser(
+        "glossary",
+        parents=[shared],
+        help="Workplace terms and acronyms so Copilot uses the team's language",
+    )
+    glossary_sub = glossary.add_subparsers(dest="glossary_command", required=True)
+    glossary_list = glossary_sub.add_parser(
+        "list",
+        parents=[shared],
+        help="List workplace terms from the team catalog, personal overlay, and sibling glossaries",
+    )
+    _add_scope_flags(glossary_list)
+    glossary_list.add_argument("--repo", help="Comma-separated repository names")
+    glossary_list.add_argument(
+        "--kind",
+        choices=("acronym", "term"),
+        help="Only acronyms or only longer terms",
+    )
+    _add_glossary_visibility_flag(glossary_list)
+    glossary_get = glossary_sub.add_parser(
+        "get",
+        parents=[shared],
+        help="Look up one term or alias (suggestions if unmatched)",
+    )
+    glossary_get.add_argument("term", help="Term or acronym to look up")
+    _add_scope_flags(glossary_get)
+    glossary_get.add_argument("--repo", help="Comma-separated repository names")
+    _add_glossary_visibility_flag(glossary_get)
+    glossary_search = glossary_sub.add_parser(
+        "search",
+        parents=[shared],
+        help="Search term names, aliases, and meanings",
+    )
+    glossary_search.add_argument("query", help="Substring to match")
+    _add_scope_flags(glossary_search)
+    glossary_search.add_argument("--repo", help="Comma-separated repository names")
+    _add_glossary_visibility_flag(glossary_search)
+    glossary_add = glossary_sub.add_parser(
+        "add",
+        parents=[shared],
+        help="Add or replace a public (committed) or private (gitignored) term",
+    )
+    glossary_add.add_argument("term", help="Word or acronym to define")
+    glossary_add.add_argument(
+        "--meaning",
+        help="One or two sentences. Required in chat; a local TTY can prompt",
+    )
+    glossary_add.add_argument(
+        "--also",
+        help="Comma-separated aliases (SOW, Statement of Work)",
+    )
+    glossary_add.add_argument(
+        "--kind",
+        choices=("acronym", "term"),
+        help="Defaults to acronym when the term is ALL CAPS",
+    )
+    glossary_add.add_argument(
+        "--see",
+        help="Comma-separated related terms already in the glossary",
+    )
+    glossary_add.add_argument(
+        "--visibility",
+        choices=("public", "private"),
+        help=(
+            "public writes catalog/glossary.yml (committed). "
+            "private writes catalog/glossary.local.yml (gitignored). "
+            "Required in chat; a local TTY can prompt"
+        ),
+    )
+    glossary_add.add_argument(
+        "--repo",
+        help="Write a public product glossary in that sibling's docs/glossary.yml",
+    )
+    glossary_add.add_argument(
+        "--replace",
+        action="store_true",
+        help="Update an existing term or alias in the same file",
+    )
+    glossary_add.add_argument("--dry-run", action="store_true")
+
     context = sub.add_parser(
         "context",
         parents=[shared],
@@ -957,6 +1039,8 @@ def dispatch(args: argparse.Namespace) -> Any:
             interactive=args.interactive,
             ping_jira=args.ping_jira,
         )
+    if args.command == "glossary":
+        return _dispatch_glossary(args, catalog, goat_root)
     if args.command == "context":
         return collect_context(
             catalog,
@@ -1309,6 +1393,40 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, goat_root: Path)
     raise GoatError(f"Unknown workspace command: {args.workspace_command}")
 
 
+def _dispatch_glossary(args: argparse.Namespace, catalog: Any, goat_root: Path) -> Any:
+    if args.glossary_command == "add":
+        if getattr(args, "all_repos", False) or getattr(args, "workspace", None):
+            raise GoatError("goat glossary add writes one file; do not pass --workspace or --all")
+        repos = _split_ids(getattr(args, "repo", None)) or []
+        if len(repos) > 1:
+            raise GoatError("goat glossary add accepts at most one --repo")
+        return add_term(
+            catalog,
+            goat_root,
+            args.term,
+            meaning=args.meaning,
+            also=_split_ids(args.also) or [],
+            kind=args.kind,
+            see=_split_ids(args.see) or [],
+            repo=repos[0] if repos else None,
+            visibility=getattr(args, "visibility", None),
+            replace=bool(args.replace),
+            dry_run=bool(args.dry_run),
+            prompt=PromptSession(),
+        )
+    return collect_glossary(
+        catalog,
+        goat_root,
+        query=getattr(args, "term", None) or getattr(args, "query", None),
+        action=args.glossary_command,
+        kind=getattr(args, "kind", None),
+        visibility=getattr(args, "visibility", None),
+        only=_split_ids(getattr(args, "repo", None)),
+        workspace_id=getattr(args, "workspace", None),
+        all_repos=bool(getattr(args, "all_repos", False)),
+    )
+
+
 def _dispatch_handoff(args: argparse.Namespace, catalog: Any, goat_root: Path) -> Any:
     if args.handoff_command == "list":
         return {"handoffs": list_handoffs(goat_root)}
@@ -1477,6 +1595,14 @@ def _add_skills_dest_flag(parser: argparse.ArgumentParser) -> None:
             "Copy into parent_dir/.github/skills instead of this Goat repo "
             "(for a single-folder window on the sibling root)"
         ),
+    )
+
+
+def _add_glossary_visibility_flag(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--visibility",
+        choices=("public", "private"),
+        help="Only public (committed) or private (personal, gitignored) terms",
     )
 
 

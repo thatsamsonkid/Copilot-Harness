@@ -7,6 +7,7 @@
   "chat.promptFilesRecommendations": {
     "get-started": "First time here? Set up Jira email and API token.",
     "orient": "Vague task? Map Graphify and repo instructions first.",
+    "glossary": "Unknown jargon? Look up or add a workplace term.",
     "jira-ticket": "Plan work from a Jira key.",
     "prepare-jira": "Draft a Jira ticket from notes for copy-paste.",
     "figma-frame": "Look at a Figma frame from its image URL.",

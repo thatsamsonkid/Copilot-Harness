@@ -114,6 +114,10 @@ These follow the open feature workspace (`GOAT_WORKSPACE`). Pass `--workspace <i
 | Command | What it does |
 | --- | --- |
 | `goat context` | Graphify graphs, instruction files, feature notes, verify commands |
+| `goat glossary list` | Workplace terms (team catalog + personal overlay + sibling `docs/glossary.yml`) |
+| `goat glossary get TERM` | Look up one term or alias (suggestions if unmatched) |
+| `goat glossary search QUERY` | Search names, aliases, and meanings |
+| `goat glossary add TERM` | Add a public or private definition (`--meaning` and `--visibility` required in chat) |
 | `goat graph build` | Canonical workspace graph (APIs, events, ADRs, evidence) |
 | `goat status` | Read-only git snapshot (branch, dirty, ahead/behind) |
 | `goat branch ISSUE` | Suggest the same Jira-key branch in matched clones (`--create` on a clean tree) |
@@ -123,6 +127,8 @@ These follow the open feature workspace (`GOAT_WORKSPACE`). Pass `--workspace <i
 | `goat start` | Print a start plan (does not launch) |
 | `goat start run` | Start one repo with launch.json env loaded in-process (`--repo` required) |
 | `goat start env` | List or apply one repo's launch env (`--shell` execs a terminal) |
+
+Workplace language is `goat glossary` (see `.github/skills/glossary/SKILL.md`). Public org terms live in `catalog/glossary.yml` (committed). Personal nicknames live in `catalog/glossary.local.yml` (gitignored). Product-only acronyms can live in a sibling `docs/glossary.yml`. Always say `--visibility public` or `private` when adding. This is a dictionary, not a feature wiki — see [knowledge.md](knowledge.md).
 
 Pin a good start sequence with `goat start --save`. See `.github/skills/workspace-start/SKILL.md`.
 
