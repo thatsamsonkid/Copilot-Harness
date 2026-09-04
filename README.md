@@ -61,7 +61,7 @@ Then:
 5. Generate local workspaces: `goat workspace generate` (gitignored `.code-workspace` files from `catalog/stack.yaml`)
 6. Open a catalog starter (`goat workspace open frontend`) or create your own:
    `goat workspace create` (or `/new-workspace` in chat). That adds an id to `catalog/stack.yaml` and generates a local `.code-workspace` file.
-7. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/prepare-jira`, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
+7. In Copilot Chat, run **`/get-started`**, then **Jira Planner**, `/prepare-jira`, `/jira-ticket PROJ-123`, `/figma-frame`, `/bruno`, `/orient`, `/glossary`, `/jira-cli`, `/skills-install`, or `/bootstrap-project`
 
 `setup.sh` / `setup.ps1` install [uv](https://docs.astral.sh/uv/) if needed, sync `uv.lock` into `.venv`, install this package in editable mode, and register a `goat` shim on PATH (`~/.local/bin`). Prefer `uv` over pip. Do not `pip install` this repo. After `cd` into a sibling clone, bare `uv run goat` cannot spawn — use the global shim, `--project`, or the wrapper script:
 
@@ -297,6 +297,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images / comments / nodes CLI contract (`/figma-frame`) |
 | `.github/skills/bruno-cli/SKILL.md` | On-demand Bruno collections / workflows / bru wrap (`/bruno`) |
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
+| `.github/skills/glossary/SKILL.md` | Workplace terms and acronyms (`/glossary`) |
 | `.github/skills/skills-install/SKILL.md` | Lift sibling or remote skills into this Yard Goat repo for VS Code Agents (`/skills-install`) |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
@@ -314,6 +315,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 | `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
 | `.github/prompts/handoff.prompt.md` | `/handoff` |
+| `.github/prompts/glossary.prompt.md` | `/glossary` |
 | `.github/prompts/review.prompt.md` | `/review` |
 | `.github/prompts/skills-install.prompt.md` | `/skills-install` |
 
@@ -327,7 +329,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/start-workspace` is for booting the local apps in the open feature workspace. It runs `goat start`, prefers a saved `workspaces/<id>.start.yml` when present, then starts one process at a time in **one VS Code terminal per app** (reuse that app’s terminal if it is already running) so Angular proxies can point at live backend ports. Apps with launch.json env/args are started through `goat start run` or Run Without Debugging so Copilot never sees those values. Use `goat start env --repo <name>` to inspect keys/collisions, or `--shell` to apply them in a terminal without starting the app.
 
-Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `docs/adr/`). The goat only discovers them. Convention: [docs/knowledge.md](docs/knowledge.md). More ideas: [docs/ideas.md](docs/ideas.md).
+Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `docs/adr/`). The goat only discovers them. Workplace words and acronyms are the exception: `catalog/glossary.yml` plus `goat glossary` / `/glossary`. Convention: [docs/knowledge.md](docs/knowledge.md). More ideas: [docs/ideas.md](docs/ideas.md).
 
 Typical loop:
 

@@ -1,0 +1,80 @@
+# Workplace vocabulary — how people talk here, not how the product works.
+# Short definitions only. Product feature notes and ADRs still live in sibling
+# repos (docs/features, docs/adr). See docs/knowledge.md.
+#
+# Org-wide terms belong in this file. Product-specific acronyms can live in a
+# sibling docs/glossary.yml; `goat glossary` merges both.
+#
+# Add a term:
+#   uv run goat glossary add SOW --meaning "Statement of Work" --kind acronym
+# Look one up:
+#   uv run goat glossary get SOW --format json
+
+terms:
+  - term: Yard Goat
+    also: [goat, Copilot Kit]
+    kind: term
+    meaning: This kit repo. It orchestrates sibling clones, Jira, Figma, Bruno, and feature workspaces. Product code does not live here.
+    see: [GOAT_ROOT, parent_dir, sibling]
+
+  - term: GOAT_ROOT
+    kind: term
+    meaning: "Environment variable pointing at this kit repo so uv run --project works after cd into a sibling clone."
+    see: [Yard Goat]
+
+  - term: parent_dir
+    kind: term
+    meaning: "Folder that holds this kit and every product clone. Set in repositories.yml (usually ..). Clones never nest inside the goat."
+    see: [sibling, repositories.yml]
+
+  - term: sibling
+    kind: term
+    meaning: A product git clone next to this goat (flat or grouped under frontend/, backend/, infra/, shared/). Not a folder inside the kit.
+    see: [parent_dir]
+
+  - term: feature workspace
+    also: [workspace]
+    kind: term
+    meaning: "A VS Code multi-root window for one slice of work. Catalog ids live in catalog/stack.yaml. Generated .code-workspace files are local and gitignored."
+    see: [catalog]
+
+  - term: done_when
+    kind: term
+    meaning: "Stop condition on goat prepare JSON. Ticket acceptance criteria plus each repo's verify commands plus goat invariants. Treat it as the definition of done."
+    see: [prepare]
+
+  - term: prepare
+    kind: term
+    meaning: "goat prepare ISSUE fetches a Jira ticket, chooses a workspace, reports missing clones, and attaches done_when. Prefer this over assembling jira get + workspace match yourself."
+    see: [done_when]
+
+  - term: Graphify
+    kind: term
+    meaning: "Per-repo code graph (graphify-out/). Evidence for one sibling, not the cross-repo workspace graph. Discover it with goat context."
+    see: [workspace graph]
+
+  - term: workspace graph
+    kind: term
+    meaning: "Cross-repo map of APIs, events, and ADRs from goat graph build. Do not treat Graphify as this graph."
+    see: [Graphify]
+
+  - term: Bruno
+    kind: term
+    meaning: "Git-backed API collections (.bru files). bru run executes HTTP. Yard Goat discovers the sibling and wraps cwd / --env. Never print environment values."
+    see: [sibling]
+
+  - term: lift
+    also: [skills lift]
+    kind: term
+    meaning: "Copy a sibling or remote SKILL.md folder into this goat .github/skills so the VS Code Agents window can see it. Child folders are not scanned. Do not commit those copies."
+    see: [Yard Goat]
+
+  - term: catalog
+    kind: term
+    meaning: "Team YAML under catalog/: stack.yaml (workspaces and routing), env.yaml (declared secrets), glossary.yml (this file). Not the generated workspaces/*.code-workspace files."
+    see: [repositories.yml, feature workspace]
+
+  - term: repositories.yml
+    kind: term
+    meaning: Manifest of every product remote (name, url, tags, optional group/path). Source of truth for clone, workspace folders, and prepare routing.
+    see: [parent_dir, catalog]

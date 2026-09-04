@@ -61,6 +61,7 @@ What we should **not** do: copy product architecture or style guides into this r
 - Discover sibling `docs/features`, ADRs, and optional `knowledge.dirs` on a `repositories.yml` entry.
 - Feature-note template copied *into the sibling*. Implementer reminds only on user-visible changes.
 - `docs/knowledge.md` is the convention.
+- Workplace vocabulary: `catalog/glossary.yml` plus `goat glossary list` / `get` / `search` / `add`. Sibling `docs/glossary.yml` is optional for product-only acronyms. Dictionary, not a wiki.
 
 **Worth adding next**
 

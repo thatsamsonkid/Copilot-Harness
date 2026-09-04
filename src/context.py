@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from goat.catalog import Catalog, Repo
 from goat.gitinfo import last_commit_unix
+from goat.glossary import glossary_summary
 from goat.skills import list_skills
 from goat.workspace_detect import resolve_workspace_scope, scoped_repos
 
@@ -93,6 +94,8 @@ def collect_context(
         "VS Code Agents does not scan multi-root child skills. Use "
         "`goat skills list` / `skills lift` (see the skills-install skill) "
         "to copy sibling or remote skills into this goat .github/skills.",
+        "Unknown workplace words or acronyms: `goat glossary get TERM` "
+        "(see the glossary skill). Do not guess team language.",
     ]
     if not scope.detected:
         guidance.insert(
@@ -105,6 +108,14 @@ def collect_context(
         "workspace_scope": scope.as_payload(),
         "repos": repos,
         "skills": list_skills(
+            catalog,
+            goat_root,
+            only=only,
+            workspace_id=workspace_id,
+            all_repos=all_repos,
+            environ=environ,
+        ),
+        "glossary": glossary_summary(
             catalog,
             goat_root,
             only=only,

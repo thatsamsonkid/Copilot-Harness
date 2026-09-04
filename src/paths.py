@@ -10,6 +10,7 @@ REPOS_RELATIVE = Path("repositories.yml")
 STACK_RELATIVE = Path("catalog") / "stack.yaml"
 TEMPLATES_RELATIVE = Path("templates.yml")
 ENV_RELATIVE = Path("catalog") / "env.yaml"
+GLOSSARY_RELATIVE = Path("catalog") / "glossary.yml"
 WORKSPACES_DIR = Path("workspaces")
 ROOT_ENV = "GOAT_ROOT"
 LEGACY_ROOT_ENV = "COBOOSE_ROOT"

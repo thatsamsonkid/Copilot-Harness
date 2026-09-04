@@ -55,6 +55,8 @@ def to_text(payload: Any) -> str:
         return _workspace_graph_text(payload)
     if _is_workspace_create_menu(payload):
         return _workspace_create_menu_text(payload)
+    if _is_glossary(payload):
+        return _glossary_text(payload)
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -101,6 +103,8 @@ def to_markdown(payload: Any) -> str:
         return _workspace_graph_markdown(payload)
     if _is_workspace_create_menu(payload):
         return _workspace_create_menu_markdown(payload)
+    if _is_glossary(payload):
+        return _glossary_markdown(payload)
     return "```json\n" + json.dumps(payload, indent=2, ensure_ascii=False) + "\n```"
 
 
@@ -1048,6 +1052,79 @@ def _bruno_markdown(payload: dict[str, Any]) -> str:
     for item in payload.get("workflows") or []:
         lines.append(f"- workflow `{item.get('id')}` — {item.get('description') or ''}")
     lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _is_glossary(payload: Any) -> bool:
+    return isinstance(payload, dict) and payload.get("kind") == "glossary"
+
+
+def _glossary_text(payload: dict[str, Any]) -> str:
+    lines = [f"Glossary ({payload.get('count', 0)} terms)"]
+    query = payload.get("query")
+    if query:
+        status = "matched" if payload.get("matched") else "unmatched"
+        lines.append(f"{payload.get('action') or 'lookup'} {query} ({status})")
+    if payload.get("file"):
+        lines.append(f"file: {payload.get('relative') or payload['file']}")
+    for item in payload.get("terms") or []:
+        aliases = ", ".join(item.get("also") or [])
+        extra = f" ({aliases})" if aliases else ""
+        source = item.get("source") or "goat"
+        lines.append(f"- {item.get('term')}{extra} [{item.get('kind')}/{source}]")
+        meaning = (item.get("meaning") or "").strip()
+        if meaning:
+            lines.append(f"    {meaning}")
+    suggestions = payload.get("suggestions") or []
+    if suggestions:
+        lines.append("Suggestions:")
+        for item in suggestions:
+            lines.append(f"- {item.get('term')} ({item.get('source')})")
+    for hint in payload.get("guidance") or []:
+        lines.append(hint)
+    return "\n".join(lines).strip() + "\n"
+
+
+def _glossary_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        "# Glossary",
+        "",
+        f"- **Count:** {payload.get('count', 0)}",
+    ]
+    if payload.get("query"):
+        lines.append(f"- **Query:** `{payload['query']}`")
+        lines.append(f"- **Matched:** {'yes' if payload.get('matched') else 'no'}")
+    if payload.get("relative") or payload.get("file"):
+        lines.append(f"- **File:** `{payload.get('relative') or payload.get('file')}`")
+    lines.append("")
+    terms = payload.get("terms") or []
+    if terms:
+        lines.extend(
+            [
+                "| Term | Also | Kind | Source | Meaning |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+        for item in terms:
+            also = ", ".join(f"`{alias}`" for alias in (item.get("also") or [])) or "—"
+            meaning = (item.get("meaning") or "").replace("|", "\\|")
+            lines.append(
+                f"| `{item.get('term')}` | {also} | {item.get('kind')} | "
+                f"{item.get('source')} | {meaning} |"
+            )
+        lines.append("")
+    suggestions = payload.get("suggestions") or []
+    if suggestions:
+        lines.extend(["## Suggestions", ""])
+        for item in suggestions:
+            lines.append(f"- `{item.get('term')}` ({item.get('source')})")
+        lines.append("")
+    guidance = payload.get("guidance") or []
+    if guidance:
+        lines.extend(["## Guidance", ""])
+        for hint in guidance:
+            lines.append(f"- {hint}")
+        lines.append("")
     return "\n".join(lines).strip() + "\n"
 
 

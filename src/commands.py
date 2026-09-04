@@ -38,6 +38,7 @@ GROUP_ORDER = (
     "figma",
     "bruno",
     "context",
+    "glossary",
     "status",
     "branch",
     "handoff",

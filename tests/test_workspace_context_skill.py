@@ -43,5 +43,6 @@ def test_skill_covers_graphify_and_standards():
         "whole monorepo",
         "docs/features",
         "cannot spawn",
+        "glossary get",
     ):
         assert token in lowered

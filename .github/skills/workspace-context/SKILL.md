@@ -21,6 +21,7 @@ Run these from the goat repo. After `cd` into a sibling, use `uv run --project "
 | Ticket plus routing | `uv run goat prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`) |
 | Local stack start plan | `uv run goat start --format json` (see the workspace-start skill). Saved sequences live in `workspaces/<id>.start.yml`. |
 | Cross-repo architecture | `uv run goat graph build` then `goat graph explain <a> <b>` (see `docs/workspace-graph.md`). Prefer this over guessing repo-to-repo imports. |
+| Unknown workplace word or acronym | `uv run goat glossary get TERM --format json` (see the glossary skill). Do not guess team language. |
 | Sibling / remote agent skills | `uv run goat skills list` then `skills lift` or `skills pull <url>` (see the skills-install skill). VS Code Agents does not scan multi-root child folders. |
 
 ## Vague or low-context prompts
@@ -40,6 +41,7 @@ The goat does not own product patterns.
 - After edits, run that repo's `tooling.suggested_verify`. If it fails, fix or report. Do not skip it.
 - Do not copy those files into the goat. Do not invent style rules that contradict them.
 - Product knowledge stays in the sibling (`docs/features`, ADRs). If you added user-visible or non-obvious behavior, update or create a note there using `templates/feature-note.md`. Do not start a wiki in the goat.
+- Workplace vocabulary is the exception: look up jargon with `goat glossary get`. Org terms live in `catalog/glossary.yml`. That file is a dictionary, not architecture.
 
 ## Hard rules
 
