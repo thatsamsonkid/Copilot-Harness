@@ -34,11 +34,16 @@ def test_skill_keeps_glossary_out_of_product_wiki():
         "glossary search",
         "glossary add",
         "catalog/glossary.yml",
+        "catalog/glossary.local.yml",
         "docs/glossary.yml",
         "do not invent",
         "docs/features",
         "cannot spawn",
         "--meaning",
+        "--visibility",
+        "public",
+        "private",
+        "gitignored",
     ):
         assert token in lowered
 
@@ -50,3 +55,6 @@ def test_prompt_points_at_skill_and_get():
     assert "skills/glossary/skill.md" in lowered
     assert "goat glossary get" in lowered
     assert "do not invent" in lowered
+    assert "public" in lowered
+    assert "private" in lowered
+    assert "do not assume" in lowered

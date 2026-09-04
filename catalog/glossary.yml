@@ -2,11 +2,13 @@
 # Short definitions only. Product feature notes and ADRs still live in sibling
 # repos (docs/features, docs/adr). See docs/knowledge.md.
 #
-# Org-wide terms belong in this file. Product-specific acronyms can live in a
-# sibling docs/glossary.yml; `goat glossary` merges both.
+# Org-wide public terms belong in this file (committed). Personal nicknames
+# go in catalog/glossary.local.yml (gitignored). Product-specific acronyms
+# can live in a sibling docs/glossary.yml. `goat glossary` merges all three.
 #
-# Add a term:
-#   uv run goat glossary add SOW --meaning "Statement of Work" --kind acronym
+# Add a term (always say public or private):
+#   uv run goat glossary add SOW --meaning "Statement of Work" --visibility public
+#   uv run goat glossary add NICK --meaning "My shorthand" --visibility private
 # Look one up:
 #   uv run goat glossary get SOW --format json
 

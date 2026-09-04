@@ -624,7 +624,7 @@ def build_parser() -> argparse.ArgumentParser:
     glossary_list = glossary_sub.add_parser(
         "list",
         parents=[shared],
-        help="List workplace terms from catalog/glossary.yml and sibling glossaries",
+        help="List workplace terms from the team catalog, personal overlay, and sibling glossaries",
     )
     _add_scope_flags(glossary_list)
     glossary_list.add_argument("--repo", help="Comma-separated repository names")
@@ -633,6 +633,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("acronym", "term"),
         help="Only acronyms or only longer terms",
     )
+    _add_glossary_visibility_flag(glossary_list)
     glossary_get = glossary_sub.add_parser(
         "get",
         parents=[shared],
@@ -641,6 +642,7 @@ def build_parser() -> argparse.ArgumentParser:
     glossary_get.add_argument("term", help="Term or acronym to look up")
     _add_scope_flags(glossary_get)
     glossary_get.add_argument("--repo", help="Comma-separated repository names")
+    _add_glossary_visibility_flag(glossary_get)
     glossary_search = glossary_sub.add_parser(
         "search",
         parents=[shared],
@@ -649,10 +651,11 @@ def build_parser() -> argparse.ArgumentParser:
     glossary_search.add_argument("query", help="Substring to match")
     _add_scope_flags(glossary_search)
     glossary_search.add_argument("--repo", help="Comma-separated repository names")
+    _add_glossary_visibility_flag(glossary_search)
     glossary_add = glossary_sub.add_parser(
         "add",
         parents=[shared],
-        help="Add or replace a term in catalog/glossary.yml (or a sibling docs/glossary.yml)",
+        help="Add or replace a public (committed) or private (gitignored) term",
     )
     glossary_add.add_argument("term", help="Word or acronym to define")
     glossary_add.add_argument(
@@ -673,8 +676,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated related terms already in the glossary",
     )
     glossary_add.add_argument(
+        "--visibility",
+        choices=("public", "private"),
+        help=(
+            "public writes catalog/glossary.yml (committed). "
+            "private writes catalog/glossary.local.yml (gitignored). "
+            "Required in chat; a local TTY can prompt"
+        ),
+    )
+    glossary_add.add_argument(
         "--repo",
-        help="Write a product glossary in that sibling's docs/glossary.yml",
+        help="Write a public product glossary in that sibling's docs/glossary.yml",
     )
     glossary_add.add_argument(
         "--replace",
@@ -1397,6 +1409,7 @@ def _dispatch_glossary(args: argparse.Namespace, catalog: Any, goat_root: Path) 
             kind=args.kind,
             see=_split_ids(args.see) or [],
             repo=repos[0] if repos else None,
+            visibility=getattr(args, "visibility", None),
             replace=bool(args.replace),
             dry_run=bool(args.dry_run),
             prompt=PromptSession(),
@@ -1407,6 +1420,7 @@ def _dispatch_glossary(args: argparse.Namespace, catalog: Any, goat_root: Path) 
         query=getattr(args, "term", None) or getattr(args, "query", None),
         action=args.glossary_command,
         kind=getattr(args, "kind", None),
+        visibility=getattr(args, "visibility", None),
         only=_split_ids(getattr(args, "repo", None)),
         workspace_id=getattr(args, "workspace", None),
         all_repos=bool(getattr(args, "all_repos", False)),
@@ -1581,6 +1595,14 @@ def _add_skills_dest_flag(parser: argparse.ArgumentParser) -> None:
             "Copy into parent_dir/.github/skills instead of this Goat repo "
             "(for a single-folder window on the sibling root)"
         ),
+    )
+
+
+def _add_glossary_visibility_flag(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--visibility",
+        choices=("public", "private"),
+        help="Only public (committed) or private (personal, gitignored) terms",
     )
 
 

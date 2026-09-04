@@ -41,7 +41,7 @@ The goat does not own product patterns.
 - After edits, run that repo's `tooling.suggested_verify`. If it fails, fix or report. Do not skip it.
 - Do not copy those files into the goat. Do not invent style rules that contradict them.
 - Product knowledge stays in the sibling (`docs/features`, ADRs). If you added user-visible or non-obvious behavior, update or create a note there using `templates/feature-note.md`. Do not start a wiki in the goat.
-- Workplace vocabulary is the exception: look up jargon with `goat glossary get`. Org terms live in `catalog/glossary.yml`. That file is a dictionary, not architecture.
+- Workplace vocabulary is the exception: look up jargon with `goat glossary get`. Public org terms live in `catalog/glossary.yml`. Personal nicknames live in `catalog/glossary.local.yml` (gitignored). Those files are a dictionary, not architecture.
 
 ## Hard rules
 

@@ -20,6 +20,9 @@ plans/*.md
 jira-tickets/*.md
 !jira-tickets/.gitkeep
 
+# Personal workplace glossary (team file is catalog/glossary.yml)
+catalog/glossary.local.yml
+
 # Generated VS Code workspaces from catalog/stack.yaml (local only)
 workspaces/*.code-workspace
 

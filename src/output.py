@@ -1071,7 +1071,10 @@ def _glossary_text(payload: dict[str, Any]) -> str:
         aliases = ", ".join(item.get("also") or [])
         extra = f" ({aliases})" if aliases else ""
         source = item.get("source") or "goat"
-        lines.append(f"- {item.get('term')}{extra} [{item.get('kind')}/{source}]")
+        visibility = item.get("visibility") or "public"
+        lines.append(
+            f"- {item.get('term')}{extra} [{item.get('kind')}/{visibility}/{source}]"
+        )
         meaning = (item.get("meaning") or "").strip()
         if meaning:
             lines.append(f"    {meaning}")
@@ -1101,8 +1104,8 @@ def _glossary_markdown(payload: dict[str, Any]) -> str:
     if terms:
         lines.extend(
             [
-                "| Term | Also | Kind | Source | Meaning |",
-                "| --- | --- | --- | --- | --- |",
+                "| Term | Also | Kind | Visibility | Source | Meaning |",
+                "| --- | --- | --- | --- | --- | --- |",
             ]
         )
         for item in terms:
@@ -1110,7 +1113,7 @@ def _glossary_markdown(payload: dict[str, Any]) -> str:
             meaning = (item.get("meaning") or "").replace("|", "\\|")
             lines.append(
                 f"| `{item.get('term')}` | {also} | {item.get('kind')} | "
-                f"{item.get('source')} | {meaning} |"
+                f"{item.get('visibility') or 'public'} | {item.get('source')} | {meaning} |"
             )
         lines.append("")
     suggestions = payload.get("suggestions") or []

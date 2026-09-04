@@ -329,7 +329,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/start-workspace` is for booting the local apps in the open feature workspace. It runs `goat start`, prefers a saved `workspaces/<id>.start.yml` when present, then starts one process at a time in **one VS Code terminal per app** (reuse that app’s terminal if it is already running) so Angular proxies can point at live backend ports. Apps with launch.json env/args are started through `goat start run` or Run Without Debugging so Copilot never sees those values. Use `goat start env --repo <name>` to inspect keys/collisions, or `--shell` to apply them in a terminal without starting the app.
 
-Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `docs/adr/`). The goat only discovers them. Workplace words and acronyms are the exception: `catalog/glossary.yml` plus `goat glossary` / `/glossary`. Convention: [docs/knowledge.md](docs/knowledge.md). More ideas: [docs/ideas.md](docs/ideas.md).
+Product feature notes and ADRs stay in the sibling repos (`docs/features/`, `docs/adr/`). The goat only discovers them. Workplace words and acronyms are the exception: `catalog/glossary.yml` (public, committed), `catalog/glossary.local.yml` (private, gitignored), plus `goat glossary` / `/glossary`. Convention: [docs/knowledge.md](docs/knowledge.md). More ideas: [docs/ideas.md](docs/ideas.md).
 
 Typical loop:
 

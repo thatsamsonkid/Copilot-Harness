@@ -10,7 +10,7 @@ import yaml
 
 from goat import GoatError
 from goat.catalog import Catalog, as_list, read_yaml
-from goat.paths import GLOSSARY_RELATIVE
+from goat.paths import GLOSSARY_LOCAL_RELATIVE, GLOSSARY_RELATIVE
 from goat.prompt import PromptSession
 from goat.workspace_detect import resolve_workspace_scope, scoped_repos
 
@@ -19,7 +19,11 @@ SIBLING_GLOSSARY_PATHS = (
     Path("glossary.yml"),
 )
 KINDS = ("acronym", "term")
+VISIBILITY_PUBLIC = "public"
+VISIBILITY_PRIVATE = "private"
+VISIBILITIES = (VISIBILITY_PUBLIC, VISIBILITY_PRIVATE)
 SOURCE_GOAT = "goat"
+SOURCE_PERSONAL = "personal"
 SUGGESTION_LIMIT = 5
 ACRONYM_RE = re.compile(r"^[A-Z][A-Z0-9]{1,11}$")
 _LIST_ITEM = re.compile(r"^([ \t]*)- (.*)$")
@@ -32,13 +36,23 @@ GLOSSARY_HEADER = """# Workplace vocabulary — how people talk here, not how th
 # Short definitions only. Product feature notes and ADRs still live in sibling
 # repos (docs/features, docs/adr). See docs/knowledge.md.
 #
-# Org-wide terms belong in this file. Product-specific acronyms can live in a
-# sibling docs/glossary.yml; `goat glossary` merges both.
+# Org-wide public terms belong in this file (committed). Personal nicknames
+# go in catalog/glossary.local.yml (gitignored). Product-specific acronyms
+# can live in a sibling docs/glossary.yml. `goat glossary` merges all three.
 #
-# Add a term:
-#   uv run goat glossary add SOW --meaning "Statement of Work" --kind acronym
+# Add a term (always say public or private):
+#   uv run goat glossary add SOW --meaning "Statement of Work" --visibility public
 # Look one up:
 #   uv run goat glossary get SOW --format json
+
+terms:
+"""
+
+PERSONAL_HEADER = """# Personal workplace vocabulary — gitignored, not shared with the team.
+# Lookups merge this file with catalog/glossary.yml. Do not commit it.
+#
+# Add a private term:
+#   uv run goat glossary add NICK --meaning "My shorthand" --visibility private
 
 terms:
 """
@@ -51,6 +65,7 @@ def collect_glossary(
     query: str | None = None,
     action: str = "list",
     kind: str | None = None,
+    visibility: str | None = None,
     only: list[str] | None = None,
     workspace_id: str | None = None,
     all_repos: bool = False,
@@ -66,6 +81,9 @@ def collect_glossary(
     )
     if kind:
         terms = [item for item in terms if item["kind"] == kind]
+    if visibility:
+        wanted = _normalize_visibility(visibility)
+        terms = [item for item in terms if item["visibility"] == wanted]
     matched = True
     suggestions: list[dict[str, Any]] = []
     if action == "get":
@@ -121,9 +139,12 @@ def glossary_summary(
         environ=environ,
     )
     goat_file = goat_root / GLOSSARY_RELATIVE
+    personal_file = goat_root / GLOSSARY_LOCAL_RELATIVE
     return {
         "file": str(goat_file) if goat_file.is_file() else None,
         "relative": str(GLOSSARY_RELATIVE),
+        "personal_file": str(personal_file) if personal_file.is_file() else None,
+        "personal_relative": str(GLOSSARY_LOCAL_RELATIVE),
         "count": payload["count"],
         "sources": len(payload["files"]),
         "command": "uv run goat glossary list --format json",
@@ -131,6 +152,8 @@ def glossary_summary(
         "detail": (
             "Workplace terms and acronyms for Copilot. "
             "Look up unknown language with goat glossary get. "
+            "Public terms are committed; private terms stay in "
+            "catalog/glossary.local.yml (gitignored). "
             "Do not treat this as product architecture."
         ),
     }
@@ -146,6 +169,7 @@ def add_term(
     kind: str | None = None,
     see: list[str] | None = None,
     repo: str | None = None,
+    visibility: str | None = None,
     replace: bool = False,
     dry_run: bool = False,
     prompt: PromptSession | None = None,
@@ -162,13 +186,16 @@ def add_term(
             raise GoatError(
                 "Pass --meaning \"...\" (or run add in a local terminal to be prompted)"
             )
+    resolved_visibility = _resolve_visibility(visibility, session)
     aliases = _unique_names(also or [], skip={label})
     related = _unique_names(see or [], skip={label, *aliases})
     resolved_kind = kind or _guess_kind(label)
     if resolved_kind not in KINDS:
         raise GoatError(f"kind must be one of {', '.join(KINDS)}")
-    path, source = _write_path(catalog, goat_root, repo)
-    existing = _parse_file(path, source)
+    path, source = _write_path(
+        catalog, goat_root, repo, visibility=resolved_visibility
+    )
+    existing = _parse_file(path, source, visibility=resolved_visibility)
     conflict = _find_conflict(existing, label, aliases)
     if conflict and not replace:
         existing_names = [conflict["term"], *list(conflict.get("also") or [])]
@@ -186,11 +213,17 @@ def add_term(
         "meaning": definition,
         "see": list(conflict.get("see") or []) if keep_related else related,
         "source": source,
+        "visibility": resolved_visibility,
         "file": str(path),
     }
     created = not path.is_file()
     if not dry_run:
-        _write_term(path, record, replace=replace)
+        _write_term(
+            path,
+            record,
+            replace=replace,
+            header=PERSONAL_HEADER if resolved_visibility == VISIBILITY_PRIVATE else GLOSSARY_HEADER,
+        )
     payload = collect_glossary(
         catalog,
         goat_root,
@@ -218,13 +251,11 @@ def add_term(
         "file": str(path),
         "relative": _relative_to_goat(path, goat_root),
         "source": source,
+        "visibility": resolved_visibility,
         "created": created,
         "replaced": bool(conflict),
         "dry_run": dry_run,
-        "guidance": [
-            "Commit the glossary file if the term should be shared.",
-            "Copilot should look terms up with goat glossary get, not guess.",
-        ],
+        "guidance": _add_guidance(resolved_visibility),
     }
 
 
@@ -240,9 +271,31 @@ def _load_terms(
     files: list[dict[str, Any]] = []
     terms: list[dict[str, Any]] = []
     goat_path = goat_root / GLOSSARY_RELATIVE
-    goat_terms = _parse_file(goat_path, SOURCE_GOAT)
-    files.append(_file_payload(goat_path, SOURCE_GOAT, goat_terms, present=goat_path.is_file()))
+    goat_terms = _parse_file(goat_path, SOURCE_GOAT, visibility=VISIBILITY_PUBLIC)
+    files.append(
+        _file_payload(
+            goat_path,
+            SOURCE_GOAT,
+            goat_terms,
+            present=goat_path.is_file(),
+            visibility=VISIBILITY_PUBLIC,
+        )
+    )
     terms.extend(goat_terms)
+    personal_path = goat_root / GLOSSARY_LOCAL_RELATIVE
+    personal_terms = _parse_file(
+        personal_path, SOURCE_PERSONAL, visibility=VISIBILITY_PRIVATE
+    )
+    files.append(
+        _file_payload(
+            personal_path,
+            SOURCE_PERSONAL,
+            personal_terms,
+            present=personal_path.is_file(),
+            visibility=VISIBILITY_PRIVATE,
+        )
+    )
+    terms.extend(personal_terms)
     scope = resolve_workspace_scope(
         catalog,
         goat_root,
@@ -257,8 +310,16 @@ def _load_terms(
         found = _sibling_glossary_path(repo_path)
         if found is None:
             continue
-        sibling_terms = _parse_file(found, repo.name)
-        files.append(_file_payload(found, repo.name, sibling_terms, present=True))
+        sibling_terms = _parse_file(found, repo.name, visibility=VISIBILITY_PUBLIC)
+        files.append(
+            _file_payload(
+                found,
+                repo.name,
+                sibling_terms,
+                present=True,
+                visibility=VISIBILITY_PUBLIC,
+            )
+        )
         terms.extend(sibling_terms)
     return files, terms
 
@@ -268,11 +329,19 @@ def _load_all_terms_unfiltered(files: list[dict[str, Any]]) -> list[dict[str, An
     for item in files:
         path = Path(item["path"])
         if path.is_file():
-            loaded.extend(_parse_file(path, item["source"]))
+            loaded.extend(
+                _parse_file(
+                    path,
+                    item["source"],
+                    visibility=str(item.get("visibility") or VISIBILITY_PUBLIC),
+                )
+            )
     return loaded
 
 
-def _parse_file(path: Path, source: str) -> list[dict[str, Any]]:
+def _parse_file(
+    path: Path, source: str, *, visibility: str = VISIBILITY_PUBLIC
+) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
     raw = read_yaml(path)
@@ -306,6 +375,7 @@ def _parse_file(path: Path, source: str) -> list[dict[str, Any]]:
                 "meaning": meaning,
                 "see": _unique_names(as_list(item.get("see")), skip={label}),
                 "source": source,
+                "visibility": visibility,
                 "file": str(path),
             }
         )
@@ -321,8 +391,19 @@ def _sibling_glossary_path(repo_path: Path) -> Path | None:
 
 
 def _write_path(
-    catalog: Catalog, goat_root: Path, repo: str | None
+    catalog: Catalog,
+    goat_root: Path,
+    repo: str | None,
+    *,
+    visibility: str,
 ) -> tuple[Path, str]:
+    if visibility == VISIBILITY_PRIVATE:
+        if repo:
+            raise GoatError(
+                "Private terms stay in catalog/glossary.local.yml. "
+                "Do not pass --repo with --visibility private."
+            )
+        return goat_root / GLOSSARY_LOCAL_RELATIVE, SOURCE_PERSONAL
     if not repo:
         return goat_root / GLOSSARY_RELATIVE, SOURCE_GOAT
     entry = catalog.repo(repo)
@@ -349,17 +430,29 @@ def _find_conflict(
     return None
 
 
-def _write_term(path: Path, record: dict[str, Any], *, replace: bool) -> None:
+def _write_term(
+    path: Path,
+    record: dict[str, Any],
+    *,
+    replace: bool,
+    header: str = GLOSSARY_HEADER,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     entry = _format_term_yaml(record)
     if not path.exists():
-        path.write_text(GLOSSARY_HEADER + entry, encoding="utf-8")
+        path.write_text(header + entry, encoding="utf-8")
         return
     original = path.read_text(encoding="utf-8")
     try:
-        updated = _upsert_term_text(original, record, entry, replace=replace)
+        updated = _upsert_term_text(
+            original, record, entry, replace=replace, header=header
+        )
         path.write_text(updated, encoding="utf-8")
-        written = _parse_file(path, record["source"])
+        written = _parse_file(
+            path,
+            record["source"],
+            visibility=str(record.get("visibility") or VISIBILITY_PUBLIC),
+        )
         if not any(_normalize(item["term"]) == _normalize(record["term"]) for item in written):
             raise GoatError(f"Failed to persist glossary term {record['term']!r}")
     except Exception:
@@ -368,10 +461,15 @@ def _write_term(path: Path, record: dict[str, Any], *, replace: bool) -> None:
 
 
 def _upsert_term_text(
-    text: str, record: dict[str, Any], entry: str, *, replace: bool
+    text: str,
+    record: dict[str, Any],
+    entry: str,
+    *,
+    replace: bool,
+    header: str = GLOSSARY_HEADER,
 ) -> str:
     if not text.strip():
-        return GLOSSARY_HEADER + entry
+        return header + entry
     if not text.endswith("\n"):
         text += "\n"
     lines = text.splitlines(keepends=True)
@@ -548,13 +646,19 @@ def _yaml_scalar(value: str) -> str:
 
 
 def _file_payload(
-    path: Path, source: str, terms: list[dict[str, Any]], *, present: bool
+    path: Path,
+    source: str,
+    terms: list[dict[str, Any]],
+    *,
+    present: bool,
+    visibility: str,
 ) -> dict[str, Any]:
     return {
         "source": source,
         "path": str(path),
         "present": present,
         "count": len(terms),
+        "visibility": visibility,
     }
 
 
@@ -580,9 +684,23 @@ def _guidance(
     elif action == "list" and not terms:
         lines.insert(
             0,
-            "Glossary is empty. Add the first term with goat glossary add TERM --meaning \"...\".",
+            "Glossary is empty. Add the first term with goat glossary add TERM "
+            "--meaning \"...\" --visibility public|private.",
         )
     return lines
+
+
+def _add_guidance(visibility: str) -> list[str]:
+    if visibility == VISIBILITY_PRIVATE:
+        return [
+            "This term is personal and gitignored (catalog/glossary.local.yml). "
+            "It will not be committed.",
+            "Copilot should look terms up with goat glossary get, not guess.",
+        ]
+    return [
+        "Commit catalog/glossary.yml if the term should be shared with the team.",
+        "Copilot should look terms up with goat glossary get, not guess.",
+    ]
 
 
 def _suggest(query: str, terms: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -606,6 +724,7 @@ def _suggest(query: str, terms: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "term": item["term"],
                 "kind": item["kind"],
                 "source": item["source"],
+                "visibility": item.get("visibility"),
                 "meaning": item["meaning"],
             }
         )
@@ -653,7 +772,47 @@ def _unique_names(values: list[str], *, skip: set[str]) -> list[str]:
 
 
 def _sort_terms(terms: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return sorted(terms, key=lambda item: (item["term"].casefold(), item["source"]))
+    return sorted(
+        terms,
+        key=lambda item: (
+            item["term"].casefold(),
+            0 if item.get("visibility") == VISIBILITY_PUBLIC else 1,
+            item["source"],
+        ),
+    )
+
+
+def _resolve_visibility(value: str | None, session: PromptSession) -> str:
+    if value:
+        return _normalize_visibility(value)
+    if session.can_prompt():
+        answer = session.ask(
+            "Public (team catalog, committed) or private (personal, gitignored)",
+            default=VISIBILITY_PUBLIC,
+        )
+        return _normalize_visibility(answer)
+    raise GoatError(
+        "Say whether the term is public or private: "
+        "goat glossary add TERM --meaning \"...\" --visibility public|private"
+    )
+
+
+def _normalize_visibility(value: str) -> str:
+    needle = value.strip().casefold()
+    aliases = {
+        "public": VISIBILITY_PUBLIC,
+        "shared": VISIBILITY_PUBLIC,
+        "team": VISIBILITY_PUBLIC,
+        "private": VISIBILITY_PRIVATE,
+        "personal": VISIBILITY_PRIVATE,
+        "local": VISIBILITY_PRIVATE,
+    }
+    resolved = aliases.get(needle)
+    if resolved is None:
+        raise GoatError(
+            f"visibility must be public or private, not {value!r}"
+        )
+    return resolved
 
 
 def _relative_to_goat(path: Path, goat_root: Path) -> str:

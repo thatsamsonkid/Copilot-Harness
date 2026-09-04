@@ -4,7 +4,7 @@ Yes, we should write down features and decisions as people build them. No, that 
 
 A central wiki here would be a third source of truth (code, Jira, goat docs). It will rot, and Copilot will start trusting a stale copy over the repo that actually changed.
 
-Workplace **vocabulary** is the exception. Terms and acronyms (how people talk) belong in `catalog/glossary.yml` so every chat can look them up with `goat glossary get`. That file is a dictionary, not a feature wiki. Product behavior still lives next to the code.
+Workplace **vocabulary** is the exception. Terms and acronyms (how people talk) belong in `catalog/glossary.yml` (public, committed) or `catalog/glossary.local.yml` (private, gitignored) so every chat can look them up with `goat glossary get`. Those files are a dictionary, not a feature wiki. Product behavior still lives next to the code.
 
 ## Where knowledge lives
 
@@ -14,11 +14,11 @@ Workplace **vocabulary** is the exception. Terms and acronyms (how people talk) 
 | Why we chose A over B | `<repo>/docs/adr/` or `docs/decisions/` | A real alternative was rejected |
 | How the code is shaped | Graphify `graphify-out/` plus `# WHY:` / `# NOTE:` comments | Always; Graphify already indexes these |
 | Ticket intent | Jira, via `goat prepare` | The work item, not the architecture |
-| How we say it at work | `catalog/glossary.yml` (org) or `<repo>/docs/glossary.yml` (one product) | An acronym or nickname that confuses Copilot |
+| How we say it at work | `catalog/glossary.yml` (public org) or `catalog/glossary.local.yml` (private) or `<repo>/docs/glossary.yml` (one product) | An acronym or nickname that confuses Copilot |
 
 The goat only **discovers** feature notes (`goat context` → `knowledge`). It does not store product facts. If a monorepo keeps notes somewhere else, set `knowledge.dirs` on that `repositories.yml` entry.
 
-`goat glossary list` / `get` / `search` / `add` is the vocabulary CLI. Keep each `meaning` to one or two sentences. Do not paste a feature note into the glossary.
+`goat glossary list` / `get` / `search` / `add` is the vocabulary CLI. When adding, say whether the term is public or private. Keep each `meaning` to one or two sentences. Do not paste a feature note into the glossary. Do not commit `catalog/glossary.local.yml`.
 
 ## What to write
 
