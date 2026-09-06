@@ -8,7 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 READER = ROOT / ".github" / "agents" / "bulk-reader.agent.md"
 WRITER = ROOT / ".github" / "agents" / "code-writer.agent.md"
 ORCHESTRATOR = ROOT / ".github" / "agents" / "orchestrator.agent.md"
-PROMPT = ROOT / ".github" / "prompts" / "orchestrate.prompt.md"
+PLANNER = ROOT / ".github" / "agents" / "jira-planner.agent.md"
+IMPLEMENTER = ROOT / ".github" / "agents" / "implementer.agent.md"
+JIRA_PROMPT = ROOT / ".github" / "prompts" / "jira-ticket.prompt.md"
 
 
 def _frontmatter_and_body(path: Path) -> tuple[dict, str]:
@@ -49,7 +51,7 @@ def test_bulk_reader_is_a_hidden_read_only_subagent():
         assert token in lowered
 
 
-def test_code_writer_is_a_hidden_edit_subagent():
+def test_code_writer_is_implementer_write_worker():
     meta, body = _frontmatter_and_body(WRITER)
     assert meta["name"] == "Code Writer"
     assert meta.get("user-invocable") is False
@@ -68,6 +70,7 @@ def test_code_writer_is_a_hidden_edit_subagent():
         "no markdown fences unless asked",
         "if the spec is ambiguous",
         "reference code's patterns",
+        "not a second implementer",
         "do not spawn other agents",
         ".env",
         "tooling.generated",
@@ -75,38 +78,67 @@ def test_code_writer_is_a_hidden_edit_subagent():
         assert token in lowered
 
 
-def test_orchestrator_delegates_to_reader_and_writer():
+def test_orchestrator_is_hidden_and_not_user_invocable():
     meta, body = _frontmatter_and_body(ORCHESTRATOR)
     assert meta["name"] == "Orchestrator"
+    assert meta.get("user-invocable") is False
     assert "agent" in meta["tools"]
     assert "read" not in meta["tools"]
     assert "edit" not in meta["tools"]
     assert meta["agents"] == ["Bulk Reader", "Code Writer"]
-    handoff_agents = {item["agent"] for item in meta["handoffs"]}
-    assert handoff_agents == {"Implementer", "Reviewer"}
+    assert "handoffs" not in meta
     lowered = body.lower()
     for token in (
+        "not user-invocable",
+        "jira planner",
+        "implementer",
+        "do not invoke **code writer**",
         "bulk reader",
-        "code writer",
         "#tool:agent",
         "stateless",
-        "uv run goat context",
-        "workspace.repos",
-        "do not edit",
-        "planning/skill.md",
     ):
         assert token in lowered
 
 
-def test_orchestrate_prompt_points_at_both_subagents():
-    meta, body = _frontmatter_and_body(PROMPT)
-    assert meta["name"] == "orchestrate"
+def test_jira_planner_auto_delegates_reads_not_writes():
+    meta, body = _frontmatter_and_body(PLANNER)
+    assert meta["name"] == "Jira Planner"
+    assert "agent" in meta["tools"]
+    assert meta["agents"] == ["Bulk Reader"]
     lowered = body.lower()
     for token in (
-        "orchestrator",
+        "orchestration is automatic",
         "bulk reader",
-        "code writer",
-        "#tool:agent",
-        "goat context",
+        "do not invoke **code writer**",
+        "do not edit product code",
+        "implementer's write worker",
     ):
         assert token in lowered
+
+
+def test_implementer_owns_workflow_and_delegates_product_writes():
+    meta, body = _frontmatter_and_body(IMPLEMENTER)
+    assert meta["name"] == "Implementer"
+    assert "agent" in meta["tools"]
+    assert "edit" in meta["tools"]
+    assert meta["agents"] == ["Bulk Reader", "Code Writer"]
+    lowered = body.lower()
+    for token in (
+        "code writer is a write worker",
+        "not a second implementer",
+        "goat branch",
+        "suggested_verify",
+        "feature-note.md",
+        "#tool:agent",
+    ):
+        assert token in lowered
+
+
+def test_jira_ticket_prompt_uses_reader_not_writer():
+    meta, body = _frontmatter_and_body(JIRA_PROMPT)
+    assert meta["name"] == "jira-ticket"
+    assert "agent" in meta.get("tools", [])
+    lowered = body.lower()
+    assert "bulk reader" in lowered
+    assert "do not invoke **code writer**" in lowered
+    assert "do not edit product code" in lowered

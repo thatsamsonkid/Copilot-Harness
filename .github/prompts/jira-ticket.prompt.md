@@ -3,6 +3,7 @@ name: jira-ticket
 description: Pull a Jira ticket, select a feature workspace, and write an implementation plan
 argument-hint: PROJ-123
 agent: plan
+tools: ['agent', 'runCommands']
 ---
 
 The user will provide a Jira issue key or browse URL as `${input:issue:Jira issue key or URL}`. Follow `.github/skills/jira-cli/SKILL.md` for CLI rules.
@@ -13,12 +14,13 @@ The user will provide a Jira issue key or browse URL as `${input:issue:Jira issu
 4. Summarize the ticket in 5–8 lines: key, type, status, priority, requester intent, and acceptance criteria (including `custom` fields when present).
 5. State the recommended workspace, why it matched, required repos, and whether any clones are missing.
 6. List `done_when` and the suggested branch. Ask the user to open `routing.open_command` if this window does not already include those roots.
-7. Produce a Markdown plan with:
+7. For named product files or symbols, invoke **Bulk Reader** (`#tool:agent`) instead of opening those files yourself. Do not invoke **Code Writer**. Do not edit product code.
+8. Produce a Markdown plan with:
    - Goal
    - Repos and areas of code to inspect
    - Proposed changes by repo
    - Risks / unknowns
    - Test plan
-8. Stop after the plan unless the user asks to implement.
+9. Stop after the plan unless the user asks to implement. Hand off to Implementer for writes — Code Writer is that agent's worker.
 
 Do not clone into this goat directory. Do not invent Jira fields that were not returned. If the description is thin, tell them to run `/prepare-jira` (or point at `templates/jira-ticket.md`) rather than inventing sections.

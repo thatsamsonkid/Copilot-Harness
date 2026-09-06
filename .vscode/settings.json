@@ -7,7 +7,6 @@
   "chat.promptFilesRecommendations": {
     "get-started": "First time here? Set up Jira email and API token.",
     "orient": "Vague task? Map Graphify and repo instructions first.",
-    "orchestrate": "Many-file question? Delegate reads to Bulk Reader, writes to Code Writer.",
     "glossary": "Unknown jargon? Look up or add a workplace term.",
     "jira-ticket": "Plan work from a Jira key.",
     "prepare-jira": "Draft a Jira ticket from notes for copy-paste.",
