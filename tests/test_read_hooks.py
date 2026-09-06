@@ -7,11 +7,13 @@ from pathlib import Path
 
 from goat.read_hooks import (
     DEFAULT_MAX_LINES,
+    ROUTING_CONTEXT,
     decide_bash_read,
     decide_file_size,
     has_unquoted_pipe,
     max_lines,
     reader_file_paths,
+    routing_hook_output,
 )
 
 HOOKS = Path(__file__).resolve().parents[1] / ".github" / "hooks"
@@ -59,6 +61,10 @@ def test_large_read_is_denied(tmp_path: Path):
     reason = decision["permissionDecisionReason"]
     assert "/bulk-reader" in reason
     assert "40 lines" in reason
+    assert "debugging" in reason
+    assert "architectural decisions" in reason
+    assert "safety-critical" in reason
+    assert "targeted Read" in reason
 
 
 def test_targeted_limit_passes(tmp_path: Path):
@@ -146,8 +152,23 @@ def test_reader_file_paths_skips_pipes_and_flags():
     assert has_unquoted_pipe("cat foo.py | grep x") is True
 
 
+def test_routing_hook_excludes_reasoning_and_edits():
+    output = routing_hook_output()
+    text = output["additionalContext"].lower()
+    assert "debugging" in text
+    assert "architectural decisions" in text
+    assert "safety-critical" in text
+    assert "do not edit from bulk reader bullets" in text
+    assert ROUTING_CONTEXT in output["hookSpecificOutput"]["additionalContext"]
+
+
 def test_hook_json_files_are_valid():
-    for name in ("check-file-size.json", "check-bash-read.json", "read-guard.json"):
+    for name in (
+        "check-file-size.json",
+        "check-bash-read.json",
+        "read-guard.json",
+        "bulk-read-routing.json",
+    ):
         data = json.loads((HOOKS / name).read_text(encoding="utf-8"))
         assert isinstance(data, dict)
     size = json.loads((HOOKS / "check-file-size.json").read_text(encoding="utf-8"))

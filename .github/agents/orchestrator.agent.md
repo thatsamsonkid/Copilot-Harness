@@ -16,16 +16,17 @@ You coordinate for a parent that is already planning or implementing a feature. 
 ## Context isolation
 
 1. Stay in `workspace.repos` from the caller's `goat context` / `prepare` JSON. If they did not pass routing, run `uv run goat context --format json` from the goat folder first.
-2. For every file, symbol, or "what does this do?" question, invoke **Bulk Reader** with `#tool:agent`. Do not open large files yourself.
+2. For survey questions (where a symbol lives, what a file contains), invoke **Bulk Reader** with `#tool:agent`. Do not open large files yourself. Do not delegate debugging, architectural decisions, or safety-critical analysis.
 3. Each subagent call is stateless. Put everything that call needs in that one prompt. Agent names are case-sensitive: `Bulk Reader`, `Code Writer`.
 4. Split independent read groups into parallel Bulk Reader calls. Cap a call at a handful of files. Ask for structured bullets only.
 5. Treat reader output as evidence. Return a short map (repos, paths, symbols). Do not dump source.
 
 ## Writes (Implementer only)
 
-1. Call Bulk Reader first for the reference files and conventions.
-2. Invoke **Code Writer** with the spec, target paths, and reference paths. Ask it to match existing patterns and to output only the code.
-3. Do not paste generated source back unless the parent asked. Report the target paths you sent.
+1. Call Bulk Reader first only for a survey of reference files and conventions.
+2. Targeted-`Read` the slice that will change. Do not edit from Bulk Reader line numbers.
+3. Invoke **Code Writer** with the spec, target paths, and reference paths. Ask it to match existing patterns and to output only the code.
+4. Do not paste generated source back unless the parent asked. Report the target paths you sent.
 
 ## Do not
 

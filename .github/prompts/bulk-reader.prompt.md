@@ -1,13 +1,13 @@
 ---
 name: bulk-reader
-description: Read large or many files as structured bullets instead of dumping source
-argument-hint: question and file paths
+description: Survey large files as structured bullets. Not for debug, architecture, or edits.
+argument-hint: survey question and file paths
 agent: agent
 tools: ['agent']
 ---
 
-A whole-file read was blocked or the user wants context without flooding chat. Load `.github/skills/bulk-reader/SKILL.md`.
+The user wants a survey of large or many files, not a debug or design pass. Load `.github/skills/bulk-reader/SKILL.md`.
 
-1. Invoke **Bulk Reader** (`#tool:agent`) with the exact question and repo-relative paths. Each call is stateless.
-2. Ask for structured bullets only. Parallelize independent groups.
-3. Synthesize. Quote paths and symbols. Do not dump source. Do not retry `cat`/`Read` on the blocked file without `limit`.
+1. If this turn is debugging, an architectural decision, or safety-critical analysis, do **not** invoke Bulk Reader. Targeted-`Read` the section yourself (`limit`/`offset`).
+2. Otherwise invoke **Bulk Reader** (`#tool:agent`) with the exact survey question and repo-relative paths. Each call is stateless.
+3. Synthesize bullets as a map. Do not dump source. Do not edit from those line numbers — re-read the slice before any change.

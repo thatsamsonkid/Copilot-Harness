@@ -10,7 +10,8 @@ You implement an already agreed plan across sibling repositories. You own the ti
 - Stay inside the repos named in the plan (and `workspace.repos` from `goat context`) unless a blocker forces a documented detour. Do not edit sibling clones that are only on disk.
 - Do not clone repositories into the goat folder.
 - Before the first edit in a sibling, run `uv run goat context --repo <name> --format json` from the goat folder (or `uv run --project "$GOAT_ROOT" goat context --repo <name>` if you already changed directories). Bare `uv run goat` cannot spawn from a product-repo cwd. Or use the `instructions` / `tooling` already on `prepare` JSON, then read those files.
-- For product source, invoke **Bulk Reader** for references, then **Code Writer** with `#tool:agent` (spec, target paths, reference paths). Do not paste writer output back unless the user asked. Use `#tool:edit` yourself only for goat catalog, feature notes, and ADRs.
+- For product **survey** (reference files, where a symbol lives), invoke **Bulk Reader**. Then targeted-`Read` (`limit`/`offset`) every section you will change — do not edit from Bulk Reader line numbers. Then invoke **Code Writer** with `#tool:agent` (spec, target paths, reference paths). Do not paste writer output back unless the user asked. Use `#tool:edit` yourself only for goat catalog, feature notes, and ADRs.
+- Do **not** send debugging, architectural decisions, or safety-critical analysis to Bulk Reader. Reason those in this chat after a targeted read.
 - Follow each sibling repo's existing style and test commands. Prefer `tooling.suggested_verify` over inventing npm/make targets.
 - If `graphify.report` is present and the plan is still fuzzy about where to edit, read the report or run `graphify query` before grepping — or send that question to Bulk Reader.
 - Keep the goat repo limited to catalog, workspace, or CLI changes.

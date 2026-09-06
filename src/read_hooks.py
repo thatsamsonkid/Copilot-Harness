@@ -14,6 +14,20 @@ DEFAULT_MAX_LINES = 350
 ENV_MAX_LINES = "GOAT_BULK_READ_MAX_LINES"
 CONFIG_RELATIVE = Path(".github") / "hooks" / "read-guard.json"
 
+# Keep-in-parent work. Bulk Reader is a survey worker only.
+ROUTING_EXCLUSIONS = (
+    "debugging",
+    "architectural decisions",
+    "safety-critical code",
+)
+ROUTING_CONTEXT = (
+    "Bulk Reader is for survey only (where a symbol lives, what a file contains). "
+    "Do not delegate debugging, architectural decisions, or safety-critical analysis "
+    "— reason those yourself after a targeted Read (offset/limit). "
+    "Do not edit from Bulk Reader bullets; line numbers there are not reliable enough. "
+    "Re-read the exact section with limit/offset before any edit."
+)
+
 READ_TOOLS = frozenset(
     {
         "read",
@@ -214,10 +228,32 @@ def count_lines(path: Path, *, cap: int | None = None) -> int | None:
 def bulk_reader_reason(path: Path, lines: int, threshold: int) -> str:
     return (
         f"{path} is {lines} lines (threshold {threshold}). "
-        "Do not read the whole file. Use the /bulk-reader skill "
-        "(or invoke the Bulk Reader agent) with the exact question "
-        "and this path. Targeted reads with limit/offset may pass."
+        "Do not read the whole file. "
+        "Survey / 'what is in this file?': use the /bulk-reader skill "
+        "(or invoke the Bulk Reader agent) with the exact question and this path. "
+        "Edits, debugging, architectural decisions, or safety-critical analysis: "
+        "do not delegate. Use a targeted Read with limit/offset on the section "
+        "you already know. " + ROUTING_CONTEXT
     )
+
+
+def routing_hook_output() -> dict[str, Any]:
+    return {
+        "continue": True,
+        "additionalContext": ROUTING_CONTEXT,
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "additionalContext": ROUTING_CONTEXT,
+        },
+    }
+
+
+def run_routing_context() -> int:
+    try:
+        load_payload()
+        return emit(routing_hook_output())
+    except Exception:
+        return emit({"continue": True})
 
 
 def decide_file_size(

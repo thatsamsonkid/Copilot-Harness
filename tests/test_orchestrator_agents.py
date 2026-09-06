@@ -40,7 +40,7 @@ def test_bulk_reader_is_a_hidden_read_only_subagent():
         "no greetings",
         "no prose",
         "no preambles",
-        "exact name, type, or line number",
+        "exact name, type, and `path:line`",
         "nested bullets",
         "skip anything the caller did not ask for",
         "do not edit",
@@ -112,6 +112,9 @@ def test_jira_planner_auto_delegates_reads_not_writes():
         "do not invoke **code writer**",
         "do not edit product code",
         "implementer's write worker",
+        "debugging",
+        "architectural decisions",
+        "safety-critical",
     ):
         assert token in lowered
 
@@ -130,6 +133,9 @@ def test_implementer_owns_workflow_and_delegates_product_writes():
         "suggested_verify",
         "feature-note.md",
         "#tool:agent",
+        "targeted-",
+        "debugging",
+        "safety-critical",
     ):
         assert token in lowered
 
@@ -142,3 +148,5 @@ def test_jira_ticket_prompt_uses_reader_not_writer():
     assert "bulk reader" in lowered
     assert "do not invoke **code writer**" in lowered
     assert "do not edit product code" in lowered
+    assert "debugging" in lowered
+    assert "safety-critical" in lowered
