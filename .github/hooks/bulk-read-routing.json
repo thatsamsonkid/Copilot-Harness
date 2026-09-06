@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/bulk_read_routing.py",
+        "bash": "python3 .github/hooks/bulk_read_routing.py",
+        "powershell": "python .github/hooks/bulk_read_routing.py",
+        "windows": "python .github/hooks/bulk_read_routing.py",
+        "linux": "python3 .github/hooks/bulk_read_routing.py",
+        "osx": "python3 .github/hooks/bulk_read_routing.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/bulk_read_routing.py",
+        "bash": "python3 .github/hooks/bulk_read_routing.py",
+        "powershell": "python .github/hooks/bulk_read_routing.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ]
+  }
+}

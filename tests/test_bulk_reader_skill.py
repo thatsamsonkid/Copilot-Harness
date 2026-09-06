@@ -35,6 +35,10 @@ def test_skill_and_prompt_point_at_the_agent():
         lowered = body.lower()
         assert "bulk reader" in lowered
         assert "#tool:agent" in lowered
-        assert "structured bullets" in lowered
+        assert "debugging" in lowered
+        assert "architectural" in lowered
+        assert "safety-critical" in lowered
+    assert "survey" in skill_body.lower()
+    assert "do not reason about bugs" in agent_body.lower()
     assert "limit" in agent_body.lower()
     assert "350" in skill_body
