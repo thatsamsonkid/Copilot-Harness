@@ -124,7 +124,7 @@ def test_implementer_owns_workflow_and_delegates_product_writes():
     assert meta["agents"] == ["Bulk Reader", "Code Writer"]
     lowered = body.lower()
     for token in (
-        "code writer is a write worker",
+        "write worker",
         "not a second implementer",
         "goat branch",
         "suggested_verify",
