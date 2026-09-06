@@ -54,6 +54,6 @@ The goat does not own product patterns.
 
 ## Related Copilot customizations
 
-- Many-file questions without a source dump: Orchestrator agent or `/orchestrate` (delegates reads to Bulk Reader)
+- Many-file questions or generated files without a source dump: Orchestrator agent or `/orchestrate` (Bulk Reader + Code Writer)
 - Ticket routing: jira-cli skill or `/jira-ticket`
 - Write a plan to a file for another model: planning skill or `/goat-plan`

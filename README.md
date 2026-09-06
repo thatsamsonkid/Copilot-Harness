@@ -314,8 +314,9 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 | `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
-| `.github/agents/orchestrator.agent.md` | Answer or plan by delegating file reads |
+| `.github/agents/orchestrator.agent.md` | Delegate reads to Bulk Reader and writes to Code Writer |
 | `.github/agents/bulk-reader.agent.md` | Hidden subagent: structured bullets from named files |
+| `.github/agents/code-writer.agent.md` | Hidden subagent: generate files from a spec + references |
 | `.github/prompts/orchestrate.prompt.md` | `/orchestrate` |
 | `.github/prompts/handoff.prompt.md` | `/handoff` |
 | `.github/prompts/glossary.prompt.md` | `/glossary` |
@@ -328,7 +329,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/orient` is for vague prompts against large repos. It runs `goat context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
 
-**Orchestrator** plus `/orchestrate` keep a many-file question out of the parent chat: Copilot routes with `goat context`, then invokes the hidden **Bulk Reader** subagent for structured bullets (name, type, or line). Pick Orchestrator from the agents dropdown, or stay on the default agent and run `/orchestrate`.
+**Orchestrator** plus `/orchestrate` keep a many-file question out of the parent chat: Copilot routes with `goat context`, then invokes the hidden **Bulk Reader** subagent for structured bullets (name, type, or line) and the hidden **Code Writer** subagent to generate files from a spec and those references. Pick Orchestrator from the agents dropdown, or stay on the default agent and run `/orchestrate`.
 
 `/skills-install` is a temporary shim for the VS Code Agents window, which does not scan skills in multi-root child folders. `goat init`, `prepare`, and `workspace generate` copy goat + in-scope sibling `SKILL.md` folders into this repo's `.github/skills`. `goat skills list --brief` prints each skill's name and description; `skills lift` in a terminal shows a numbered picker (`all` is valid). `skills pull <git-url>` clones a skills repo in a temp dir so you can pick names to install. Those copies are local-only — do not commit them.
 

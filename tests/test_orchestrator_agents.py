@@ -6,6 +6,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 READER = ROOT / ".github" / "agents" / "bulk-reader.agent.md"
+WRITER = ROOT / ".github" / "agents" / "code-writer.agent.md"
 ORCHESTRATOR = ROOT / ".github" / "agents" / "orchestrator.agent.md"
 PROMPT = ROOT / ".github" / "prompts" / "orchestrate.prompt.md"
 
@@ -48,18 +49,45 @@ def test_bulk_reader_is_a_hidden_read_only_subagent():
         assert token in lowered
 
 
-def test_orchestrator_delegates_reads_to_bulk_reader():
+def test_code_writer_is_a_hidden_edit_subagent():
+    meta, body = _frontmatter_and_body(WRITER)
+    assert meta["name"] == "Code Writer"
+    assert meta.get("user-invocable") is False
+    assert meta.get("agents") == []
+    tools = set(meta["tools"])
+    assert "edit" in tools
+    assert "read" in tools
+    assert "runCommands" not in tools
+    assert "agent" not in tools
+    lowered = body.lower()
+    for token in (
+        "you generate code files based on a spec and reference files",
+        "match the existing patterns, conventions, naming, and style exactly",
+        "output only the code",
+        "no explanations",
+        "no markdown fences unless asked",
+        "if the spec is ambiguous",
+        "reference code's patterns",
+        "do not spawn other agents",
+        ".env",
+        "tooling.generated",
+    ):
+        assert token in lowered
+
+
+def test_orchestrator_delegates_to_reader_and_writer():
     meta, body = _frontmatter_and_body(ORCHESTRATOR)
     assert meta["name"] == "Orchestrator"
     assert "agent" in meta["tools"]
     assert "read" not in meta["tools"]
     assert "edit" not in meta["tools"]
-    assert meta["agents"] == ["Bulk Reader"]
+    assert meta["agents"] == ["Bulk Reader", "Code Writer"]
     handoff_agents = {item["agent"] for item in meta["handoffs"]}
     assert handoff_agents == {"Implementer", "Reviewer"}
     lowered = body.lower()
     for token in (
         "bulk reader",
+        "code writer",
         "#tool:agent",
         "stateless",
         "uv run goat context",
@@ -70,15 +98,15 @@ def test_orchestrator_delegates_reads_to_bulk_reader():
         assert token in lowered
 
 
-def test_orchestrate_prompt_points_at_the_pair():
+def test_orchestrate_prompt_points_at_both_subagents():
     meta, body = _frontmatter_and_body(PROMPT)
     assert meta["name"] == "orchestrate"
     lowered = body.lower()
     for token in (
         "orchestrator",
         "bulk reader",
+        "code writer",
         "#tool:agent",
         "goat context",
-        "do not implement",
     ):
         assert token in lowered

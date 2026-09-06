@@ -47,7 +47,7 @@ What we should **not** do: copy product architecture or style guides into this r
 
 - `goat context` lists instruction files, verify commands, and generated-code markers (Nx, OpenAPI, graphql-codegen).
 - `/review` + Reviewer agent: diff against `done_when`, local linters, generated-code, and goat invariants.
-- Orchestrator + hidden Bulk Reader subagent: parent chat stays a map; file reads return structured bullets.
+- Orchestrator + hidden Bulk Reader and Code Writer subagents: parent chat stays a map; reads return structured bullets; writes match reference style.
 - Org-wide invariants in always-on instructions: Jira key in the branch, one PR per sibling, no secrets, obey `done_when`.
 
 **Worth adding next**
