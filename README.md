@@ -314,6 +314,9 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 | `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
+| `.github/agents/orchestrator.agent.md` | Hidden coordinator (not in the dropdown) |
+| `.github/agents/bulk-reader.agent.md` | Hidden subagent: structured bullets from named files |
+| `.github/agents/code-writer.agent.md` | Hidden subagent: Implementer's product-file writer |
 | `.github/prompts/handoff.prompt.md` | `/handoff` |
 | `.github/prompts/glossary.prompt.md` | `/glossary` |
 | `.github/prompts/review.prompt.md` | `/review` |
@@ -324,6 +327,8 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 `/get-started` is the human onboarding path. It runs `goat init` and points at the token doc. Copilot must never ask anyone to paste the API token into chat.
 
 `/orient` is for vague prompts against large repos. It runs `goat context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
+
+**Jira Planner** (and `/jira-ticket`) orchestrates automatically: it invokes the hidden **Bulk Reader** subagent for product files so the plan chat stays a map. After you accept the plan, **Implementer** invokes **Bulk Reader** then **Code Writer** for product files, and still owns `goat branch`, verify, and feature notes. Do not pick Orchestrator — it is not in the agents dropdown.
 
 `/skills-install` is a temporary shim for the VS Code Agents window, which does not scan skills in multi-root child folders. `goat init`, `prepare`, and `workspace generate` copy goat + in-scope sibling `SKILL.md` folders into this repo's `.github/skills`. `goat skills list --brief` prints each skill's name and description; `skills lift` in a terminal shows a numbered picker (`all` is valid). `skills pull <git-url>` clones a skills repo in a temp dir so you can pick names to install. Those copies are local-only — do not commit them.
 

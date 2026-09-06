@@ -51,3 +51,10 @@ The goat does not own product patterns.
 - Do not print `.env` or Jira tokens.
 - If `graphify.stale` is true, say so and offer a *scoped* rebuild only after the user agrees.
 - Do not hand-edit `tooling.generated` paths.
+
+## Related Copilot customizations
+
+- Feature planning: Jira Planner or `/jira-ticket` (auto-delegates product reads to Bulk Reader)
+- Agreed-plan writes: Implementer (Code Writer for product files; Implementer owns branch / verify / notes)
+- Ticket routing: jira-cli skill or `/jira-ticket`
+- Write a plan to a file for another model: planning skill or `/goat-plan`

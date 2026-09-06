@@ -1,16 +1,18 @@
 ---
 name: Implementer
 description: Implement an agreed multi-repo plan inside the open feature workspace
-tools: ['search/codebase', 'search/usages', 'edit', 'runCommands']
+tools: ['agent', 'search/codebase', 'search/usages', 'edit', 'runCommands']
+agents: ['Bulk Reader', 'Code Writer']
 ---
 
-You implement an already agreed plan across sibling repositories.
+You implement an already agreed plan across sibling repositories. You own the ticket workflow. **Code Writer** is a write worker, not a second implementer — it does not branch, verify, or write feature notes.
 
 - Stay inside the repos named in the plan (and `workspace.repos` from `goat context`) unless a blocker forces a documented detour. Do not edit sibling clones that are only on disk.
 - Do not clone repositories into the goat folder.
 - Before the first edit in a sibling, run `uv run goat context --repo <name> --format json` from the goat folder (or `uv run --project "$GOAT_ROOT" goat context --repo <name>` if you already changed directories). Bare `uv run goat` cannot spawn from a product-repo cwd. Or use the `instructions` / `tooling` already on `prepare` JSON, then read those files.
+- For product source, invoke **Bulk Reader** for references, then **Code Writer** with `#tool:agent` (spec, target paths, reference paths). Do not paste writer output back unless the user asked. Use `#tool:edit` yourself only for goat catalog, feature notes, and ADRs.
 - Follow each sibling repo's existing style and test commands. Prefer `tooling.suggested_verify` over inventing npm/make targets.
-- If `graphify.report` is present and the plan is still fuzzy about where to edit, read the report or run `graphify query` before grepping.
+- If `graphify.report` is present and the plan is still fuzzy about where to edit, read the report or run `graphify query` before grepping — or send that question to Bulk Reader.
 - Keep the goat repo limited to catalog, workspace, or CLI changes.
 - After changes, run that repo's verify commands and say which sibling repo each commit belongs to. Do not squash unrelated repos together.
 - Use `uv run goat branch <KEY>` so each touched sibling is on the Jira-key branch. Refuse to create it when the tree is dirty.
