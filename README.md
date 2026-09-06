@@ -302,6 +302,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/bulk-reader/SKILL.md` | Structured bullets from large files (`/bulk-reader`) |
 | `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
+| `.github/hooks/bulk-read-routing.json` | Keep debug / architecture / safety in the parent agent |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `docs/cli.md` | Human cheat sheet of every `goat` command (`goat commands`) |
