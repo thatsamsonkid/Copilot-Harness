@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "matcher": "Read|read|view|View",
+        "command": "python3 .github/hooks/check_file_size.py",
+        "bash": "python3 .github/hooks/check_file_size.py",
+        "powershell": "python .github/hooks/check_file_size.py",
+        "windows": "python .github/hooks/check_file_size.py",
+        "linux": "python3 .github/hooks/check_file_size.py",
+        "osx": "python3 .github/hooks/check_file_size.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ]
+  }
+}

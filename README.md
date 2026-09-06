@@ -299,6 +299,10 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
 | `.github/skills/glossary/SKILL.md` | Workplace terms and acronyms (`/glossary`) |
 | `.github/skills/skills-install/SKILL.md` | Lift sibling or remote skills into this Yard Goat repo for VS Code Agents (`/skills-install`) |
+| `.github/skills/bulk-reader/SKILL.md` | Structured bullets from large files (`/bulk-reader`) |
+| `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
+| `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
+| `.github/hooks/bulk-read-routing.json` | Keep debug / architecture / safety in the parent agent |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `docs/cli.md` | Human cheat sheet of every `goat` command (`goat commands`) |
@@ -316,6 +320,7 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
 | `.github/agents/orchestrator.agent.md` | Hidden coordinator (not in the dropdown) |
 | `.github/agents/bulk-reader.agent.md` | Hidden subagent: structured bullets from named files |
+| `.github/prompts/bulk-reader.prompt.md` | `/bulk-reader` |
 | `.github/agents/code-writer.agent.md` | Hidden subagent: Implementer's product-file writer |
 | `.github/prompts/handoff.prompt.md` | `/handoff` |
 | `.github/prompts/glossary.prompt.md` | `/glossary` |
@@ -329,6 +334,8 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 `/orient` is for vague prompts against large repos. It runs `goat context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
 
 **Jira Planner** (and `/jira-ticket`) orchestrates automatically: it invokes the hidden **Bulk Reader** subagent for product files so the plan chat stays a map. After you accept the plan, **Implementer** invokes **Bulk Reader** then **Code Writer** for product files, and still owns `goat branch`, verify, and feature notes. Do not pick Orchestrator — it is not in the agents dropdown.
+
+Two Copilot hooks in `.github/hooks` stop whole-file dumps. `check-file-size` fires on every `Read`/`view` and denies files over the line threshold (default 350; `GOAT_BULK_READ_MAX_LINES` or `.github/hooks/read-guard.json`). `Read` with `limit` passes through — use that for edits, debugging, architecture, and safety-critical code. `check-bash-read` denies `cat`/`head`/`tail`/`less`/`more` on those large files; a pipe (`cat file | grep`) or `head -n`/`tail -n` is treated as targeted and passes. `bulk-read-routing` injects the same split on every prompt: Bulk Reader is survey-only; do not delegate debugging, architectural decisions, or safety-critical analysis; do not edit from worker line numbers.
 
 `/skills-install` is a temporary shim for the VS Code Agents window, which does not scan skills in multi-root child folders. `goat init`, `prepare`, and `workspace generate` copy goat + in-scope sibling `SKILL.md` folders into this repo's `.github/skills`. `goat skills list --brief` prints each skill's name and description; `skills lift` in a terminal shows a numbered picker (`all` is valid). `skills pull <git-url>` clones a skills repo in a temp dir so you can pick names to install. Those copies are local-only — do not commit them.
 
