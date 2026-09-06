@@ -55,6 +55,7 @@ The goat does not own product patterns.
 ## Related Copilot customizations
 
 - Feature planning: Jira Planner or `/jira-ticket` (auto-delegates product reads to Bulk Reader)
+- Large-file read blocked: `/bulk-reader` (hooks in `.github/hooks`)
 - Agreed-plan writes: Implementer (Code Writer for product files; Implementer owns branch / verify / notes)
 - Ticket routing: jira-cli skill or `/jira-ticket`
 - Write a plan to a file for another model: planning skill or `/goat-plan`

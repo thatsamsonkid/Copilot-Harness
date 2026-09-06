@@ -95,6 +95,7 @@ This skill is the CLI contract, not an implementer.
 - First-run setup: get-started skill or `/get-started`
 - Vague / large-repo orientation: workspace-context skill or `/orient`
 - Feature planning auto-delegates product reads to Bulk Reader (Jira Planner)
+- Large-file read blocked: `/bulk-reader`
 - Local stack start: workspace-start skill or `/start-workspace`
 - Draft a ticket from notes: prepare-jira skill or `/prepare-jira`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
