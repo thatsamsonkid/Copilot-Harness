@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "matcher": "bash|Bash|shell|powershell|runCommands|runTerminalCommand",
+        "command": "python3 .github/hooks/check_bash_read.py",
+        "bash": "python3 .github/hooks/check_bash_read.py",
+        "powershell": "python .github/hooks/check_bash_read.py",
+        "windows": "python .github/hooks/check_bash_read.py",
+        "linux": "python3 .github/hooks/check_bash_read.py",
+        "osx": "python3 .github/hooks/check_bash_read.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ]
+  }
+}

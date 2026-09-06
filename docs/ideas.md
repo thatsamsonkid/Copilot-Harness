@@ -48,6 +48,7 @@ What we should **not** do: copy product architecture or style guides into this r
 - `goat context` lists instruction files, verify commands, and generated-code markers (Nx, OpenAPI, graphql-codegen).
 - `/review` + Reviewer agent: diff against `done_when`, local linters, generated-code, and goat invariants.
 - Hidden Bulk Reader + Code Writer: Jira Planner auto-delegates reads; Implementer auto-delegates product writes. Orchestrator is not user-invocable. Code Writer is not a second Implementer.
+- `check-file-size` / `check-bash-read` hooks: block whole-file reads over 350 lines and point at `/bulk-reader`.
 - Org-wide invariants in always-on instructions: Jira key in the branch, one PR per sibling, no secrets, obey `done_when`.
 
 **Worth adding next**
