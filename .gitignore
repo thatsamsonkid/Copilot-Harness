@@ -23,7 +23,10 @@ jira-tickets/*.md
 # Personal workplace glossary (team file is catalog/glossary.yml)
 catalog/glossary.local.yml
 
-# Generated VS Code workspaces from catalog/stack.yaml (local only)
+# Personal feature workspaces (team catalog is catalog/stack.yaml)
+catalog/stack.local.yaml
+
+# Generated VS Code workspaces from the catalog (local only)
 workspaces/*.code-workspace
 
 # Generated workspace graph (inputs stay in catalog/graph.yaml and sibling .workspace/)

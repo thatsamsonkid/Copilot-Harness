@@ -8,6 +8,7 @@ from goat import GoatError
 
 REPOS_RELATIVE = Path("repositories.yml")
 STACK_RELATIVE = Path("catalog") / "stack.yaml"
+STACK_LOCAL_RELATIVE = Path("catalog") / "stack.local.yaml"
 TEMPLATES_RELATIVE = Path("templates.yml")
 ENV_RELATIVE = Path("catalog") / "env.yaml"
 GLOSSARY_RELATIVE = Path("catalog") / "glossary.yml"

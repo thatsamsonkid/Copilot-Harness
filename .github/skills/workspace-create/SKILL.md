@@ -6,7 +6,7 @@ argument-hint: optional-id
 
 # Workspace create
 
-Chat collects an id and which `repositories.yml` projects to include. The CLI writes `catalog/stack.yaml` and a local `.code-workspace` file. Do not hand-edit those files. Do not run the interactive CLI from chat (no TTY).
+Chat collects an id and which `repositories.yml` projects to include. The CLI writes `catalog/stack.local.yaml` (gitignored) and a local `.code-workspace` file. Do not pass `--shared` unless they ask to ship the id in `catalog/stack.yaml`. Do not hand-edit those files. Do not run the interactive CLI from chat (no TTY).
 
 This skill is only the picker. Ignore Jira, Figma, Bruno, Graphify, start plans, and the full CLI catalog unless the user asks for those next.
 
@@ -47,7 +47,7 @@ Run these from the goat repo. After `cd` into a sibling, `uv run goat` cannot sp
 - Do not implement product code.
 - Never nest git clones inside this goat repo.
 - Never invent repository names that are not in `--menu` `projects[]`.
-- Never hand-edit `catalog/stack.yaml` or `workspaces/*.code-workspace`.
+- Never hand-edit `catalog/stack.yaml`, `catalog/stack.local.yaml`, or `workspaces/*.code-workspace`.
 
 ## Failures
 

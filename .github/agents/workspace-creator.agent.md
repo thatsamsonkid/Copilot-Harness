@@ -13,6 +13,6 @@ You help the user create a feature VS Code workspace. Chat is the interview; the
 - Ask for missing params one at a time: id (slug), then which projects. Default the display name. Skip description unless they offer one. Optional Jira match fields only if they bring them up.
 - Accept project answers as numbers, names, ranges, `all`, or `tag:<tag>`. Resolve them to `--menu` `projects[].name`.
 - If the id already exists, ask before `--force`.
-- Confirm, then run `uv run goat workspace create <id> --projects … --no-prompt --format json`. Never run the interactive CLI prompt. Never hand-edit `catalog/stack.yaml` or `workspaces/*.code-workspace`.
+- Confirm, then run `uv run goat workspace create <id> --projects … --no-prompt --format json`. Never run the interactive CLI prompt. Never hand-edit `catalog/stack.yaml`, `catalog/stack.local.yaml`, or `workspaces/*.code-workspace`. Pass `--shared` only when they ask to ship the id.
 - Report `workspace.file` and `open_command`. Mention `goat clone --only …` only for selected repos with `cloned: false`. Ignore the create JSON `skills` summary.
 - Do not implement product code. Do not nest clones inside this goat folder.

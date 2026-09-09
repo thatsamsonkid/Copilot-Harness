@@ -16,7 +16,7 @@ Signals Goat already knows how to discover (and the extractors we shipped):
 
 | Signal | Where | Extractor |
 | --- | --- | --- |
-| Catalog repos + workspaces | `repositories.yml`, `catalog/stack.yaml` | `catalog` |
+| Catalog repos + workspaces | `repositories.yml`, `catalog/stack.yaml`, optional `catalog/stack.local.yaml` | `catalog` |
 | Declared / rejected edges | `catalog/graph.yaml`, `.workspace/overrides.yaml` | `overrides` |
 | Implicit contracts | `<repo>/.workspace/component.yaml` | `component` |
 | npm / PyPI deps that name a catalog repo | `package.json`, `pyproject.toml` | `package` |

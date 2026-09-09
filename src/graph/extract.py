@@ -158,10 +158,13 @@ def extract_catalog(ctx: ExtractContext) -> ExtractBatch:
     for item in ctx.catalog.workspaces:
         feature = make_node("feature", item.id, attrs={"workspace": item.id})
         nodes.append(feature)
+        stack_file = (
+            "catalog/stack.local.yaml" if item.local else "catalog/stack.yaml"
+        )
         stack_ev = Evidence(
             type="catalog",
             extractor="catalog",
-            file="catalog/stack.yaml",
+            file=stack_file,
             key="workspaces",
             value=item.id,
         )
@@ -183,7 +186,12 @@ def extract_catalog(ctx: ExtractContext) -> ExtractBatch:
     return ExtractBatch(
         nodes=nodes,
         candidates=candidates,
-        files=["repositories.yml", "catalog/stack.yaml"],
+        files=["repositories.yml", "catalog/stack.yaml"]
+        + (
+            ["catalog/stack.local.yaml"]
+            if any(item.local for item in ctx.catalog.workspaces)
+            else []
+        ),
         detail=f"{len(ctx.repos)} catalog repos",
     )
 

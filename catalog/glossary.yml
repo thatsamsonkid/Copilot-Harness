@@ -37,7 +37,7 @@ terms:
   - term: feature workspace
     also: [workspace]
     kind: term
-    meaning: "A VS Code multi-root window for one slice of work. Catalog ids live in catalog/stack.yaml. Generated .code-workspace files are local and gitignored."
+    meaning: "A VS Code multi-root window for one slice of work. Team ids live in catalog/stack.yaml. Personal mixes live in catalog/stack.local.yaml (gitignored). Generated .code-workspace files are local and gitignored."
     see: [catalog]
 
   - term: done_when
@@ -73,7 +73,7 @@ terms:
 
   - term: catalog
     kind: term
-    meaning: "Team YAML under catalog/: stack.yaml (workspaces and routing), env.yaml (declared secrets), glossary.yml (this file). Not the generated workspaces/*.code-workspace files."
+    meaning: "Team YAML under catalog/: stack.yaml (shipped workspaces and routing), env.yaml (declared secrets), glossary.yml (this file). Personal workspace mixes live in catalog/stack.local.yaml (gitignored). Not the generated workspaces/*.code-workspace files."
     see: [repositories.yml, feature workspace]
 
   - term: repositories.yml
