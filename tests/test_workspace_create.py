@@ -121,6 +121,17 @@ def test_create_workspace_with_flags(catalog, goat_root: Path):
     assert created.description == "Cart and checkout"
     assert created.folders == ["frontend", "backend"]
     assert created.match.keywords == ["cart", "checkout"]
+    assert created.local is True
+    assert payload["workspace"]["shared"] is False
+    assert payload["workspace"]["catalog"].endswith("catalog/stack.local.yaml")
+    stack = yaml.safe_load(
+        (goat_root / "catalog" / "stack.yaml").read_text(encoding="utf-8")
+    )
+    assert [item["id"] for item in stack["workspaces"]] == ["frontend", "backend"]
+    local = yaml.safe_load(
+        (goat_root / "catalog" / "stack.local.yaml").read_text(encoding="utf-8")
+    )
+    assert [item["id"] for item in local["workspaces"]] == ["checkout"]
 
 
 def test_create_workspace_requires_flags_without_tty(catalog, goat_root: Path):
@@ -171,7 +182,17 @@ def test_create_workspace_force_replaces(catalog, goat_root: Path):
     assert payload["created"] is False
     refreshed = load_catalog(goat_root)
     assert refreshed.workspace("frontend").folders == ["frontend"]
+    assert refreshed.workspace("frontend").local is True
     assert {item.id for item in refreshed.workspaces} == {"frontend", "backend"}
+    stack = yaml.safe_load(
+        (goat_root / "catalog" / "stack.yaml").read_text(encoding="utf-8")
+    )
+    shipped = next(item for item in stack["workspaces"] if item["id"] == "frontend")
+    assert shipped["folders"] == ["frontend", "backend"]
+    local = yaml.safe_load(
+        (goat_root / "catalog" / "stack.local.yaml").read_text(encoding="utf-8")
+    )
+    assert local["workspaces"][0]["folders"] == ["frontend"]
 
 
 def test_create_workspace_dry_run_does_not_write(catalog, goat_root: Path):
@@ -268,9 +289,10 @@ def test_create_menu_is_compact_picker(catalog, goat_root: Path):
     assert "url" not in payload["projects"][0]
     assert "graphify" not in payload["projects"][0]
     assert payload["workspaces"] == [
-        {"id": "frontend", "name": "Frontend"},
-        {"id": "backend", "name": "Backend"},
+        {"id": "frontend", "name": "Frontend", "local": False},
+        {"id": "backend", "name": "Backend", "local": False},
     ]
+    assert payload["defaults"]["shared"] is False
     assert payload["tags"] == ["api", "ui"]
     assert any("goat repos" in line for line in payload["guidance"])
     assert payload["create_command"].startswith("uv run goat workspace create")
@@ -338,6 +360,7 @@ def test_create_workspace_preserves_stack_comments(
         root,
         workspace_id="checkout",
         folders=["frontend"],
+        shared=True,
         prompt=PromptSession(interactive=False),
     )
     text = stack.read_text(encoding="utf-8")
@@ -356,4 +379,83 @@ def test_gitignore_covers_generated_workspace_files():
     gitignore = Path(__file__).resolve().parents[1] / ".gitignore"
     text = gitignore.read_text(encoding="utf-8")
     assert "workspaces/*.code-workspace" in text
+    assert "catalog/stack.local.yaml" in text
     assert "workspaces/personal" not in text
+
+
+def test_create_workspace_shared_writes_stack_yaml(catalog, goat_root: Path):
+    payload = create_workspace(
+        catalog,
+        goat_root,
+        workspace_id="checkout",
+        folders=["frontend"],
+        shared=True,
+        prompt=PromptSession(interactive=False),
+    )
+    assert payload["workspace"]["shared"] is True
+    assert payload["workspace"]["catalog"].endswith("catalog/stack.yaml")
+    assert not (goat_root / "catalog" / "stack.local.yaml").exists()
+    stack = yaml.safe_load(
+        (goat_root / "catalog" / "stack.yaml").read_text(encoding="utf-8")
+    )
+    assert [item["id"] for item in stack["workspaces"]] == [
+        "frontend",
+        "backend",
+        "checkout",
+    ]
+    refreshed = load_catalog(goat_root)
+    assert refreshed.workspace("checkout").local is False
+
+
+def test_create_workspace_shared_promotes_local_id(catalog, goat_root: Path):
+    create_workspace(
+        catalog,
+        goat_root,
+        workspace_id="checkout",
+        folders=["frontend"],
+        prompt=PromptSession(interactive=False),
+    )
+    assert (goat_root / "catalog" / "stack.local.yaml").is_file()
+    create_workspace(
+        load_catalog(goat_root),
+        goat_root,
+        workspace_id="checkout",
+        folders=["frontend", "backend"],
+        shared=True,
+        force=True,
+        prompt=PromptSession(interactive=False),
+    )
+    assert not (goat_root / "catalog" / "stack.local.yaml").exists()
+    stack = yaml.safe_load(
+        (goat_root / "catalog" / "stack.yaml").read_text(encoding="utf-8")
+    )
+    checkout = next(item for item in stack["workspaces"] if item["id"] == "checkout")
+    assert checkout["folders"] == ["frontend", "backend"]
+    refreshed = load_catalog(goat_root)
+    assert refreshed.workspace("checkout").local is False
+
+
+def test_create_workspace_cli_default_is_local(goat_root: Path, capsys, monkeypatch):
+    monkeypatch.chdir(goat_root)
+    stack_before = (goat_root / "catalog" / "stack.yaml").read_text(encoding="utf-8")
+    assert (
+        main(
+            [
+                "--root",
+                str(goat_root),
+                "workspace",
+                "create",
+                "checkout",
+                "--projects",
+                "frontend",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["workspace"]["local"] is True
+    assert payload["workspace"]["shared"] is False
+    assert (goat_root / "catalog" / "stack.yaml").read_text(
+        encoding="utf-8"
+    ) == stack_before
+    assert (goat_root / "catalog" / "stack.local.yaml").is_file()

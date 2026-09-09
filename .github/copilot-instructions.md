@@ -73,9 +73,9 @@ Bruno collections are git files plus the `bru` CLI. These rules apply even if th
 
 - Manifest: `repositories.yml` — every product repo (`name`, GitHub `url`, `tags`; optional `group` / nested `path`).
 - Templates: `templates.yml` — starter remotes for bootstrapping **new** projects. Not the current stack.
-- Workspaces / Jira routing: `catalog/stack.yaml` — reference repos by name or tag.
+- Workspaces / Jira routing: `catalog/stack.yaml` (shipped) plus optional `catalog/stack.local.yaml` (personal, gitignored) — reference repos by name or tag.
 - CLI: `src/` (imported as `goat`) — clone, template bootstrap, Jira basic auth, Figma images/comments/nodes, Bruno collection discovery / bru wrap, workspace create/generate/match, workspace graph (`goat graph`), prepare, init, context, glossary, status, branch, handoff, start, skills list/lift/pull. `goat commands` (alias `help`) is the live catalog; `docs/cli.md` is the human cheat sheet.
-- Feature workspaces: `catalog/stack.yaml` is the committed catalog. `workspaces/*.code-workspace` files are generated locally (gitignored); first folder is this Goat repo.
+- Feature workspaces: `catalog/stack.yaml` is the committed team catalog. `goat workspace create` writes `catalog/stack.local.yaml` (gitignored) unless `--shared`. `workspaces/*.code-workspace` files are generated locally (gitignored); first folder is this Goat repo.
 - Secrets: declared in `catalog/env.yaml`. Non-secrets go in `.env`. Secrets go in the OS keychain via `goat env set NAME` / `goat jira login` / `goat figma login` (`.env` is a fallback). Never commit tokens or print them. Never put values in generated `.code-workspace` files.
 
 ## Commands
@@ -106,7 +106,7 @@ When the user asks to create, scaffold, or bootstrap a new project:
 
 - Keep clones outside this repo (`../<path>` or `../frontend/<name>`). Do not add git submodules or nest repos here.
 - Prefer the matched / open workspace repos (`workspace.repos` or `routing.repos`). Only load extra roots when the ticket clearly needs them. Do not flag, inspect, or start sibling clones that are merely present on disk.
-- After catalog edits, run `goat workspace generate` so local `.code-workspace` files match. Do not commit those files. To add a workspace, load `.github/skills/workspace-create/SKILL.md` and run `goat workspace create --menu` (compact picker). Do not also run `goat repos`, `goat commands`, or `goat skills list`. Then `goat workspace create <id> --projects … --no-prompt`. In a terminal the same command prompts. Never hand-edit `catalog/stack.yaml` or generated `.code-workspace` files, or run the interactive CLI from chat.
+- After catalog edits, run `goat workspace generate` so local `.code-workspace` files match. Do not commit those files. To add a workspace, load `.github/skills/workspace-create/SKILL.md` and run `goat workspace create --menu` (compact picker). Do not also run `goat repos`, `goat commands`, or `goat skills list`. Then `goat workspace create <id> --projects … --no-prompt`. In a terminal the same command prompts. Never hand-edit `catalog/stack.yaml`, `catalog/stack.local.yaml`, or generated `.code-workspace` files, or run the interactive CLI from chat. Pass `--shared` only to ship an id.
 - When coding in a sibling repo, follow that repo's conventions. This goat does not override product architecture.
 - Before editing a sibling, read the instruction files `goat context` lists for it (`AGENTS.md`, `.github/copilot-instructions.md`, path-specific instructions, skills).
 - After editing a sibling, run that repo's `tooling.suggested_verify`. Do not skip a failing lint/test command from the product repo.

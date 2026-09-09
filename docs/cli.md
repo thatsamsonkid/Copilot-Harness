@@ -41,8 +41,8 @@ Shared flags on every command: `--format`, `--catalog`, `--repos`, `--templates`
 | `goat templates [NAME]` | List starter remotes from `templates.yml` |
 | `goat bootstrap [TEMPLATE]` | Clone a listed template as a new project |
 | `goat workspace list` | List feature workspaces |
-| `goat workspace generate` | Write local `.code-workspace` files from `catalog/stack.yaml` (`--check` reports drift, no write) |
-| `goat workspace create [ID]` | Create a workspace and pick projects from `repositories.yml` |
+| `goat workspace generate` | Write local `.code-workspace` files from the catalog (`--check` reports drift, no write) |
+| `goat workspace create [ID]` | Create a personal workspace in `catalog/stack.local.yaml` (gitignored). `--shared` writes the team catalog |
 | `goat workspace create --menu` | Compact picker for chat (name, tags, existing ids; no skills or CLI catalog) |
 | `goat workspace match ISSUE` | Recommend a workspace for an issue |
 | `goat workspace open ID` | Open a workspace in VS Code |

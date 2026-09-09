@@ -4,7 +4,11 @@ import yaml
 
 from goat import GoatError
 from goat.catalog import Workspace, WorkspaceMatch
-from goat.stack_edit import format_workspace_yaml, upsert_workspace_text
+from goat.stack_edit import (
+    format_workspace_yaml,
+    remove_workspace_text,
+    upsert_workspace_text,
+)
 import pytest
 
 
@@ -91,3 +95,19 @@ def test_adds_workspaces_key_when_missing():
     data = yaml.safe_load(updated)
     assert "jira" in data
     assert data["workspaces"][0]["id"] == "checkout"
+
+
+def test_remove_workspace_keeps_neighbors():
+    original = (
+        "workspaces:\n"
+        "  - id: frontend\n"
+        "    name: Frontend\n"
+        "  - id: checkout\n"
+        "    name: Checkout\n"
+        "  - id: backend\n"
+        "    name: Backend\n"
+    )
+    updated = remove_workspace_text(original, "checkout")
+    data = yaml.safe_load(updated)
+    assert [item["id"] for item in data["workspaces"]] == ["frontend", "backend"]
+    assert remove_workspace_text(original, "missing") is None

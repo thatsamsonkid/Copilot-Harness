@@ -9,7 +9,7 @@ The user wants a new feature VS Code workspace. They may pass a slug as `${input
 
 Load `.github/skills/workspace-create/SKILL.md`. Chat collects id and projects; the CLI writes the files.
 
-Do **not** run interactive `goat workspace create` (no TTY). Do **not** hand-edit `catalog/stack.yaml` or `workspaces/*.code-workspace`.
+Do **not** run interactive `goat workspace create` (no TTY). Do **not** hand-edit `catalog/stack.yaml`, `catalog/stack.local.yaml`, or `workspaces/*.code-workspace`. Default create is local (gitignored). Pass `--shared` only when they ask to ship the id.
 
 ## Walkthrough
 

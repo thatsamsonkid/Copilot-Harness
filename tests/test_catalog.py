@@ -5,6 +5,7 @@ import pytest
 from goat import GoatError
 from goat.catalog import catalog_to_dict, load_catalog
 from goat.paths import find_goat_root
+from goat.workspace import catalog_starters, list_workspaces
 from tests.helpers import write_goat_config
 
 
@@ -223,3 +224,59 @@ def test_catalog_to_dict_marks_placeholders(tmp_path: Path, sample_catalog_data:
         "web-starter",
         "api-starter",
     ]
+    assert payload["local_source"] is None
+    assert payload["workspaces"][0]["local"] is False
+    assert payload["workspaces"][0]["source"] == "shared"
+
+
+def test_load_catalog_merges_local_workspaces(
+    tmp_path: Path, sample_catalog_data: dict
+):
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    (root / "catalog" / "stack.local.yaml").write_text(
+        "workspaces:\n"
+        "  - id: checkout\n"
+        "    name: Checkout\n"
+        "    folders: [frontend]\n"
+        "  - id: frontend\n"
+        "    name: Frontend overlay\n"
+        "    folders: [frontend]\n",
+        encoding="utf-8",
+    )
+    catalog = load_catalog(root)
+    assert [item.id for item in catalog.workspaces] == [
+        "frontend",
+        "backend",
+        "checkout",
+    ]
+    assert catalog.workspace("checkout").local is True
+    assert catalog.workspace("frontend").local is True
+    assert catalog.workspace("frontend").name == "Frontend overlay"
+    assert catalog.workspace("frontend").folders == ["frontend"]
+    assert catalog.workspace("backend").local is False
+    assert catalog.shared_workspace_ids == frozenset({"frontend", "backend"})
+    assert catalog.local_source == root / "catalog" / "stack.local.yaml"
+    payload = catalog_to_dict(catalog, root)
+    assert payload["local_source"].endswith("catalog/stack.local.yaml")
+    listed = list_workspaces(catalog, root)
+    by_id = {item["id"]: item for item in listed}
+    assert by_id["checkout"]["local"] is True
+    assert by_id["checkout"]["shared"] is False
+    assert by_id["frontend"]["local"] is True
+    assert by_id["frontend"]["shared"] is True
+    starters = catalog_starters(catalog, root)
+    assert [item["id"] for item in starters] == ["frontend", "backend"]
+
+
+def test_local_stack_rejects_team_settings(
+    tmp_path: Path, sample_catalog_data: dict
+):
+    root = tmp_path / "goat"
+    write_goat_config(root, sample_catalog_data)
+    (root / "catalog" / "stack.local.yaml").write_text(
+        "jira:\n  include_comments: false\nworkspaces:\n  - id: scratch\n    folders: [frontend]\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GoatError, match="may only contain workspaces"):
+        load_catalog(root)
