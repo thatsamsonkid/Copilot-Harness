@@ -52,6 +52,9 @@ def test_skill_targets_low_context_executors():
         "you are the executor",
         "do not spawn implementer",
         "must not spawn implementer",
+        "you become implementer",
+        "new chat",
+        "code writer",
     ):
         assert token in lowered
 
@@ -74,13 +77,20 @@ def test_plan_template_has_required_sections():
     assert "never a line number" in text
     assert "Model after:" in text
     assert "never absolute" in text
+    assert "Never spawn Implementer" in text
+    assert "you become Implementer" in text
     assert "Do not invoke Implementer or Code Writer" in text
 
 
-def test_always_on_docs_make_the_current_chat_the_plan_executor():
-    """After goat-plan, the implementing chat must not nest Implementer → Code Writer."""
+def test_always_on_docs_support_same_chat_and_new_chat_implement_paths():
+    """Never spawn Implementer. Same-chat planner uses Code Writer; new chat writes itself."""
     for path in (AGENTS, COPILOT, GOAT_PLAN):
         lowered = path.read_text(encoding="utf-8").lower()
-        assert "you are the executor" in lowered or "is the executor" in lowered, path
-        assert "do not spawn implementer" in lowered, path
+        assert "never spawn implementer" in lowered or "do not spawn implementer" in lowered, path
+        assert "become implementer" in lowered, path
         assert "code writer" in lowered, path
+        assert (
+            "you are the executor" in lowered
+            or "is the executor" in lowered
+            or "write product files yourself" in lowered
+        ), path
