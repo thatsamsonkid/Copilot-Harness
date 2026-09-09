@@ -122,6 +122,6 @@ Do not try to reconstruct the screen from JSON. The Images payload is only ids a
 - Ticket routing: jira-cli skill or `/jira-ticket`
 - Bruno collections: bruno-cli skill or `/bruno`
 - Vague / large-repo orientation: workspace-context skill or `/orient`
-- Implement an agreed plan: Implementer agent
+- Implement an agreed plan: current chat follows the `plans/` file (do not spawn Implementer). VS Code Agents dropdown: Implementer primary agent
 - Review a diff: Reviewer agent or `/review`
 - Sibling / remote agent skills: skills-install skill or `/skills-install`

@@ -12,6 +12,8 @@ What must be true when this plan is complete, in two or three sentences. Restate
 
 ## Context for the executor
 
+You (the current chat agent) execute this plan. Edit the listed files yourself. Do not invoke Implementer or Code Writer — those names are a VS Code Agents dropdown path, not workers to spawn. Subagents must not spawn other subagents.
+
 Everything a model with zero prior context needs before step 1: what the feature/bug is, how the involved repos relate, which instruction files to read first (exact paths), and any terms of art defined in one line each.
 
 ## Out of scope

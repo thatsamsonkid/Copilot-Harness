@@ -4,8 +4,12 @@ from pathlib import Path
 
 import yaml
 
-SKILL = Path(__file__).resolve().parents[1] / ".github" / "skills" / "planning" / "SKILL.md"
-TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "plan.md"
+ROOT = Path(__file__).resolve().parents[1]
+SKILL = ROOT / ".github" / "skills" / "planning" / "SKILL.md"
+TEMPLATE = ROOT / "templates" / "plan.md"
+AGENTS = ROOT / "AGENTS.md"
+COPILOT = ROOT / ".github" / "copilot-instructions.md"
+GOAT_PLAN = ROOT / ".github" / "prompts" / "goat-plan.prompt.md"
 
 
 def _frontmatter_and_body() -> tuple[dict, str]:
@@ -45,6 +49,9 @@ def test_skill_targets_low_context_executors():
         "expected result",
         "out of scope",
         "no secrets",
+        "you are the executor",
+        "do not spawn implementer",
+        "must not spawn implementer",
     ):
         assert token in lowered
 
@@ -67,3 +74,13 @@ def test_plan_template_has_required_sections():
     assert "never a line number" in text
     assert "Model after:" in text
     assert "never absolute" in text
+    assert "Do not invoke Implementer or Code Writer" in text
+
+
+def test_always_on_docs_make_the_current_chat_the_plan_executor():
+    """After goat-plan, the implementing chat must not nest Implementer → Code Writer."""
+    for path in (AGENTS, COPILOT, GOAT_PLAN):
+        lowered = path.read_text(encoding="utf-8").lower()
+        assert "you are the executor" in lowered or "is the executor" in lowered, path
+        assert "do not spawn implementer" in lowered, path
+        assert "code writer" in lowered, path

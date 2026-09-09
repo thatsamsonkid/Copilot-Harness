@@ -1,12 +1,12 @@
 ---
 name: planning
-description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use when the user asks to plan work, write a plan, or prepare a task for another (often smaller) model or agent to execute. Plans must be detailed enough for a low-context executor to follow without asking questions.
+description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use when the user asks to plan work, write a plan, or prepare a task for another (often smaller) model or agent to execute. Plans must be detailed enough for a low-context executor to follow without asking questions. The later chat that implements the plan is that executor and must not spawn Implementer.
 argument-hint: PROJ-123
 ---
 
 # Planning
 
-Plans live in this goat (`plans/`), not in product repos. They are gitignored. A plan is the **single input for an executor** — often a smaller, cheaper model with no access to this conversation. If the executor would need to guess, the plan is not done.
+Plans live in this goat (`plans/`), not in product repos. They are gitignored. A plan is the **single input for an executor** — often a smaller, cheaper model with no access to this conversation. That later chat **is** the executor: it follows the file and writes the code itself. It must not spawn Implementer or Code Writer. If the executor would need to guess, the plan is not done.
 
 ## Where plans live
 
@@ -73,6 +73,15 @@ Order steps by dependency, number them, and give each a checkbox (`- [ ]`) so th
 - End with **Verification** (the full test/lint commands per repo, from that repo's `tooling.suggested_verify`) and **Done when** (the stop condition; from Jira `done_when` when present).
 - Include risks and a rollback note when the change touches shared contracts (APIs, events, schemas).
 - Tell the user the plan's relative path. Planning and executing are separate: do not start implementing the plan in the same breath unless the user asks.
+- When they do ask (same chat or a later model), **the current chat agent is the executor**. Follow the file map and steps yourself. Do not invoke **Implementer** or **Code Writer**. Those names are a VS Code Agents dropdown workflow (the user picks Implementer as the primary chat). Launching Implementer as a subagent makes it try to nest Code Writer, which fails where subagents cannot spawn subagents.
+
+## Who executes this plan
+
+The plan file is the executor's only brief. The executor has the plan, the repo checkouts, and nothing else.
+
+- **You are the executor** when asked to implement / proceed / execute this plan. Edit the listed product files, run `goat branch`, verify, and write feature notes.
+- Do not spawn Implementer or Code Writer. Do not wait for a handoff button. Planning and executing are separate *turns*, not separate agents, unless the user explicitly switches to the Implementer dropdown agent in VS Code Agents.
+- Subagents must not spawn other subagents. If you were yourself started as a subagent, still write the files yourself — do not nest Code Writer.
 
 ## Hard rules
 

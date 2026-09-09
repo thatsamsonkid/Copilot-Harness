@@ -333,7 +333,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/orient` is for vague prompts against large repos. It runs `goat context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
 
-**Jira Planner** (and `/jira-ticket`) orchestrates automatically: it invokes the hidden **Bulk Reader** subagent for product files so the plan chat stays a map. After you accept the plan, **Implementer** invokes **Bulk Reader** then **Code Writer** for product files, and still owns `goat branch`, verify, and feature notes. Do not pick Orchestrator — it is not in the agents dropdown.
+**Jira Planner** (and `/jira-ticket`) orchestrates automatically: it invokes the hidden **Bulk Reader** subagent for product files so the plan chat stays a map. After `/goat-plan` (or when you ask that chat to implement a `plans/` file), the **current chat agent is the executor** — it edits product files itself, then runs `goat branch`, verify, and feature notes. Do not spawn Implementer or Code Writer from that chat. Those names are the VS Code Agents dropdown path: you pick **Implementer** as the primary agent; only that primary may invoke **Code Writer**. Never launch Implementer as a subagent. Subagents must not spawn other subagents. Do not pick Orchestrator — it is not in the agents dropdown.
 
 Two Copilot hooks in `.github/hooks` stop whole-file dumps. `check-file-size` fires on every `Read`/`view` and denies files over the line threshold (default 350; `GOAT_BULK_READ_MAX_LINES` or `.github/hooks/read-guard.json`). `Read` with `limit` passes through — use that for edits, debugging, architecture, and safety-critical code. `check-bash-read` denies `cat`/`head`/`tail`/`less`/`more` on those large files; a pipe (`cat file | grep`) or `head -n`/`tail -n` is treated as targeted and passes. `bulk-read-routing` injects the same split on every prompt: Bulk Reader is survey-only; do not delegate debugging, architectural decisions, or safety-critical analysis; do not edit from worker line numbers.
 
@@ -350,7 +350,7 @@ Typical loop:
 3. Copilot runs `goat prepare PROJ-123` and `goat status`
 4. You open the recommended `.code-workspace` so every needed repo is a root
 5. To run the local apps: `/start-workspace` (or `uv run goat start --workspace <id>`). Save the sequence once with `--save` so later chats reuse `workspaces/<id>.start.yml`.
-6. Copilot writes a plan (using Graphify reports and each repo's instructions when present), then hands off to Implementer when you are ready
+6. Copilot writes a plan (using Graphify reports and each repo's instructions when present). When you are ready, ask that chat to implement the `plans/` file — or, in VS Code Agents, pick Implementer from the dropdown.
 7. Pause with `/handoff`. Review with `/review` against `done_when`.
 
 To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.

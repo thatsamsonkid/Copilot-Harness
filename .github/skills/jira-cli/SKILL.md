@@ -103,7 +103,7 @@ This skill is the CLI contract, not an implementer.
 - Figma frames: figma-cli skill or `/figma-frame`
 - Bruno collections: bruno-cli skill or `/bruno`
 - Create a feature workspace: workspace-create skill, Workspace Creator, or `/new-workspace`
-- Implement an agreed plan: Implementer agent
+- Implement an agreed plan: current chat follows the `plans/` file (do not spawn Implementer). VS Code Agents dropdown: Implementer primary agent
 - Review a diff: Reviewer agent or `/review`
 - Pause / resume: handoff skill or `/handoff`
 - Sibling / remote agent skills: skills-install skill or `/skills-install`

@@ -12,5 +12,6 @@ The user wants an implementation plan written to a file, usually for another (of
 3. Write the plan to `plans/<YYYY-MM-DD>-<key-or-slug>.plan.md` starting from `templates/plan.md`. Assume the executor has only the plan file and the repo checkouts — restate all requirements, make every decision, and give each step exact files, symbols, commands, expected results, and a verify check.
 4. Copy `done_when` into the plan when there is a ticket. Include an out-of-scope section.
 5. Tell the user the plan's relative path and that it is gitignored.
+6. If a later turn asks to implement this plan, that chat agent **is** the executor: follow the plan file yourself. Do not spawn Implementer or Code Writer. Those names are the VS Code Agents dropdown path only.
 
-Do not implement. Do not read `.env` or print tokens.
+Do not implement in this planning turn. Do not read `.env` or print tokens.

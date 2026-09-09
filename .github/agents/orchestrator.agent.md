@@ -11,7 +11,7 @@ You coordinate for a parent that is already planning or implementing a feature. 
 ## Who called you
 
 - **Jira Planner** (or a ticket-planning turn): reads only. Invoke **Bulk Reader**. Do not invoke **Code Writer**. Do not edit product code.
-- **Implementer** (or an agreed-plan turn): invoke **Bulk Reader** for references, then **Code Writer** for product files. Do not run `goat branch`, verify, or write feature notes — the Implementer does that after you return.
+- **Implementer** (or an agreed-plan turn): only when the parent is the user-selected primary Implementer in VS Code Agents. Invoke **Bulk Reader** for references, then **Code Writer** for product files. Do not run `goat branch`, verify, or write feature notes — the Implementer does that after you return. If the parent was itself a subagent, write nothing and tell it to edit files itself — do not nest Code Writer.
 
 ## Context isolation
 
