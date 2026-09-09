@@ -54,5 +54,7 @@ def test_skill_body_is_the_cli_contract():
         "do not pass `--clone-missing`",
         "failed to spawn",
         "--project",
+        "if the user wants a plan",
+        "small scoped",
     ):
         assert token in lowered

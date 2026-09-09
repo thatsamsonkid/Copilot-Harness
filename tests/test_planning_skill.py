@@ -49,6 +49,8 @@ def test_skill_targets_low_context_executors():
         "expected result",
         "out of scope",
         "no secrets",
+        "do not write a plan for a small direct",
+        "/goat-plan",
         "you are the executor",
         "do not spawn implementer",
         "must not spawn implementer",

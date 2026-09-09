@@ -1,6 +1,6 @@
 ---
 name: planning
-description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use when the user asks to plan work, write a plan, or prepare a task for another (often smaller) model or agent to execute. Plans must be detailed enough for a low-context executor to follow without asking questions. Never spawn Implementer. Same-chat planner becomes Implementer and invokes Code Writer; a new chat with only the plan file writes the code itself.
+description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use only when the user asks to write a plan, save a plan, or run /goat-plan — usually so another (often smaller) model or agent can execute it. Do not use for small direct implement requests. Plans must be detailed enough for a low-context executor to follow without asking questions. Never spawn Implementer. Same-chat planner becomes Implementer and invokes Code Writer; a new chat with only the plan file writes the code itself.
 argument-hint: PROJ-123
 ---
 
@@ -90,6 +90,7 @@ Never spawn Implementer. The Implementer *role* is something the primary chat ta
 
 ## Hard rules
 
+- Do not write a plan for a small direct implement request. This skill is opt-in (`/goat-plan`, "write a plan", "save a plan"). Ticket chat plans belong to jira-cli / `/jira-ticket` / Jira Planner, not this file flow.
 - No secrets: never write `.env` values, tokens, or credentials into a plan.
 - Plans stay in the goat `plans/` directory. Do not write plans into sibling repos; product knowledge (feature notes, ADRs) still belongs in the sibling's `docs/features`.
 - Do not name repos outside the matched workspace (`workspace.repos` / `routing.repos`).

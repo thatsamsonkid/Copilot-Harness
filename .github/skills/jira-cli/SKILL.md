@@ -77,7 +77,7 @@ This skill is the CLI contract, not an implementer.
 1. Summarize from returned fields only. Do not invent custom fields.
 2. Name the matched workspace and whether clones are missing.
 3. Ask the user to run `routing.open_command` when those roots are not open.
-4. If the user wants a plan, write one and stop. Do not edit product code until they ask. If the plan should be saved to a file or executed by another model or agent, follow the planning skill (`.github/skills/planning/SKILL.md`) and write it to `plans/`.
+4. If the user wants a plan (or invoked `/jira-ticket` / Jira Planner / `/goat-plan`), write one and stop. Do not write a plan for a small scoped change just because a Jira key was mentioned — implement if they asked to implement. Do not edit product code until they ask, unless they already asked to implement. If the plan should be saved to a file or executed by another model or agent, follow the planning skill (`.github/skills/planning/SKILL.md`) and write it to `plans/`.
 
 ## Auth and setup failures
 
