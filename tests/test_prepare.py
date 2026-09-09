@@ -90,6 +90,15 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, goat_root: Path)
     assert payload["routing"]["suggested_branch"] == "WEB-42"
     assert any(item["source"] == "goat" for item in payload["done_when"])
     assert any("WEB-42" in step for step in payload["next_steps"])
+    assert any("Write a plan only if" in step for step in payload["next_steps"])
+    assert not any(
+        "Write an implementation plan covering" in step
+        for step in payload["next_steps"]
+    )
+    assert not any(
+        "Do not start coding until the plan is agreed" in step
+        for step in payload["next_steps"]
+    )
     assert "skills" in payload
 
 

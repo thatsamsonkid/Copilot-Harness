@@ -45,6 +45,8 @@ def test_skill_targets_low_context_executors():
         "expected result",
         "out of scope",
         "no secrets",
+        "do not write a plan for a small direct",
+        "/goat-plan",
     ):
         assert token in lowered
 

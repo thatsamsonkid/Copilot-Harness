@@ -2,6 +2,17 @@
 
 This repository is tooling only. Application code lives in **git clones next to this repo** (flat siblings or grouped folders under `parent_dir`), never inside it.
 
+## When to write a plan
+
+Do **not** write an implementation plan (in chat or to `plans/`) for small, scoped, or "just do this" requests. Implement those immediately.
+
+Write a plan only when:
+
+- The user asked to plan, or invoked `/jira-ticket` / **Jira Planner** (chat plan after `goat prepare`).
+- The user invoked `/goat-plan` or asked to save a plan for another model (file in `plans/` via the planning skill).
+
+A Jira key alone is not a request to write a plan. Follow the jira-cli skill, then implement if they asked to implement. Never write a `plans/` file unless they asked to save a plan or used `/goat-plan`.
+
 ## First-run and vague prompts
 
 - First time in this repo, missing Jira auth, or "how do I set this up?": load `.github/skills/get-started/SKILL.md` and run `uv run goat init --format json`. Never collect the API token in chat.
@@ -18,7 +29,7 @@ When the user gives a Jira key or browse URL, load the **jira-cli** skill (`.git
 2. Use that CLI JSON as the only ticket source. It is already field-filtered. Do not ask Jira for more.
 3. Tell the user to open `routing.open_command` so the feature workspace loads the right roots. Do not assume sibling repos are already in the current window.
 4. If `routing.missing_repos` is non-empty, recommend `routing.clone_command`. Never `git clone` into this goat folder.
-5. Write a plan covering impacted repos, likely files, risks, and tests. Do not implement until the user asks. If the plan should be saved for later or handed to another model, load `.github/skills/planning/SKILL.md` and write it to `plans/` (gitignored) from `templates/plan.md` — detailed enough for a zero-context executor.
+5. If the user asked for a plan (or invoked `/jira-ticket` / Jira Planner), write a chat plan covering impacted repos, likely files, risks, and tests, then stop. Do not write a `plans/` file unless they asked to save it or used `/goat-plan`. If they asked to implement, or the change is small and scoped, skip the plan and implement.
 
 When the user wants to **write or draft** a Jira ticket from notes (or runs `/prepare-jira`), load `.github/skills/prepare-jira/SKILL.md`. Format from `templates/jira-ticket.md`, write `jira-tickets/<YYYY-MM-DD>-<slug>.md` (gitignored), and print copy-paste blocks. Do not create the issue in Jira — the CLI is read-only.
 
@@ -126,7 +137,7 @@ These stay few and stable. Everything else lives in the product repo.
 
 ## Status, branches, and handoff
 
-- Before planning or pausing, run `uv run goat status --format json`. It follows the open workspace; pass `--all` only if the user asked for every clone.
+- Before pausing a ticket session, or when writing a ticket plan, run `uv run goat status --format json`. It follows the open workspace; pass `--all` only if the user asked for every clone.
 - Assigned work: `uv run goat jira mine --format json`.
 - Pause / next chat: `/handoff` or `uv run goat handoff write --issue <KEY> --note "..."`.
 - Review a diff: `/review` or the **Reviewer** agent. Do not implement while reviewing.

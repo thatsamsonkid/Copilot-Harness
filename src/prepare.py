@@ -82,8 +82,7 @@ def prepare_issue(
         "If the change adds user-visible or non-obvious behavior, update docs/features (or an ADR) in that sibling. Do not file it in the Goat repo.",
         f"Use branch name {suggested_branch(issue['key'])} in each touched sibling (`goat branch {issue['key']}`).",
         "Treat done_when as the stop condition. Do not declare the ticket done until those items are checked.",
-        "Write an implementation plan covering impacted repos, files, risks, and test strategy.",
-        "Do not start coding until the plan is agreed, unless the user asks to implement immediately.",
+        "Write a plan only if the user asked for one or invoked /jira-ticket / Jira Planner / /goat-plan. Skip the plan and implement when they asked to implement or the change is small and scoped.",
         "If VS Code Agents cannot see sibling skills, use routing.skills or `goat skills list` / `skills lift`.",
     ]
     if missing:
@@ -99,7 +98,7 @@ def prepare_issue(
             1,
             (
                 f"This window is workspace {current.id}. "
-                f"Open the recommended workspace before planning: "
+                f"Open the recommended workspace before working: "
                 f"{open_command(workspace_file)}"
             ),
         )
