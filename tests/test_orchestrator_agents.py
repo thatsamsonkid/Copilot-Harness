@@ -111,7 +111,8 @@ def test_jira_planner_auto_delegates_reads_not_writes():
         "bulk reader",
         "do not invoke **code writer**",
         "do not edit product code",
-        "implementer's write worker",
+        "do not spawn implementer",
+        "you become implementer",
         "debugging",
         "architectural decisions",
         "safety-critical",
@@ -119,7 +120,7 @@ def test_jira_planner_auto_delegates_reads_not_writes():
         assert token in lowered
 
 
-def test_implementer_owns_workflow_and_delegates_product_writes():
+def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
     meta, body = _frontmatter_and_body(IMPLEMENTER)
     assert meta["name"] == "Implementer"
     assert "agent" in meta["tools"]
@@ -136,6 +137,11 @@ def test_implementer_owns_workflow_and_delegates_product_writes():
         "targeted-",
         "debugging",
         "safety-critical",
+        "do not nest agents",
+        "write product files yourself",
+        "subagents must not spawn",
+        "wrote the plan in this chat",
+        "your write worker",
     ):
         assert token in lowered
 
@@ -148,5 +154,8 @@ def test_jira_ticket_prompt_uses_reader_not_writer():
     assert "bulk reader" in lowered
     assert "do not invoke **code writer**" in lowered
     assert "do not edit product code" in lowered
+    assert "you become implementer" in lowered
+    assert "do not spawn implementer" in lowered
+    assert "is the executor" in lowered or "you are the executor" in lowered
     assert "debugging" in lowered
     assert "safety-critical" in lowered
