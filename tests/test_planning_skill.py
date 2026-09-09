@@ -4,8 +4,12 @@ from pathlib import Path
 
 import yaml
 
-SKILL = Path(__file__).resolve().parents[1] / ".github" / "skills" / "planning" / "SKILL.md"
-TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "plan.md"
+ROOT = Path(__file__).resolve().parents[1]
+SKILL = ROOT / ".github" / "skills" / "planning" / "SKILL.md"
+TEMPLATE = ROOT / "templates" / "plan.md"
+AGENTS = ROOT / "AGENTS.md"
+COPILOT = ROOT / ".github" / "copilot-instructions.md"
+GOAT_PLAN = ROOT / ".github" / "prompts" / "goat-plan.prompt.md"
 
 
 def _frontmatter_and_body() -> tuple[dict, str]:
@@ -47,6 +51,12 @@ def test_skill_targets_low_context_executors():
         "no secrets",
         "do not write a plan for a small direct",
         "/goat-plan",
+        "you are the executor",
+        "do not spawn implementer",
+        "must not spawn implementer",
+        "you become implementer",
+        "new chat",
+        "code writer",
     ):
         assert token in lowered
 
@@ -69,3 +79,20 @@ def test_plan_template_has_required_sections():
     assert "never a line number" in text
     assert "Model after:" in text
     assert "never absolute" in text
+    assert "Never spawn Implementer" in text
+    assert "you become Implementer" in text
+    assert "Do not invoke Implementer or Code Writer" in text
+
+
+def test_always_on_docs_support_same_chat_and_new_chat_implement_paths():
+    """Never spawn Implementer. Same-chat planner uses Code Writer; new chat writes itself."""
+    for path in (AGENTS, COPILOT, GOAT_PLAN):
+        lowered = path.read_text(encoding="utf-8").lower()
+        assert "never spawn implementer" in lowered or "do not spawn implementer" in lowered, path
+        assert "become implementer" in lowered, path
+        assert "code writer" in lowered, path
+        assert (
+            "you are the executor" in lowered
+            or "is the executor" in lowered
+            or "write product files yourself" in lowered
+        ), path

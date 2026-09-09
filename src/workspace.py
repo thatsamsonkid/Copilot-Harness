@@ -124,7 +124,7 @@ def workspace_file_status(
 
 
 def check_workspaces(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
-    """Compare catalog/stack.yaml workspaces to workspaces/*.code-workspace."""
+    """Compare catalog workspaces to workspaces/*.code-workspace."""
     expected_ids = {workspace.id for workspace in catalog.workspaces}
     workspaces = [
         workspace_file_status(catalog, goat_root, workspace)
@@ -152,7 +152,8 @@ def check_workspaces(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
     if not in_sync:
         payload["hint"] = (
             "Run `goat workspace generate` to rewrite workspaces/*.code-workspace "
-            "from catalog/stack.yaml. Delete orphan files or add the id to the catalog."
+            "from the catalog. Delete orphan files or add the id with "
+            "`goat workspace create`."
         )
     return payload
 
@@ -167,7 +168,7 @@ def workspace_sync_error(status: dict[str, Any]) -> str:
         parts.append("orphan " + ", ".join(status["orphans"]))
     detail = "; ".join(parts) if parts else "unknown drift"
     return (
-        "Shared workspace files are out of sync with catalog/stack.yaml "
+        "Shared workspace files are out of sync with the catalog "
         f"({detail}). Run `goat workspace generate` to rewrite "
         "workspaces/*.code-workspace from the catalog."
     )
@@ -197,6 +198,11 @@ def list_workspaces(catalog: Catalog, goat_root: Path) -> list[dict[str, Any]]:
                 "name": workspace.name,
                 "description": workspace.description,
                 "fallback": workspace.fallback,
+                "local": workspace.local,
+                "shared": workspace.id in catalog.shared_workspace_ids
+                if catalog.shared_workspace_ids
+                else not workspace.local,
+                "source": "local" if workspace.local else "shared",
                 "env": [
                     variable.name
                     for variable in vars_for(
@@ -217,9 +223,11 @@ def list_workspaces(catalog: Catalog, goat_root: Path) -> list[dict[str, Any]]:
 
 
 def catalog_starters(catalog: Catalog, goat_root: Path) -> list[dict[str, Any]]:
-    """Shared catalog/stack.yaml workspaces for get-started / init."""
+    """Shipped catalog/stack.yaml workspaces for get-started / init."""
     starters: list[dict[str, Any]] = []
     for row in list_workspaces(catalog, goat_root):
+        if not row.get("shared"):
+            continue
         starters.append(
             {
                 "id": row["id"],

@@ -21,6 +21,6 @@ The user will provide a Jira issue key or browse URL as `${input:issue:Jira issu
    - Proposed changes by repo
    - Risks / unknowns
    - Test plan
-9. Stop after the plan unless the user asks to implement. Hand off to Implementer for writes — Code Writer is that agent's worker.
+9. Stop after the plan unless the user asks to implement. If they ask in this chat, you become Implementer — invoke Code Writer for product files; do not spawn Implementer. If they open a new chat on a `plans/` file, that chat is the executor and writes the files itself (no Implementer or Code Writer). In VS Code Agents, the user can click **Implement plan** to switch to the Implementer primary agent.
 
 Do not clone into this goat directory. Do not invent Jira fields that were not returned. If the description is thin, tell them to run `/prepare-jira` (or point at `templates/jira-ticket.md`) rather than inventing sections.

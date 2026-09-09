@@ -9,6 +9,13 @@ import yaml
 from goat import GoatError
 from goat.catalog import Workspace, include_kit_from_mapping
 
+STACK_LOCAL_HEADER = """# Personal feature workspaces — gitignored, not shared with the team.
+# Merged with catalog/stack.yaml at load time. Do not commit this file.
+# Team starters and Jira routing stay in catalog/stack.yaml.
+# To ship a mix: goat workspace create <id> --projects ... --shared --force
+
+"""
+
 _WORKSPACES_KEY = re.compile(r"^workspaces\s*:(.*)$")
 _TOP_LEVEL_KEY = re.compile(r"^[A-Za-z_][\w-]*\s*:")
 _LIST_ITEM = re.compile(r"^([ \t]*)- (.*)$")
@@ -21,18 +28,22 @@ def upsert_workspace_in_stack(
     workspace: Workspace,
     *,
     replace: bool = False,
+    header: str | None = None,
 ) -> None:
-    """Insert or replace a workspace entry in catalog/stack.yaml, keeping comments."""
+    """Insert or replace a workspace entry, keeping comments."""
     original = path.read_text(encoding="utf-8") if path.exists() else ""
+    seed = original
+    if not seed.strip() and header:
+        seed = header if header.endswith("\n") else header + "\n"
     try:
-        updated = upsert_workspace_text(original, workspace, replace=replace)
+        updated = upsert_workspace_text(seed, workspace, replace=replace)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(updated, encoding="utf-8")
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         items = raw.get("workspaces") or []
         ids = [str(item.get("id")) for item in items if isinstance(item, dict)]
         if workspace.id not in ids:
-            raise GoatError("Failed to persist workspace to catalog/stack.yaml")
+            raise GoatError(f"Failed to persist workspace to {path}")
         if ids.count(workspace.id) > 1:
             raise GoatError(f"Duplicate workspace id after write: {workspace.id}")
     except Exception:
@@ -41,6 +52,50 @@ def upsert_workspace_in_stack(
         elif path.exists():
             path.unlink()
         raise
+
+
+def remove_workspace_from_stack(path: Path, workspace_id: str) -> bool:
+    """Remove one workspace id. Deletes the file when the list becomes empty."""
+    if not path.exists():
+        return False
+    original = path.read_text(encoding="utf-8")
+    updated = remove_workspace_text(original, workspace_id)
+    if updated is None:
+        return False
+    raw = yaml.safe_load(updated) or {}
+    items = [
+        item
+        for item in (raw.get("workspaces") or [])
+        if isinstance(item, dict) and item.get("id")
+    ]
+    if not items:
+        path.unlink()
+        return True
+    path.write_text(updated, encoding="utf-8")
+    return True
+
+
+def remove_workspace_text(text: str, workspace_id: str) -> str | None:
+    if not text.strip():
+        return None
+    if not text.endswith("\n"):
+        text += "\n"
+    lines = text.splitlines(keepends=True)
+    span = _workspaces_section(lines)
+    if span is None:
+        return None
+    start, end = span
+    _item_indent, items = _workspace_items(lines, start, end)
+    existing = next((item for item in items if item[0] == workspace_id), None)
+    if existing is None:
+        return None
+    item_start, item_end = existing[1], existing[2]
+    new_lines = list(lines)
+    del new_lines[item_start:item_end]
+    result = "".join(new_lines)
+    if not result.endswith("\n"):
+        result += "\n"
+    return result
 
 
 def upsert_workspace_text(

@@ -397,13 +397,13 @@ def build_parser() -> argparse.ArgumentParser:
     workspace_generate = workspace_sub.add_parser(
         "generate",
         parents=[shared],
-        help="Write .code-workspace files from catalog/stack.yaml",
+        help="Write .code-workspace files from the catalog",
     )
     workspace_generate.add_argument(
         "--check",
         action="store_true",
         help=(
-            "Fail if workspaces/*.code-workspace drift from catalog/stack.yaml; "
+            "Fail if workspaces/*.code-workspace drift from the catalog; "
             "do not write files"
         ),
     )
@@ -459,9 +459,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Replace an existing workspace with the same id",
     )
     workspace_create.add_argument(
+        "--shared",
+        action="store_true",
+        help=(
+            "Write to catalog/stack.yaml (team catalog). "
+            "Default is catalog/stack.local.yaml (gitignored)"
+        ),
+    )
+    workspace_create.add_argument(
         "--no-generate",
         action="store_true",
-        help="Update catalog/stack.yaml only; do not write the .code-workspace file",
+        help=(
+            "Update the workspace catalog only; do not write the .code-workspace file"
+        ),
     )
     workspace_create.add_argument("--dry-run", action="store_true")
     workspace_create.add_argument(
@@ -1363,6 +1373,7 @@ def _dispatch_workspace(args: argparse.Namespace, catalog: Any, goat_root: Path)
             force=args.force,
             generate=not args.no_generate,
             dry_run=args.dry_run,
+            shared=getattr(args, "shared", False),
             prompt=prompt,
         )
     if args.workspace_command == "match":

@@ -235,7 +235,7 @@ def run_doctor(
             _check(
                 "workspaces",
                 True,
-                f"{len(generated)} workspace file(s) match catalog/stack.yaml",
+                f"{len(generated)} workspace file(s) match the catalog",
             )
         )
     else:
@@ -247,7 +247,7 @@ def run_doctor(
         if workspace_sync["orphans"]:
             parts.append("orphan " + ", ".join(workspace_sync["orphans"]))
         rewritten = (
-            f"rewrote {len(changed)} file(s) from catalog/stack.yaml; "
+            f"rewrote {len(changed)} file(s) from the catalog; "
             if changed
             else ""
         )

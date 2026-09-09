@@ -40,6 +40,7 @@ from goat.jira_fields import (
 from goat.paths import (
     ENV_RELATIVE,
     REPOS_RELATIVE,
+    STACK_LOCAL_RELATIVE,
     STACK_RELATIVE,
     TEMPLATES_RELATIVE,
     WORKSPACES_DIR,
@@ -176,6 +177,7 @@ class Workspace:
     fallback: bool = False
     env: list[str] = field(default_factory=list)
     match: WorkspaceMatch = field(default_factory=WorkspaceMatch)
+    local: bool = False
 
 
 @dataclass(frozen=True)
@@ -192,6 +194,8 @@ class Catalog:
     templates_source: Path | None = None
     env_vars: list[EnvVar] = field(default_factory=list)
     env_source: Path | None = None
+    local_source: Path | None = None
+    shared_workspace_ids: frozenset[str] = field(default_factory=frozenset)
 
     def workspace_env_names(self, workspace: Workspace | str) -> list[str]:
         if isinstance(workspace, str):
@@ -293,9 +297,13 @@ def load_catalog(
         Path(templates_path) if templates_path else goat_root / TEMPLATES_RELATIVE
     )
     env_file = goat_root / ENV_RELATIVE
+    local_file = goat_root / STACK_LOCAL_RELATIVE
     repos, parent_dir = load_repositories(repos_file)
     repo_names = {repo.name for repo in repos}
-    workspaces, jira, figma, bruno = load_stack(stack_file, repo_names)
+    shared_workspaces, jira, figma, bruno = load_stack(stack_file, repo_names)
+    local_workspaces = load_local_workspaces(local_file, repo_names)
+    shared_ids = frozenset(workspace.id for workspace in shared_workspaces)
+    workspaces = merge_workspaces(shared_workspaces, local_workspaces)
     templates = load_templates(templates_file)
     from goat.envspec import load_env_spec, validate_env_spec
 
@@ -319,6 +327,8 @@ def load_catalog(
         templates_source=templates_file,
         env_vars=env_vars,
         env_source=env_source,
+        local_source=local_file if local_file.is_file() else None,
+        shared_workspace_ids=shared_ids,
     )
 
 
@@ -545,11 +555,88 @@ def load_stack(
             f"{path} must not list repositories. Put them in {REPOS_RELATIVE}."
         )
 
+    workspaces = _parse_workspaces(
+        raw.get("workspaces"), repo_names, source=path, local=False
+    )
+
+    jira_raw = raw.get("jira") or {}
+    if not isinstance(jira_raw, dict):
+        raise GoatError("jira settings must be a mapping")
+    aliases = jira_raw.get("field_aliases") or {}
+    if not isinstance(aliases, dict):
+        raise GoatError("jira.field_aliases must be a mapping")
+    configured_fields = _as_list(jira_raw.get("fields"))
+    search_raw = jira_raw.get("search_fields")
+    jira = JiraSettings(
+        fields=configured_fields or list(DEFAULT_OUTPUT_FIELDS),
+        extra_fields=_as_list(jira_raw.get("extra_fields")),
+        field_aliases={str(key): str(value) for key, value in aliases.items()},
+        include_comments=bool(jira_raw.get("include_comments", True)),
+        max_comments=int(jira_raw.get("max_comments") or 15),
+        shapes=_as_shapes(jira_raw.get("shapes"), defaults=DEFAULT_SHAPES, label="jira.shapes"),
+        search_fields=(
+            _as_list(search_raw) if search_raw is not None else list(DEFAULT_SEARCH_FIELDS)
+        ),
+        drop_empty=bool(jira_raw.get("drop_empty", True)),
+    )
+
+    _assert_single_fallback(workspaces)
+
+    return workspaces, jira, _load_figma(raw.get("figma")), _load_bruno(
+        raw.get("bruno"), repo_names
+    )
+
+
+def load_local_workspaces(path: Path, repo_names: set[str]) -> list[Workspace]:
+    """Personal workspaces from catalog/stack.local.yaml (gitignored)."""
+    if not path.is_file():
+        return []
+    raw = _read_yaml(path)
+    if raw is None:
+        return []
+    if not isinstance(raw, dict):
+        raise GoatError(f"Local stack catalog root must be a mapping: {path}")
+    extra = sorted(set(raw) - {"workspaces"})
+    if extra:
+        raise GoatError(
+            f"{path} may only contain workspaces:. "
+            f"Team settings stay in {STACK_RELATIVE}. "
+            f"Unexpected keys: {', '.join(extra)}."
+        )
+    workspaces = _parse_workspaces(
+        raw.get("workspaces"), repo_names, source=path, local=True
+    )
+    _assert_single_fallback(workspaces)
+    return workspaces
+
+
+def merge_workspaces(
+    shared: list[Workspace], local: list[Workspace]
+) -> list[Workspace]:
+    """Append personal workspaces; a local id overlays the shipped entry."""
+    by_id = {workspace.id: workspace for workspace in shared}
+    order = [workspace.id for workspace in shared]
+    for workspace in local:
+        if workspace.id not in by_id:
+            order.append(workspace.id)
+        by_id[workspace.id] = workspace
+    merged = [by_id[workspace_id] for workspace_id in order]
+    _assert_single_fallback(merged)
+    return merged
+
+
+def _parse_workspaces(
+    items: Any,
+    repo_names: set[str],
+    *,
+    source: Path,
+    local: bool,
+) -> list[Workspace]:
     workspaces: list[Workspace] = []
     seen_workspace_ids: set[str] = set()
-    for item in raw.get("workspaces") or []:
+    for item in items or []:
         if not isinstance(item, dict) or "id" not in item:
-            raise GoatError("Each workspace needs an id")
+            raise GoatError(f"Each workspace needs an id ({source})")
         workspace_id = str(item["id"])
         if workspace_id in seen_workspace_ids:
             raise GoatError(f"Duplicate workspace id: {workspace_id}")
@@ -583,39 +670,18 @@ def load_stack(
                     issue_types=_as_list(match_raw.get("issue_types")),
                     keywords=_as_list(match_raw.get("keywords")),
                 ),
+                local=local,
             )
         )
+    return workspaces
 
-    jira_raw = raw.get("jira") or {}
-    if not isinstance(jira_raw, dict):
-        raise GoatError("jira settings must be a mapping")
-    aliases = jira_raw.get("field_aliases") or {}
-    if not isinstance(aliases, dict):
-        raise GoatError("jira.field_aliases must be a mapping")
-    configured_fields = _as_list(jira_raw.get("fields"))
-    search_raw = jira_raw.get("search_fields")
-    jira = JiraSettings(
-        fields=configured_fields or list(DEFAULT_OUTPUT_FIELDS),
-        extra_fields=_as_list(jira_raw.get("extra_fields")),
-        field_aliases={str(key): str(value) for key, value in aliases.items()},
-        include_comments=bool(jira_raw.get("include_comments", True)),
-        max_comments=int(jira_raw.get("max_comments") or 15),
-        shapes=_as_shapes(jira_raw.get("shapes"), defaults=DEFAULT_SHAPES, label="jira.shapes"),
-        search_fields=(
-            _as_list(search_raw) if search_raw is not None else list(DEFAULT_SEARCH_FIELDS)
-        ),
-        drop_empty=bool(jira_raw.get("drop_empty", True)),
-    )
 
+def _assert_single_fallback(workspaces: list[Workspace]) -> None:
     fallbacks = [workspace.id for workspace in workspaces if workspace.fallback]
     if len(fallbacks) > 1:
         raise GoatError(
             "Only one workspace can be fallback=true; found: " + ", ".join(fallbacks)
         )
-
-    return workspaces, jira, _load_figma(raw.get("figma")), _load_bruno(
-        raw.get("bruno"), repo_names
-    )
 
 
 def _load_figma(raw: Any) -> FigmaSettings:
@@ -747,6 +813,7 @@ def catalog_to_dict(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
     sibling_root = catalog.sibling_root(goat_root)
     return {
         "source": str(catalog.source),
+        "local_source": str(catalog.local_source) if catalog.local_source else None,
         "repos_source": str(catalog.repos_source),
         "parent_dir": catalog.parent_dir,
         "sibling_root": str(sibling_root),
@@ -778,6 +845,8 @@ def catalog_to_dict(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
                 "folders": catalog.workspace_repo_names(workspace),
                 "include_goat": workspace.include_goat,
                 "fallback": workspace.fallback,
+                "local": workspace.local,
+                "source": "local" if workspace.local else "shared",
                 "env": workspace.env,
                 "file": str(catalog.workspace_file(goat_root, workspace)),
                 "start_file": str(catalog.workspace_start_file(goat_root, workspace)),

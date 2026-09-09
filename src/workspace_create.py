@@ -12,9 +12,14 @@ from goat.catalog import (
     WorkspaceMatch,
     load_catalog,
 )
+from goat.paths import STACK_LOCAL_RELATIVE
 from goat.prompt import PromptSession
 from goat.skills import compact_sync_result, sync_root_skills
-from goat.stack_edit import upsert_workspace_in_stack
+from goat.stack_edit import (
+    STACK_LOCAL_HEADER,
+    remove_workspace_from_stack,
+    upsert_workspace_in_stack,
+)
 from goat.workspace import open_command, write_workspace_file
 
 _WORKSPACE_ID = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
@@ -144,6 +149,7 @@ def create_workspace(
     force: bool = False,
     generate: bool = True,
     dry_run: bool = False,
+    shared: bool = False,
     prompt: PromptSession | None = None,
 ) -> dict[str, Any]:
     prompt = prompt or PromptSession()
@@ -176,7 +182,7 @@ def create_workspace(
         if current and current != [workspace_id]:
             raise GoatError(
                 f"Only one workspace can be fallback=true; {current[0]} already is. "
-                "Edit catalog/stack.yaml to change it."
+                "Edit catalog/stack.yaml (or pass --shared --force) to change it."
             )
 
     workspace = Workspace(
@@ -194,6 +200,7 @@ def create_workspace(
             issue_types=[],
             keywords=match_keywords or [],
         ),
+        local=not shared,
     )
 
     included = catalog.workspace_repo_names(workspace)
@@ -203,6 +210,8 @@ def create_workspace(
             "Choose projects or tags from repositories.yml."
         )
     stack_path = catalog.source
+    local_path = goat_root / STACK_LOCAL_RELATIVE
+    target_path = stack_path if shared else local_path
     replaced = existing is not None
 
     if dry_run:
@@ -217,9 +226,18 @@ def create_workspace(
             generated=False,
             dry_run=True,
             folders=document_folders,
+            catalog_path=target_path,
+            shared=shared,
         )
 
-    upsert_workspace_in_stack(stack_path, workspace, replace=force or replaced)
+    upsert_workspace_in_stack(
+        target_path,
+        workspace,
+        replace=force or replaced,
+        header=None if shared else STACK_LOCAL_HEADER,
+    )
+    if shared:
+        remove_workspace_from_stack(local_path, workspace_id)
     refreshed = load_catalog(
         goat_root,
         stack_path=stack_path,
@@ -243,6 +261,8 @@ def create_workspace(
         or (["goat"] if include_goat else [])
         + refreshed.workspace_repo_names(persisted),
         file=(written or {}).get("file"),
+        catalog_path=target_path,
+        shared=shared,
     )
     payload["skills"] = compact_sync_result(
         sync_root_skills(
@@ -278,7 +298,8 @@ def create_menu(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
         "projects": [item for item in projects if item["enabled"]],
         "disabled": [item["name"] for item in projects if not item["enabled"]],
         "workspaces": [
-            {"id": item.id, "name": item.name} for item in catalog.workspaces
+            {"id": item.id, "name": item.name, "local": item.local}
+            for item in catalog.workspaces
         ],
         "tags": tags,
         "select": "numbers, names, ranges (1-3), all, or tag:<tag>",
@@ -286,7 +307,7 @@ def create_menu(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
             "uv run goat workspace create <id> --projects <names> "
             "--no-prompt --format json"
         ),
-        "defaults": {"include_goat": True},
+        "defaults": {"include_goat": True, "shared": False},
         "guidance": [
             "Show a compact numbered list from projects[] (n, name, tags).",
             "If there are more than 12 projects, show tags[] first and ask "
@@ -421,6 +442,8 @@ def _payload(
     dry_run: bool,
     folders: list[str],
     file: str | None = None,
+    catalog_path: Path | None = None,
+    shared: bool = False,
 ) -> dict[str, Any]:
     path = catalog.workspace_file(goat_root, workspace)
     repos = []
@@ -443,7 +466,9 @@ def _payload(
             "include_goat": workspace.include_goat,
             "fallback": workspace.fallback,
             "file": file or str(path),
-            "catalog": str(catalog.source),
+            "catalog": str(catalog_path or catalog.source),
+            "local": not shared,
+            "shared": shared,
             "exists": path.exists(),
         },
         "repos": repos,
