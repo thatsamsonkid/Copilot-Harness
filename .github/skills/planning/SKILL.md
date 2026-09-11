@@ -1,12 +1,12 @@
 ---
 name: planning
-description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use when the user asks to plan work, write a plan, or prepare a task for another (often smaller) model or agent to execute. Plans must be detailed enough for a low-context executor to follow without asking questions. Never spawn Implementer. Same-chat planner becomes Implementer and invokes Code Writer; a new chat with only the plan file writes the code itself.
+description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use when the user asks to plan work, write a plan, or prepare a task for another (often smaller) model or agent to execute. Plans must be detailed enough for a low-context executor to follow without asking questions. Never spawn Implementer. Start implementation with /goat-implement (Code Writer + Verifier; survives compaction). A new chat with only the plan file writes the code itself.
 argument-hint: PROJ-123
 ---
 
 # Planning
 
-Plans live in this goat (`plans/`), not in product repos. They are gitignored. A plan is the **single input for a new-chat executor** — often a smaller, cheaper model with no access to this conversation. That later chat writes the code itself and must not spawn Implementer or Code Writer. If the same chat that wrote the plan is asked to implement, that chat becomes Implementer and invokes Code Writer — it must not spawn Implementer. If either executor would need to guess, the plan is not done.
+Plans live in this goat (`plans/`), not in product repos. They are gitignored. A plan is the **single input for a new-chat executor** — often a smaller, cheaper model with no access to this conversation. That later chat writes the code itself and must not spawn Implementer, Code Writer, or Verifier. If the same chat that wrote the plan is asked to implement, tell them to run `/goat-implement` (it reloads Code Writer + Verifier after compaction) — that chat becomes Implementer and must not spawn Implementer. If either executor would need to guess, the plan is not done.
 
 ## Where plans live
 
@@ -73,19 +73,20 @@ Order steps by dependency, number them, and give each a checkbox (`- [ ]`) so th
 - End with **Verification** (the full test/lint commands per repo, from that repo's `tooling.suggested_verify`) and **Done when** (the stop condition; from Jira `done_when` when present).
 - Include risks and a rollback note when the change touches shared contracts (APIs, events, schemas).
 - Tell the user the plan's relative path. Planning and executing are separate: do not start implementing the plan in the same breath unless the user asks.
-- Tell them the two implement paths: continue in this chat (you become Implementer and invoke Code Writer) or open a new chat with a smaller model on the plan file (that chat writes the files itself). Never spawn Implementer.
+- Tell them to start implementation with **`/goat-implement`** (implementing skill). That command survives chat compaction: the chat becomes Implementer, invokes **Code Writer** for product files, and invokes **Verifier** for verify checks. A new chat with only the plan file and no `/goat-implement` writes the files itself. Never spawn Implementer. Do not start implementing in this planning turn.
 
 ## Who executes this plan
 
-Never spawn Implementer. The Implementer *role* is something the primary chat takes on. Two paths:
+Never spawn Implementer. The Implementer *role* is something the primary chat takes on.
 
 | Who is implementing | What they do |
 | --- | --- |
-| **Same chat that wrote this plan** (expensive planner continues) | You become Implementer. Invoke **Code Writer** for product files (`#tool:agent`: spec, target paths, reference paths). You still run `goat branch`, verify, and write feature notes. Do not spawn Implementer. |
-| **New chat handed only the `plans/` file** (often a smaller model) | You are the executor. Follow the file map and write product files yourself. Do not spawn Implementer or Code Writer. |
-| **VS Code Agents dropdown** | User picks Implementer as the primary chat — same as the same-chat path. |
+| **`/goat-implement`** (preferred; works after compaction) | You become Implementer. Load the implementing skill. Invoke **Code Writer** for product files and **Verifier** for each Verify check plus the **Verification** section. You still run `goat branch` and write feature notes. Do not spawn Implementer. |
+| **Same chat that wrote this plan** (expensive planner continues without the slash command) | Same as `/goat-implement`. After compact, tell them to run `/goat-implement` so the protocol is reloaded — a bare "implement it" is not enough. |
+| **New chat handed only the `plans/` file** (often a smaller model; no `/goat-implement`) | You are the executor. Follow the file map and write product files yourself. Do not spawn Implementer, Code Writer, or Verifier. |
+| **VS Code Agents dropdown** | User picks Implementer as the primary chat — same as `/goat-implement`. |
 
-- Subagents must not spawn other subagents. If you were yourself started as a subagent, write the files yourself — do not nest Code Writer.
+- Subagents must not spawn other subagents. If you were yourself started as a subagent, write the files yourself — do not nest Code Writer or Verifier.
 - Do not wait for a handoff button unless the user is in VS Code Agents and clicks **Implement plan**.
 
 ## Hard rules

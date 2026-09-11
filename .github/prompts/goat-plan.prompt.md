@@ -12,6 +12,6 @@ The user wants an implementation plan written to a file, usually for another (of
 3. Write the plan to `plans/<YYYY-MM-DD>-<key-or-slug>.plan.md` starting from `templates/plan.md`. Assume the executor has only the plan file and the repo checkouts — restate all requirements, make every decision, and give each step exact files, symbols, commands, expected results, and a verify check.
 4. Copy `done_when` into the plan when there is a ticket. Include an out-of-scope section.
 5. Tell the user the plan's relative path and that it is gitignored.
-6. Tell them the two implement paths. If they continue in this chat, you become Implementer: invoke Code Writer for product files; do not spawn Implementer. If they open a new chat with only the plan file (often a smaller model), that chat is the executor: it writes the files itself and must not spawn Implementer or Code Writer.
+6. Tell them to start implementation with `/goat-implement` (survives chat compaction). Never spawn Implementer. If they continue in this chat, you become Implementer: invoke Code Writer for product files and Verifier for verify checks. If they open a new chat with only the plan file and do not run `/goat-implement` (often a smaller model), that chat is the executor: it writes the files itself and must not spawn Implementer, Code Writer, or Verifier.
 
 Do not implement in this planning turn. Do not read `.env` or print tokens.
