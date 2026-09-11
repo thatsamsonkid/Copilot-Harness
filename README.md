@@ -323,9 +323,9 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 | `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
 | `.github/agents/orchestrator.agent.md` | Hidden coordinator (not in the dropdown) |
-| `.github/agents/bulk-reader.agent.md` | Hidden subagent (Claude Haiku 4.5): structured bullets from named files |
+| `.github/agents/bulk-reader.agent.md` | Hidden subagent (Copilot Auto): structured bullets from named files |
 | `.github/prompts/bulk-reader.prompt.md` | `/bulk-reader` |
-| `.github/agents/code-writer.agent.md` | Hidden subagent (Claude Haiku 4.5): Implementer's product-file writer |
+| `.github/agents/code-writer.agent.md` | Hidden subagent (Copilot Auto): Implementer's product-file writer |
 | `.github/agents/verifier.agent.md` | Hidden subagent: Implementer's verify-command runner |
 | `.github/prompts/handoff.prompt.md` | `/handoff` |
 | `.github/prompts/glossary.prompt.md` | `/glossary` |

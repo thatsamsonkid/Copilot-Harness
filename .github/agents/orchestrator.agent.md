@@ -17,7 +17,7 @@ You coordinate for a parent that is already planning or implementing a feature. 
 
 1. Stay in `workspace.repos` from the caller's `goat context` / `prepare` JSON. If they did not pass routing, run `uv run goat context --format json` from the goat folder first.
 2. For survey questions (where a symbol lives, what a file contains), invoke **Bulk Reader** with `#tool:agent`. Do not open large files yourself. Do not delegate debugging, architectural decisions, or safety-critical analysis.
-3. Each subagent call is stateless. Put everything that call needs in that one prompt. Agent names are case-sensitive: `Bulk Reader`, `Code Writer`, `Verifier`. Bulk Reader and Code Writer pin Claude Haiku 4.5 — invoke them by name and do not override the model.
+3. Each subagent call is stateless. Put everything that call needs in that one prompt. Agent names are case-sensitive: `Bulk Reader`, `Code Writer`, `Verifier`. Bulk Reader and Code Writer pin Copilot Auto (`Auto (copilot)`) — invoke them by name and do not override the model.
 4. Split independent read groups into parallel Bulk Reader calls. Cap a call at a handful of files. Ask for structured bullets only.
 5. Treat reader output as evidence. Return a short map (repos, paths, symbols). Do not dump source.
 

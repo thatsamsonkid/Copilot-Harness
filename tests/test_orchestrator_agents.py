@@ -13,7 +13,7 @@ IMPLEMENTER = ROOT / ".github" / "agents" / "implementer.agent.md"
 VERIFIER = ROOT / ".github" / "agents" / "verifier.agent.md"
 JIRA_PROMPT = ROOT / ".github" / "prompts" / "jira-ticket.prompt.md"
 GOAT_IMPLEMENT = ROOT / ".github" / "prompts" / "goat-implement.prompt.md"
-HAIKU_MODEL = "Claude Haiku 4.5"
+AUTO_MODEL = "Auto (copilot)"
 
 
 def _frontmatter_and_body(path: Path) -> tuple[dict, str]:
@@ -30,7 +30,7 @@ def test_bulk_reader_is_a_hidden_read_only_subagent():
     assert meta["name"] == "Bulk Reader"
     assert meta.get("user-invocable") is False
     assert meta.get("agents") == []
-    assert meta.get("model") == HAIKU_MODEL
+    assert meta.get("model") == AUTO_MODEL
     tools = set(meta["tools"])
     assert "read" in tools
     assert "search/codebase" in tools
@@ -60,7 +60,7 @@ def test_code_writer_is_implementer_write_worker():
     assert meta["name"] == "Code Writer"
     assert meta.get("user-invocable") is False
     assert meta.get("agents") == []
-    assert meta.get("model") == HAIKU_MODEL
+    assert meta.get("model") == AUTO_MODEL
     tools = set(meta["tools"])
     assert "edit" in tools
     assert "read" in tools
@@ -127,7 +127,7 @@ def test_orchestrator_is_hidden_and_not_user_invocable():
         "bulk reader",
         "#tool:agent",
         "stateless",
-        "claude haiku 4.5",
+        "auto (copilot)",
         "do not override the model",
     ):
         assert token in lowered
@@ -151,7 +151,7 @@ def test_jira_planner_auto_delegates_reads_not_writes():
         "debugging",
         "architectural decisions",
         "safety-critical",
-        "claude haiku 4.5",
+        "auto (copilot)",
         "do not override the model",
     ):
         assert token in lowered
@@ -182,7 +182,7 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "/goat-implement",
         "your write worker",
         "verifier",
-        "claude haiku 4.5",
+        "auto (copilot)",
         "do not override the model",
     ):
         assert token in lowered
@@ -203,7 +203,7 @@ def test_jira_ticket_prompt_uses_reader_not_writer():
     assert "is the executor" in lowered or "you are the executor" in lowered
     assert "debugging" in lowered
     assert "safety-critical" in lowered
-    assert "claude haiku 4.5" in lowered
+    assert "auto (copilot)" in lowered
     assert "do not override the model" in lowered
 
 
