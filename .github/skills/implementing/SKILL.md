@@ -53,7 +53,7 @@ Read the plan's **File map**, **Steps**, **Verification**, and **Done when**. Th
 4. For each plan step, in order:
    - Targeted-`Read` (`limit`/`offset`) every section you will change. Do not edit from Bulk Reader line numbers.
    - When you are the primary chat, invoke **Bulk Reader** only for a **survey** of named reference files. Do not send debugging, architectural decisions, or safety-critical analysis to Bulk Reader.
-   - Invoke **Code Writer** with `#tool:agent`. Agent name is case-sensitive: `Code Writer`. Each call is stateless — put the spec, target paths, and reference paths in that one prompt. Ask it to match existing patterns and to output only the code. Write only the files in that step's file-map rows.
+   - Invoke **Code Writer** with `#tool:agent`. Agent name is case-sensitive: `Code Writer`. Its profile pins Claude Haiku 4.5 — do not override the model. Each call is stateless — put the spec, target paths, and reference paths in that one prompt. Ask it to match existing patterns and to output only the code. Write only the files in that step's file-map rows.
    - Use `#tool:edit` yourself for goat catalog, feature notes, and ADRs. Never send those to Code Writer.
    - Invoke **Verifier** with `#tool:agent`. Agent name is case-sensitive: `Verifier`. Pass the step's **Verify** command, cwd, and expected result. If Verifier reports fail, stop and report — do not improvise the next step.
 5. After all steps, invoke **Verifier** again with the plan **Verification** section and each touched repo's `tooling.suggested_verify`. Do not mark the plan done until Verifier reports pass and `done_when` holds.

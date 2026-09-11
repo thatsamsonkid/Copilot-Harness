@@ -81,7 +81,7 @@ Never spawn Implementer. The Implementer *role* is something the primary chat ta
 
 | Who is implementing | What they do |
 | --- | --- |
-| **`/goat-implement`** (preferred; works after compaction) | You become Implementer. Load the implementing skill. Invoke **Code Writer** for product files and **Verifier** for each Verify check plus the **Verification** section. You still run `goat branch` and write feature notes. Do not spawn Implementer. |
+| **`/goat-implement`** (preferred; works after compaction) | You become Implementer. Load the implementing skill. Invoke **Code Writer** for product files and **Verifier** for each Verify check plus the **Verification** section. Code Writer pins Claude Haiku 4.5 — do not override the model. You still run `goat branch` and write feature notes. Do not spawn Implementer. |
 | **Same chat that wrote this plan** (expensive planner continues without the slash command) | Same as `/goat-implement`. After compact, tell them to run `/goat-implement` so the protocol is reloaded — a bare "implement it" is not enough. |
 | **New chat handed only the `plans/` file** (often a smaller model; no `/goat-implement`) | You are the executor. Follow the file map and write product files yourself. Do not spawn Implementer, Code Writer, or Verifier. |
 | **VS Code Agents dropdown** | User picks Implementer as the primary chat — same as `/goat-implement`. |

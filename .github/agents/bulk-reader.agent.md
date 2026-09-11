@@ -3,6 +3,7 @@ name: Bulk Reader
 description: Read named files and return structured bullets for an orchestrator. Do not edit.
 user-invocable: false
 agents: []
+model: Claude Haiku 4.5
 tools: ['read', 'search', 'search/codebase', 'search/usages']
 ---
 
