@@ -21,7 +21,7 @@ For those, stay in this chat. Open the section with a targeted `Read` (`limit` /
 
 ## How to run (survey only)
 
-1. Invoke the **Bulk Reader** agent with `#tool:agent`. Agent names are case-sensitive.
+1. Invoke the **Bulk Reader** agent with `#tool:agent`. Agent names are case-sensitive. Its profile pins Claude Haiku 4.5 — do not override the model.
 2. Each call is stateless. Include the exact survey question, repo-relative paths or symbols, and what to skip.
 3. Ask for structured bullets only (name, type, and `path:line`). No source dump.
 4. Parallelize independent file groups. Cap a call at a handful of files.

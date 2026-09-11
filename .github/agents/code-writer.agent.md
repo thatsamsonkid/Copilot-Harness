@@ -3,6 +3,7 @@ name: Code Writer
 description: Generate code from a spec and reference files. Match existing style. Do not explain.
 user-invocable: false
 agents: []
+model: Claude Haiku 4.5
 tools: ['read', 'search', 'search/codebase', 'search/usages', 'edit']
 ---
 

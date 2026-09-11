@@ -81,7 +81,7 @@ Never spawn Implementer. The Implementer *role* is something the primary chat ta
 
 | Who is implementing | What they do |
 | --- | --- |
-| **Same chat that wrote this plan** (expensive planner continues) | You become Implementer. Invoke **Code Writer** for product files (`#tool:agent`: spec, target paths, reference paths). You still run `goat branch`, verify, and write feature notes. Do not spawn Implementer. |
+| **Same chat that wrote this plan** (expensive planner continues) | You become Implementer. Invoke **Code Writer** for product files (`#tool:agent`: spec, target paths, reference paths). Its profile pins Claude Haiku 4.5 — do not override the model. You still run `goat branch`, verify, and write feature notes. Do not spawn Implementer. |
 | **New chat handed only the `plans/` file** (often a smaller model) | You are the executor. Follow the file map and write product files yourself. Do not spawn Implementer or Code Writer. |
 | **VS Code Agents dropdown** | User picks Implementer as the primary chat — same as the same-chat path. |
 
