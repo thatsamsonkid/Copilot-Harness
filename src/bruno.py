@@ -9,9 +9,11 @@ exist, and which cwd + env to pass to bru.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
@@ -434,7 +436,12 @@ def parse_workflow_file(
         return []
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError):
+    except OSError:
+        return []
+    except yaml.YAMLError as exc:
+        warnings.warn(
+            f"Ignoring malformed Bruno workflow file {path}: {exc}", stacklevel=2
+        )
         return []
     items = _workflow_items(raw)
     workflows: list[dict[str, Any]] = []
@@ -494,7 +501,12 @@ def parse_services_file(
         return []
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError):
+    except OSError:
+        return []
+    except yaml.YAMLError as exc:
+        warnings.warn(
+            f"Ignoring malformed Bruno services file {path}: {exc}", stacklevel=2
+        )
         return []
     items = _service_items(raw)
     services: list[dict[str, Any]] = []
@@ -661,16 +673,30 @@ def _load_collection(
     manifest = collection_root / "bruno.json"
     try:
         data = json.loads(manifest.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError:
+        return None
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        warnings.warn(
+            f"Ignoring malformed Bruno manifest {manifest}: {exc}", stacklevel=2
+        )
         return None
     if not isinstance(data, dict):
         return None
     name = str(data.get("name") or collection_root.name)
     relpath = collection_root.relative_to(repo_root).as_posix()
+    # A nested bruno.json marks its own collection; do not fold its requests
+    # into this parent collection (which would double-count and mis-attribute).
+    nested_roots = [
+        manifest_path.parent
+        for manifest_path in _walk_bruno_json(collection_root)
+        if manifest_path.parent != collection_root
+    ]
     requests: list[dict[str, Any]] = []
     folders: list[str] = []
     for bru_file in _walk_bru_files(collection_root):
         if bru_file.parent.name == "environments":
+            continue
+        if any(bru_file.is_relative_to(nested) for nested in nested_roots):
             continue
         parsed = parse_bru_request(bru_file, collection_root)
         if parsed is None:
@@ -714,19 +740,20 @@ def _load_collection(
 
 def _walk_bruno_json(root: Path) -> list[Path]:
     found: list[Path] = []
-    for path in root.rglob("bruno.json"):
-        if any(part in SKIP_DIR_NAMES for part in path.parts):
-            continue
-        found.append(path)
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [name for name in dirnames if name not in SKIP_DIR_NAMES]
+        if "bruno.json" in filenames:
+            found.append(Path(dirpath) / "bruno.json")
     return sorted(found)
 
 
 def _walk_bru_files(root: Path) -> list[Path]:
     found: list[Path] = []
-    for path in root.rglob("*.bru"):
-        if any(part in SKIP_DIR_NAMES for part in path.parts):
-            continue
-        found.append(path)
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [name for name in dirnames if name not in SKIP_DIR_NAMES]
+        for name in filenames:
+            if name.endswith(".bru"):
+                found.append(Path(dirpath) / name)
     return sorted(found)
 
 
@@ -1047,7 +1074,11 @@ def _matching_close(text: str, start: int, opener: str, closer: str) -> int:
             elif char == in_string:
                 in_string = None
             continue
-        if char in {'"', "'"}:
+        # Only double quotes delimit strings (they guard braces inside JSON
+        # bodies). Apostrophes in prose (e.g. `docs { don't }`) must NOT start a
+        # string, or the closing brace would be swallowed and every later block
+        # silently dropped.
+        if char == '"':
             in_string = char
             continue
         if char == opener:
