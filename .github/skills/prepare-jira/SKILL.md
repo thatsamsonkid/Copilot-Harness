@@ -108,7 +108,7 @@ File shape:
    - **Labels** (and components if any)
    - **Description** (from `## Context` through the end — the body only, no `# Draft` header)
 3. Remind them to paste into Jira themselves. The CLI cannot update a ticket. After the issue exists, `/jira-ticket PROJ-123` is the planning path.
-4. Do not start `/goat-plan` or implement unless they ask.
+4. Do not start `/goat-plan`, `/goat-implement`, or implement unless they ask.
 
 ## Hard rules
 

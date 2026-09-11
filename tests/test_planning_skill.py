@@ -55,6 +55,9 @@ def test_skill_targets_low_context_executors():
         "you become implementer",
         "new chat",
         "code writer",
+        "/goat-implement",
+        "verifier",
+        "compaction",
     ):
         assert token in lowered
 
@@ -79,16 +82,20 @@ def test_plan_template_has_required_sections():
     assert "never absolute" in text
     assert "Never spawn Implementer" in text
     assert "you become Implementer" in text
-    assert "Do not invoke Implementer or Code Writer" in text
+    assert "/goat-implement" in text
+    assert "Verifier" in text
+    assert "Do not invoke Implementer, Code Writer, or Verifier" in text
 
 
-def test_always_on_docs_support_same_chat_and_new_chat_implement_paths():
-    """Never spawn Implementer. Same-chat planner uses Code Writer; new chat writes itself."""
+def test_always_on_docs_support_goat_implement_and_new_chat_executor():
+    """Never spawn Implementer. /goat-implement uses Code Writer + Verifier; new chat writes itself."""
     for path in (AGENTS, COPILOT, GOAT_PLAN):
         lowered = path.read_text(encoding="utf-8").lower()
         assert "never spawn implementer" in lowered or "do not spawn implementer" in lowered, path
         assert "become implementer" in lowered, path
         assert "code writer" in lowered, path
+        assert "verifier" in lowered, path
+        assert "/goat-implement" in lowered, path
         assert (
             "you are the executor" in lowered
             or "is the executor" in lowered

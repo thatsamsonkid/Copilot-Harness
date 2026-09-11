@@ -9,6 +9,8 @@
     "orient": "Vague task? Map Graphify and repo instructions first.",
     "bulk-reader": "Large file? Structured bullets instead of a source dump.",
     "glossary": "Unknown jargon? Look up or add a workplace term.",
+    "goat-plan": "Write a detailed plans/ file for a later executor.",
+    "goat-implement": "Start implementing a plan with Code Writer and Verifier.",
     "jira-ticket": "Plan work from a Jira key.",
     "prepare-jira": "Draft a Jira ticket from notes for copy-paste.",
     "figma-frame": "Look at a Figma frame from its image URL.",
