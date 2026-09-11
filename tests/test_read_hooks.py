@@ -168,6 +168,7 @@ def test_hook_json_files_are_valid():
         "check-bash-read.json",
         "read-guard.json",
         "bulk-read-routing.json",
+        "implement-gate.json",
     ):
         data = json.loads((HOOKS / name).read_text(encoding="utf-8"))
         assert isinstance(data, dict)

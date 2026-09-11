@@ -47,6 +47,8 @@ def test_skill_reloads_code_writer_and_verifier_after_compaction():
         "do not nest",
         "/goat-plan",
         "feature-note.md",
+        "implement-gate",
+        "denies",
     ):
         assert token in lowered
 

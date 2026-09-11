@@ -19,7 +19,7 @@ A bare "implement it" after compact often writes product files in the parent cha
 | Must do | Must not |
 | --- | --- |
 | Become Implementer in this chat | Spawn the Implementer agent |
-| Invoke **Code Writer** (`#tool:agent`) for every product-file write | Edit product files yourself with `#tool:edit` |
+| Invoke **Code Writer** (`#tool:agent`) for every product-file write | Edit product files yourself with `#tool:edit` (the implement-gate hook denies this) |
 | Invoke **Verifier** (`#tool:agent`) for every plan Verify check and the final **Verification** section | Run those verify commands only in the parent and call the work done |
 | Run `goat branch`, write feature notes / ADRs yourself | Treat Code Writer or Verifier as a second Implementer |
 | Stop when `done_when` holds | Pick Orchestrator from the agents dropdown |
@@ -65,6 +65,7 @@ Do not paste Code Writer output back unless the user asked. Do not paste Verifie
 ## Hard rules
 
 - Compaction is not a new-chat executor path. `/goat-implement` keeps you on the Code Writer + Verifier path.
+- A workspace hook (`.github/hooks/implement-gate.json`) **denies** parent `#tool:edit` on sibling product files while this command is armed. That deny is the gate — invoke Code Writer. You may still edit goat catalog, `plans/`, and sibling `docs/features` / `docs/adr`. `GOAT_IMPLEMENT_EDIT_GATE=off` disables the deny. Shell redirects around the edit tool are not gated.
 - Do not clone repositories into the goat folder.
 - Do not write `.env`, tokens, or secrets. Do not hand-edit `tooling.generated` paths.
 - Do not name repos outside the matched workspace (`workspace.repos` / `routing.repos`) unless a blocker forces a documented detour.

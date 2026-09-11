@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/implement_gate.py",
+        "bash": "python3 .github/hooks/implement_gate.py",
+        "powershell": "python .github/hooks/implement_gate.py",
+        "windows": "python .github/hooks/implement_gate.py",
+        "linux": "python3 .github/hooks/implement_gate.py",
+        "osx": "python3 .github/hooks/implement_gate.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/implement_gate.py",
+        "bash": "python3 .github/hooks/implement_gate.py",
+        "powershell": "python .github/hooks/implement_gate.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "matcher": "edit|Edit|editFiles|Write|write|StrReplace|ApplyPatch|NotebookEdit|MultiEdit",
+        "command": "python3 .github/hooks/implement_gate.py",
+        "bash": "python3 .github/hooks/implement_gate.py",
+        "powershell": "python .github/hooks/implement_gate.py",
+        "windows": "python .github/hooks/implement_gate.py",
+        "linux": "python3 .github/hooks/implement_gate.py",
+        "osx": "python3 .github/hooks/implement_gate.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "matcher": "edit|Edit|editFiles|Write|write|StrReplace|ApplyPatch|NotebookEdit|MultiEdit",
+        "command": "python3 .github/hooks/implement_gate.py",
+        "bash": "python3 .github/hooks/implement_gate.py",
+        "powershell": "python .github/hooks/implement_gate.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ],
+    "preCompact": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/implement_gate.py",
+        "bash": "python3 .github/hooks/implement_gate.py",
+        "powershell": "python .github/hooks/implement_gate.py",
+        "windows": "python .github/hooks/implement_gate.py",
+        "linux": "python3 .github/hooks/implement_gate.py",
+        "osx": "python3 .github/hooks/implement_gate.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ],
+    "PreCompact": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/implement_gate.py",
+        "bash": "python3 .github/hooks/implement_gate.py",
+        "powershell": "python .github/hooks/implement_gate.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ],
+    "subagentStart": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/implement_gate.py",
+        "bash": "python3 .github/hooks/implement_gate.py",
+        "powershell": "python .github/hooks/implement_gate.py",
+        "windows": "python .github/hooks/implement_gate.py",
+        "linux": "python3 .github/hooks/implement_gate.py",
+        "osx": "python3 .github/hooks/implement_gate.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ],
+    "SubagentStart": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/implement_gate.py",
+        "bash": "python3 .github/hooks/implement_gate.py",
+        "powershell": "python .github/hooks/implement_gate.py",
+        "timeoutSec": 5,
+        "timeout": 5
+      }
+    ]
+  }
+}
