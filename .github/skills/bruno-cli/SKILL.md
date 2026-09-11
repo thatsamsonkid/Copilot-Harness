@@ -121,6 +121,6 @@ This skill is the CLI contract, not an implementer.
 - Ticket routing: jira-cli skill or `/jira-ticket`
 - Figma frames: figma-cli skill or `/figma-frame`
 - Local stack start: workspace-start skill or `/start-workspace`
-- Implement an agreed plan: never spawn Implementer. Same chat that wrote the plan: become Implementer and invoke Code Writer. New chat with only a `plans/` file: write files yourself. VS Code Agents dropdown: Implementer primary agent
+- Implement an agreed plan: never spawn Implementer. `/goat-implement` (preferred after compaction): become Implementer, invoke Code Writer and Verifier. New chat with only a `plans/` file and no `/goat-implement`: write files yourself. VS Code Agents dropdown: Implementer primary agent
 - Review a diff: Reviewer agent or `/review`
 - Sibling / remote agent skills: skills-install skill or `/skills-install`

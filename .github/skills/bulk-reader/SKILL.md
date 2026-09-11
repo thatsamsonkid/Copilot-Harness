@@ -38,4 +38,5 @@ Synthesize those bullets as a map. Do not paste the file. Do not apply edits unt
 ## Related Copilot customizations
 
 - Feature planning: Jira Planner or `/jira-ticket`
+- Start implementing a saved plan: implementing skill or `/goat-implement`
 - Hooks: `.github/hooks/check-file-size.json`, `.github/hooks/check-bash-read.json`, `.github/hooks/bulk-read-routing.json`

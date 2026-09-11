@@ -10,7 +10,9 @@ WRITER = ROOT / ".github" / "agents" / "code-writer.agent.md"
 ORCHESTRATOR = ROOT / ".github" / "agents" / "orchestrator.agent.md"
 PLANNER = ROOT / ".github" / "agents" / "jira-planner.agent.md"
 IMPLEMENTER = ROOT / ".github" / "agents" / "implementer.agent.md"
+VERIFIER = ROOT / ".github" / "agents" / "verifier.agent.md"
 JIRA_PROMPT = ROOT / ".github" / "prompts" / "jira-ticket.prompt.md"
+GOAT_IMPLEMENT = ROOT / ".github" / "prompts" / "goat-implement.prompt.md"
 HAIKU_MODEL = "Claude Haiku 4.5"
 
 
@@ -75,8 +77,33 @@ def test_code_writer_is_implementer_write_worker():
         "reference code's patterns",
         "not a second implementer",
         "do not spawn other agents",
+        "verifier",
         ".env",
         "tooling.generated",
+    ):
+        assert token in lowered
+
+
+def test_verifier_is_implementer_verify_worker():
+    meta, body = _frontmatter_and_body(VERIFIER)
+    assert meta["name"] == "Verifier"
+    assert meta.get("user-invocable") is False
+    assert meta.get("agents") == []
+    tools = set(meta["tools"])
+    assert "runCommands" in tools
+    assert "edit" not in tools
+    assert "agent" not in tools
+    lowered = body.lower()
+    for token in (
+        "verify worker",
+        "not a second implementer",
+        "not reviewer",
+        "suggested_verify",
+        "result: pass",
+        "result: fail",
+        "do not spawn other agents",
+        "do not invent extra",
+        "/goat-implement",
     ):
         assert token in lowered
 
@@ -88,7 +115,7 @@ def test_orchestrator_is_hidden_and_not_user_invocable():
     assert "agent" in meta["tools"]
     assert "read" not in meta["tools"]
     assert "edit" not in meta["tools"]
-    assert meta["agents"] == ["Bulk Reader", "Code Writer"]
+    assert meta["agents"] == ["Bulk Reader", "Code Writer", "Verifier"]
     assert "handoffs" not in meta
     lowered = body.lower()
     for token in (
@@ -96,6 +123,7 @@ def test_orchestrator_is_hidden_and_not_user_invocable():
         "jira planner",
         "implementer",
         "do not invoke **code writer**",
+        "do not invoke **verifier**",
         "bulk reader",
         "#tool:agent",
         "stateless",
@@ -118,6 +146,8 @@ def test_jira_planner_auto_delegates_reads_not_writes():
         "do not edit product code",
         "do not spawn implementer",
         "you become implementer",
+        "/goat-implement",
+        "verifier",
         "debugging",
         "architectural decisions",
         "safety-critical",
@@ -132,10 +162,11 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
     assert meta["name"] == "Implementer"
     assert "agent" in meta["tools"]
     assert "edit" in meta["tools"]
-    assert meta["agents"] == ["Bulk Reader", "Code Writer"]
+    assert meta["agents"] == ["Bulk Reader", "Code Writer", "Verifier"]
     lowered = body.lower()
     for token in (
         "write worker",
+        "verify worker",
         "not a second implementer",
         "goat branch",
         "suggested_verify",
@@ -148,7 +179,9 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "write product files yourself",
         "subagents must not spawn",
         "wrote the plan in this chat",
+        "/goat-implement",
         "your write worker",
+        "verifier",
         "claude haiku 4.5",
         "do not override the model",
     ):
@@ -165,8 +198,28 @@ def test_jira_ticket_prompt_uses_reader_not_writer():
     assert "do not edit product code" in lowered
     assert "you become implementer" in lowered
     assert "do not spawn implementer" in lowered
+    assert "/goat-implement" in lowered
+    assert "verifier" in lowered
     assert "is the executor" in lowered or "you are the executor" in lowered
     assert "debugging" in lowered
     assert "safety-critical" in lowered
     assert "claude haiku 4.5" in lowered
     assert "do not override the model" in lowered
+
+
+def test_goat_implement_prompt_requires_code_writer_and_verifier():
+    meta, body = _frontmatter_and_body(GOAT_IMPLEMENT)
+    assert meta["name"] == "goat-implement"
+    assert "agent" in meta.get("tools", [])
+    lowered = body.lower()
+    for token in (
+        "implementing/skill.md",
+        "never spawn implementer",
+        "you become implementer",
+        "code writer",
+        "verifier",
+        "compaction",
+        "goat branch",
+        "done_when",
+    ):
+        assert token in lowered
