@@ -31,7 +31,7 @@ def test_skill_and_prompt_point_at_the_agent():
     assert skill_meta["name"] == "bulk-reader"
     assert prompt_meta["name"] == "bulk-reader"
     assert agent_meta["name"] == "Bulk Reader"
-    assert agent_meta.get("model") == "Claude Haiku 4.5"
+    assert agent_meta.get("model") == "Auto (copilot)"
     for body in (skill_body, prompt_body):
         lowered = body.lower()
         assert "bulk reader" in lowered
@@ -39,7 +39,7 @@ def test_skill_and_prompt_point_at_the_agent():
         assert "debugging" in lowered
         assert "architectural" in lowered
         assert "safety-critical" in lowered
-        assert "claude haiku 4.5" in lowered
+        assert "auto (copilot)" in lowered
         assert "do not override the model" in lowered
     assert "survey" in skill_body.lower()
     assert "do not reason about bugs" in agent_body.lower()
