@@ -105,6 +105,8 @@ def test_verifier_is_implementer_verify_worker():
         "do not spawn other agents",
         "do not invent extra",
         "/goat-implement",
+        "do not retry",
+        "caller owns",
     ):
         assert token in lowered
 
@@ -194,6 +196,8 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "parallel waves",
         "fan out",
         "survey groups",
+        "bounded",
+        "investigate",
     ):
         assert token in lowered
 
@@ -234,5 +238,7 @@ def test_goat_implement_prompt_requires_code_writer_and_verifier():
         "parallel waves",
         "fan out",
         "survey groups",
+        "retry counter",
+        "investigate",
     ):
         assert token in lowered

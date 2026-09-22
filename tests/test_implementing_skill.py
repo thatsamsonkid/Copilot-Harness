@@ -52,6 +52,11 @@ def test_skill_reloads_code_writer_and_verifier_after_compaction():
         "wave",
         "survey groups",
         "bulk reader",
+        "bounded verify",
+        "retry counter",
+        "second",
+        "investigate",
+        "missing",
     ):
         assert token in lowered
 
@@ -71,6 +76,9 @@ def test_prompt_points_at_the_skill():
     assert "fan out" in lowered
     assert "survey groups" in lowered
     assert "bulk reader" in lowered
+    assert "bounded" in lowered
+    assert "second" in lowered
+    assert "investigate" in lowered
 
 
 def test_plan_template_and_always_on_docs_name_goat_implement():

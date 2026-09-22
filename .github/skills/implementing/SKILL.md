@@ -1,6 +1,6 @@
 ---
 name: implementing
-description: Start implementing an agreed plans/ file as Implementer. Use when the user runs /goat-implement, asks to execute a plan, or continues after /goat-plan — especially after chat compaction. Never spawn Implementer. Become Implementer. Fan out Bulk Readers per Survey groups, then Code Writers for independent steps in a Parallel waves row, then Verifier for that wave. You still run goat branch and write feature notes.
+description: Start implementing an agreed plans/ file as Implementer. Use when the user runs /goat-implement, asks to execute a plan, or continues after /goat-plan — especially after chat compaction. Never spawn Implementer. Become Implementer. Fan out Bulk Readers per Survey groups, then Code Writers for independent steps in a Parallel waves row, then Verifier for that wave. One bounded repair per step on first verify fail; second fail is yours to investigate. You still run goat branch and write feature notes.
 argument-hint: PROJ-123
 ---
 
@@ -20,7 +20,7 @@ A bare "implement it" after compact often writes product files in the parent cha
 | --- | --- |
 | Become Implementer in this chat | Spawn the Implementer agent |
 | Invoke **Code Writer** (`#tool:agent`) for every product-file write — one call per independent step in a wave, issued together | Edit product files yourself with `#tool:edit` |
-| Invoke **Verifier** (`#tool:agent`) after each wave and for the final **Verification** section | Run those verify commands only in the parent and call the work done |
+| Invoke **Verifier** (`#tool:agent`) after each wave and for the final **Verification** section. You own the retry counter | Run those verify commands only in the parent and call the work done. Do not let Verifier retry or patch |
 | Run `goat branch`, write feature notes / ADRs yourself | Treat Code Writer or Verifier as a second Implementer |
 | Stop when `done_when` holds | Pick Orchestrator from the agents dropdown |
 
@@ -28,7 +28,7 @@ A bare "implement it" after compact often writes product files in the parent cha
 
 | How this chat started | What you do |
 | --- | --- |
-| **`/goat-implement`** (this skill) | You become Implementer. Fan out Code Writers per wave. Verifier after each wave. You: `goat branch`, feature notes, ADRs. Compaction does not change this. |
+| **`/goat-implement`** (this skill) | You become Implementer. Fan out Code Writers per wave. Verifier after each wave (one bounded repair per step, then you investigate). You: `goat branch`, feature notes, ADRs. Compaction does not change this. |
 | **Same chat that wrote the plan** (`/goat-plan`) and the user asked to continue | Same as `/goat-implement`. Prefer they run `/goat-implement` after compact so this file is reloaded. |
 | **VS Code Agents dropdown** — user picked Implementer | Same as `/goat-implement`. |
 | **New chat handed only the `plans/` file** (no `/goat-implement`) | You are the executor. Follow **Parallel waves** for order. Write the listed files yourself. Do not invoke Implementer, Code Writer, or Verifier. |
@@ -57,10 +57,29 @@ Read the plan's **File map**, **Survey groups**, **Parallel waves**, **Steps**, 
    - If a wave lists overlapping files (planner error), serialize those steps instead of fanning out. Do not invent extra waves that skip a listed dependency.
    - A one-step wave is a single Code Writer call.
    - Use `#tool:edit` yourself for goat catalog, feature notes, and ADRs. Never send those to Code Writer.
-   - Wait for every writer in the wave to return. Then invoke **Verifier** with `#tool:agent`. Agent name is case-sensitive: `Verifier`. Pass each step's **Verify** command, cwd, and expected result. Fan out Verifiers when commands use different repos or cwds; if they share one command, invoke Verifier once. If any writer or Verifier in the wave fails, stop and report — do not start the next wave.
-5. After all waves, invoke **Verifier** again with the plan **Verification** section and each touched repo's `tooling.suggested_verify`. Do not mark the plan done until Verifier reports pass and `done_when` holds.
+   - Wait for every writer in the wave to return. Then invoke **Verifier** with `#tool:agent`. Agent name is case-sensitive: `Verifier`. Pass each step's **Verify** command, cwd, and expected result. Fan out Verifiers when commands use different repos or cwds; if they share one command, invoke Verifier once. Let every Verifier in the wave finish before you act on a fail. Follow **Bounded verify** — do not start the next wave until every step in this wave is `pass` or you have escalated a second fail.
+5. After all waves, invoke **Verifier** again with the plan **Verification** section and each touched repo's `tooling.suggested_verify`. Same **Bounded verify** rule: one repair only when the failure names a file-map step; otherwise investigate on the first fail. Do not mark the plan done until Verifier reports pass and `done_when` holds.
 6. If the change adds user-visible or non-obvious behavior, add or update `docs/features/<slug>.md` in that sibling using `templates/feature-note.md`. Write an ADR in the sibling for a real design choice. Do not store product knowledge in the goat.
 7. Say which sibling repo each commit belongs to. One pull request per sibling. Do not squash unrelated repos together.
+
+## Bounded verify
+
+Verifier is a reporter. It does not retry, patch, or spawn Code Writer. You own the retry counter (one repair per step).
+
+A Verify is delegable only when it is a copy-pasteable command, a cwd, and an expected result. If the plan's Verify is prose ("make sure it works"), treat it as `missing`.
+
+On a Verifier result:
+
+| Result | What you do |
+| --- | --- |
+| `pass` | Continue. |
+| `missing`, or Verify was not a real command | Investigate now. Do not auto-retry. |
+| `fail` on a shared contract (API, event, schema, generated client) or safety-critical code (auth, payments, concurrency, data loss) | Investigate now. Do not auto-retry. |
+| `fail` whose output is infrastructure (timeout, cache lock, network) | Re-invoke **Verifier** once with the same command (no Code Writer). If that re-run fails, investigate — do not loop flakes. |
+| Any other first `fail` | **One bounded repair** for that step only: invoke **Code Writer** with the original step spec plus the Verifier error, then **Verifier** again for that step. Do not start the next wave. Do not repair other steps in the wave unless they also failed. |
+| Second `fail` on that step (after the repair) | **You investigate.** Targeted-`Read` the failing slice. Do not send a third Code Writer. Do not invoke Bulk Reader. Do not invoke Verifier again on that step. Stop the wave and report. |
+
+A Code Writer that fails to write (illegal path, refused files) is not a verify fail — stop and report; do not burn the repair on it.
 
 Do not paste Code Writer output back unless the user asked. Do not paste Verifier logs unless a check failed or the user asked.
 

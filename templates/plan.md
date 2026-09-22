@@ -14,7 +14,7 @@ What must be true when this plan is complete, in two or three sentences. Restate
 
 Never spawn Implementer. Which path you are on:
 
-- **`/goat-implement`** (preferred after compaction): you become Implementer. Fan out one Code Writer per independent step in a Parallel waves row, then Verifier for that wave. Do not spawn Implementer.
+- **`/goat-implement`** (preferred after compaction): you become Implementer. Fan out one Code Writer per independent step in a Parallel waves row, then Verifier for that wave. First verify fail may bounce that step through Code Writer + Verifier once; a second fail is yours to investigate. Do not spawn Implementer.
 - **New chat** (this file is your only brief; no `/goat-implement`): you are the executor. Follow Parallel waves for order. Write the listed files yourself. Do not invoke Implementer, Code Writer, or Verifier. Subagents must not spawn other subagents.
 - **Same chat that wrote this plan** (no slash command): same as `/goat-implement`. After compact, run `/goat-implement` so the protocol is reloaded.
 
@@ -58,7 +58,7 @@ Group independent steps so `/goat-implement` can fan out one Code Writer per ste
 
 ## Steps
 
-Number every step. Each step must name the repo and cwd, wave, dependencies, exact file paths and symbols, the concrete change (snippets when non-obvious), exact commands, expected result, and a verify check. If a verify check fails, stop and report — do not improvise. Do not start the next wave until this wave's verify checks pass.
+Number every step. Each step must name the repo and cwd, wave, dependencies, exact file paths and symbols, the concrete change (snippets when non-obvious), exact commands, expected result, and a verify check. Verify must be a copy-pasteable command — prose is not delegable. First verify `fail` may bounce that step through Code Writer + Verifier once; a second `fail` is the executor's to investigate (targeted read, no third writer). `missing`, shared-contract, and safety-critical fails skip the repair. Do not start the next wave until this wave's checks are `pass` or escalated.
 
 - [ ] **Step 1 — <short name>**
   - Repo / cwd:
