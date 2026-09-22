@@ -37,6 +37,15 @@ Every file this plan creates, edits, or deletes — the complete set. Paths are 
 | <repo> | `src/…` | edit | <one line: what and why> | 1, 3 |
 | <repo> | `src/… (new)` | create | <one line> | 2 |
 
+## Survey groups
+
+Independent Bulk Reader groups so `/goat-implement` (and this planning turn) can fan out one reader per group in the same turn. Prefer one group per repo, or disjoint path sets. Cap a group at a handful of files. Never list the same file in two groups. Write `None` when no survey is required.
+
+| Group | Repo | Paths / symbols | Question | Wave |
+| --- | --- | --- | --- | --- |
+| <id> | <repo> | `src/…` | <what to locate> | 1 |
+| <id> | <repo> | `src/…` | <model-after pattern> | 1 |
+
 ## Parallel waves
 
 Group independent steps so `/goat-implement` can fan out one Code Writer per step in a wave, then verify the wave before the next. A new-chat executor still follows waves for order but writes files itself. Same file, or a consumer of a new type/route/event/schema, belongs in a later wave. Write `None — all steps sequential` only when every step depends on the previous one.

@@ -1,6 +1,6 @@
 ---
 name: implementing
-description: Start implementing an agreed plans/ file as Implementer. Use when the user runs /goat-implement, asks to execute a plan, or continues after /goat-plan — especially after chat compaction. Never spawn Implementer. Become Implementer. Fan out Code Writers for independent steps in a Parallel waves row, then Verifier for that wave. You still run goat branch and write feature notes.
+description: Start implementing an agreed plans/ file as Implementer. Use when the user runs /goat-implement, asks to execute a plan, or continues after /goat-plan — especially after chat compaction. Never spawn Implementer. Become Implementer. Fan out Bulk Readers per Survey groups, then Code Writers for independent steps in a Parallel waves row, then Verifier for that wave. You still run goat branch and write feature notes.
 argument-hint: PROJ-123
 ---
 
@@ -43,7 +43,7 @@ Subagents must not spawn other subagents. If `#tool:agent` cannot nest, fall bac
 3. Else list `plans/*.plan.md` and take the only match, or the newest match for the open ticket, or ask which file.
 4. If there is no plan file, stop. Tell them to run `/goat-plan` first. Do not invent steps from a compacted chat.
 
-Read the plan's **File map**, **Parallel waves**, **Steps**, **Verification**, and **Done when**. Those are the spec. Do not search the codebase for where a change goes unless a named path is missing. If **Parallel waves** is missing (older plan), treat each step as its own wave and stay sequential.
+Read the plan's **File map**, **Survey groups**, **Parallel waves**, **Steps**, **Verification**, and **Done when**. Those are the spec. Do not search the codebase for where a change goes unless a named path is missing. If **Parallel waves** is missing (older plan), treat each step as its own wave and stay sequential. If **Survey groups** is `None` or missing, group that wave's `Model after` / reference paths by repo yourself.
 
 ## Workflow
 
@@ -52,7 +52,7 @@ Read the plan's **File map**, **Parallel waves**, **Steps**, **Verification**, a
 3. Follow each sibling's `instructions` / `tooling` from that JSON. Prefer `tooling.suggested_verify` over inventing npm/make targets.
 4. Walk **Parallel waves** in order (wave 1, then 2, …). Sequential Code Writer → Verifier per step is only for a one-step wave or an older plan with no waves table.
    - Targeted-`Read` (`limit`/`offset`) every section that wave will change. Do not edit from Bulk Reader line numbers.
-   - When you are the primary chat, invoke **Bulk Reader** only for a **survey** of named reference files. Parallelize independent read groups. Do not send debugging, architectural decisions, or safety-critical analysis to Bulk Reader.
+   - When you are the primary chat, **fan out Bulk Readers** for that wave's **Survey groups** (or, if `None`/missing, the wave's `Model after` / reference paths grouped by repo). In the same turn, invoke **Bulk Reader** with `#tool:agent` once per group. Each call is stateless — exact question, repo-relative paths, what to skip. Cap a group at a handful of files. Never send the same file to two readers. Do not send debugging, architectural decisions, or safety-critical analysis to Bulk Reader. Wait for every reader in the wave to return, then targeted-read the slices you will change.
    - **Fan out Code Writers.** In the same turn, invoke **Code Writer** with `#tool:agent` once per step in the wave. Agent name is case-sensitive: `Code Writer`. Its profile pins Copilot Auto (`Auto (copilot)`) — do not override the model. Each call is stateless — put that step's spec, target paths, and reference paths in that one prompt. Ask it to match existing patterns and to output only the code. Write only the files in that step's file-map rows. Never send two writers the same file.
    - If a wave lists overlapping files (planner error), serialize those steps instead of fanning out. Do not invent extra waves that skip a listed dependency.
    - A one-step wave is a single Code Writer call.

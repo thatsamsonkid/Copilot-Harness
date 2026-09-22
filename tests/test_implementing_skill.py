@@ -50,6 +50,8 @@ def test_skill_reloads_code_writer_and_verifier_after_compaction():
         "parallel waves",
         "fan out",
         "wave",
+        "survey groups",
+        "bulk reader",
     ):
         assert token in lowered
 
@@ -67,6 +69,8 @@ def test_prompt_points_at_the_skill():
     assert "never spawn implementer" in lowered
     assert "parallel waves" in lowered
     assert "fan out" in lowered
+    assert "survey groups" in lowered
+    assert "bulk reader" in lowered
 
 
 def test_plan_template_and_always_on_docs_name_goat_implement():

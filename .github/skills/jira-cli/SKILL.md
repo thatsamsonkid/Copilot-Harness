@@ -94,13 +94,13 @@ This skill is the CLI contract, not an implementer.
 - Always-on rules: `.github/copilot-instructions.md`
 - First-run setup: get-started skill or `/get-started`
 - Vague / large-repo orientation: workspace-context skill or `/orient`
-- Feature planning auto-delegates product reads to Bulk Reader (Jira Planner)
+- Feature planning fans out Bulk Readers per independent survey group (Jira Planner)
 - Large-file read blocked: `/bulk-reader`
 - Local stack start: workspace-start skill or `/start-workspace`
 - Draft a ticket from notes: prepare-jira skill or `/prepare-jira`
 - Plan a ticket: Jira Planner agent or `/jira-ticket`
 - Write a plan to a file for another model: planning skill or `/goat-plan`
-- Start implementing a saved plan: implementing skill or `/goat-implement` (fan-out Code Writers per wave, then Verifier; survives compaction)
+- Start implementing a saved plan: implementing skill or `/goat-implement` (fan-out Bulk Readers, then Code Writers per wave, then Verifier; survives compaction)
 - Figma frames: figma-cli skill or `/figma-frame`
 - Bruno collections: bruno-cli skill or `/bruno`
 - Create a feature workspace: workspace-create skill, Workspace Creator, or `/new-workspace`

@@ -8,7 +8,7 @@ agent: agent
 The user wants an implementation plan written to a file, usually for another (often smaller) model or agent to execute later. Load `.github/skills/planning/SKILL.md` and follow it.
 
 1. If an issue key like `${input:issue:}` is present, run `uv run goat prepare <KEY> --format json` and plan against `routing.repos`. Otherwise run `uv run goat context --format json` and stay inside `workspace.repos`.
-2. Read each matched repo's Graphify `GRAPH_REPORT.md` and instruction files before naming file paths or conventions. Verify every path you name.
+2. Read each matched repo's Graphify `GRAPH_REPORT.md` and instruction files before naming file paths or conventions. For survey questions on named product files, fan out one Bulk Reader per independent group (prefer one group per repo, or disjoint path sets). Record those groups in **Survey groups**. Verify every path you name.
 3. Write the plan to `plans/<YYYY-MM-DD>-<key-or-slug>.plan.md` starting from `templates/plan.md`. Assume the executor has only the plan file and the repo checkouts — restate all requirements, make every decision, and give each step exact files, symbols, commands, expected results, and a verify check. Split independent file sets into separate steps and fill **Parallel waves** so `/goat-implement` can fan out Code Writers. Same file or a consumer of a new contract belongs in a later wave.
 4. Copy `done_when` into the plan when there is a ticket. Include an out-of-scope section.
 5. Tell the user the plan's relative path and that it is gitignored.

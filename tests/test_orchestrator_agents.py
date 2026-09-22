@@ -51,6 +51,7 @@ def test_bulk_reader_is_a_hidden_read_only_subagent():
         "do not spawn other agents",
         "missing",
         ".env",
+        "fan-out",
     ):
         assert token in lowered
 
@@ -131,6 +132,7 @@ def test_orchestrator_is_hidden_and_not_user_invocable():
         "do not override the model",
         "fan out",
         "parallel waves",
+        "survey groups",
     ):
         assert token in lowered
 
@@ -157,6 +159,7 @@ def test_jira_planner_auto_delegates_reads_not_writes():
         "do not override the model",
         "parallel waves",
         "fan out",
+        "survey groups",
     ):
         assert token in lowered
 
@@ -190,6 +193,7 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "do not override the model",
         "parallel waves",
         "fan out",
+        "survey groups",
     ):
         assert token in lowered
 
@@ -229,5 +233,6 @@ def test_goat_implement_prompt_requires_code_writer_and_verifier():
         "done_when",
         "parallel waves",
         "fan out",
+        "survey groups",
     ):
         assert token in lowered

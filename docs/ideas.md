@@ -47,7 +47,7 @@ What we should **not** do: copy product architecture or style guides into this r
 
 - `goat context` lists instruction files, verify commands, and generated-code markers (Nx, OpenAPI, graphql-codegen).
 - `/review` + Reviewer agent: diff against `done_when`, local linters, generated-code, and goat invariants.
-- Hidden Bulk Reader + Code Writer + Verifier: Jira Planner auto-delegates reads. After `/goat-plan`, never spawn Implementer. Start with `/goat-implement` (survives compaction): same-chat planner becomes Implementer and fans out Code Writers per **Parallel waves** row, then Verifier. A new chat with only the plan file and no `/goat-implement` writes the code itself. Orchestrator is not user-invocable. Code Writer and Verifier are not a second Implementer.
+- Hidden Bulk Reader + Code Writer + Verifier: Jira Planner fans out Bulk Readers per independent survey group. After `/goat-plan`, never spawn Implementer. Start with `/goat-implement` (survives compaction): same-chat planner becomes Implementer and fans out Bulk Readers per **Survey groups**, Code Writers per **Parallel waves** row, then Verifier. A new chat with only the plan file and no `/goat-implement` writes the code itself. Orchestrator is not user-invocable. Code Writer and Verifier are not a second Implementer.
 - `check-file-size` / `check-bash-read` / `bulk-read-routing` hooks: block whole-file reads over 350 lines. Survey goes to `/bulk-reader`. Debugging, architecture, safety-critical, and edits stay in the parent via targeted reads.
 - Org-wide invariants in always-on instructions: Jira key in the branch, one PR per sibling, no secrets, obey `done_when`.
 

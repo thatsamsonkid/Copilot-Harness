@@ -1,6 +1,6 @@
 ---
 name: planning
-description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use when the user asks to plan work, write a plan, or prepare a task for another (often smaller) model or agent to execute. Plans must be detailed enough for a low-context executor to follow without asking questions. Group independent steps into parallel waves so /goat-implement can fan out Code Writers. Never spawn Implementer. Start implementation with /goat-implement (Code Writer + Verifier; survives compaction). A new chat with only the plan file writes the code itself.
+description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use when the user asks to plan work, write a plan, or prepare a task for another (often smaller) model or agent to execute. Plans must be detailed enough for a low-context executor to follow without asking questions. Fan out Bulk Readers for independent survey groups. Group independent steps into parallel waves so /goat-implement can fan out Code Writers. Never spawn Implementer. Start implementation with /goat-implement (Code Writer + Verifier; survives compaction). A new chat with only the plan file writes the code itself.
 argument-hint: PROJ-123
 ---
 
@@ -22,8 +22,9 @@ Plans live in this goat (`plans/`), not in product repos. They are gitignored. A
 
 1. If a Jira key is in play, run `uv run goat prepare <KEY> --format json` (jira-cli skill) and plan against `routing.repos`. Copy `done_when` into the plan verbatim. Tickets written from `templates/jira-ticket.md` already have the headings this flow expects.
 2. Run `uv run goat context --format json` (workspace-context skill). Read each repo's Graphify `GRAPH_REPORT.md` and `instructions` files before naming file paths or conventions.
-3. Verify every file path you name actually exists (or mark it explicitly as "new file"). A wrong path derails a small executor completely.
-4. Record branch names from `uv run goat branch <KEY>` (or the `routing.suggested_branch`).
+3. For survey questions on named product files or symbols, **fan out Bulk Readers**. In the same turn, invoke one `#tool:agent` Bulk Reader per independent group (prefer one group per repo, or disjoint path sets). Each call is stateless — exact question, repo-relative paths, what to skip. Cap a group at a handful of files. Never send the same file to two readers. Skip Bulk Reader for debugging, architectural decisions, or safety-critical analysis — targeted-`Read` those yourself. Record the groups in **Survey groups**.
+4. Verify every file path you name actually exists (or mark it explicitly as "new file"). A wrong path derails a small executor completely.
+5. Record branch names from `uv run goat branch <KEY>` (or the `routing.suggested_branch`).
 
 ## The audience rule
 
@@ -94,6 +95,7 @@ The **Parallel waves** table lists wave number, step numbers, and why those step
 
 ## Finish the plan
 
+- Fill in **Survey groups**: independent Bulk Reader groups `/goat-implement` can fan out before a wave (repo, paths/symbols, question, wave). Write `None` when the steps already contain every fragment the writer needs and no survey is required.
 - Fill in **Preconditions**: what must already be true before step 1 (services running, dependencies installed, workspace open), each with the command that checks it. An executor that starts in a broken environment will misattribute every failure to its own changes.
 - End with **Verification** (the full test/lint commands per repo, from that repo's `tooling.suggested_verify`) and **Done when** (the stop condition; from Jira `done_when` when present).
 - Include risks and a rollback note when the change touches shared contracts (APIs, events, schemas).
