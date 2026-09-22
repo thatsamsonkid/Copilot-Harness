@@ -47,6 +47,9 @@ def test_skill_reloads_code_writer_and_verifier_after_compaction():
         "do not nest",
         "/goat-plan",
         "feature-note.md",
+        "parallel waves",
+        "fan out",
+        "wave",
     ):
         assert token in lowered
 
@@ -62,6 +65,8 @@ def test_prompt_points_at_the_skill():
     assert "code writer" in lowered
     assert "verifier" in lowered
     assert "never spawn implementer" in lowered
+    assert "parallel waves" in lowered
+    assert "fan out" in lowered
 
 
 def test_plan_template_and_always_on_docs_name_goat_implement():

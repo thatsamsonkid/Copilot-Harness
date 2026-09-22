@@ -1,6 +1,6 @@
 ---
 name: planning
-description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use when the user asks to plan work, write a plan, or prepare a task for another (often smaller) model or agent to execute. Plans must be detailed enough for a low-context executor to follow without asking questions. Never spawn Implementer. Start implementation with /goat-implement (Code Writer + Verifier; survives compaction). A new chat with only the plan file writes the code itself.
+description: Write an implementation plan into the root plans/ directory using templates/plan.md. Use when the user asks to plan work, write a plan, or prepare a task for another (often smaller) model or agent to execute. Plans must be detailed enough for a low-context executor to follow without asking questions. Group independent steps into parallel waves so /goat-implement can fan out Code Writers. Never spawn Implementer. Start implementation with /goat-implement (Code Writer + Verifier; survives compaction). A new chat with only the plan file writes the code itself.
 argument-hint: PROJ-123
 ---
 
@@ -64,8 +64,33 @@ Every step in the plan must contain:
 - **Exact commands** to run, copy-pasteable, with the cwd they must run from.
 - **Expected result**: what output, diff, or behavior proves the step worked.
 - **Verify**: the check to run before moving on (test command, lint, curl via a `.bru` request — never raw curl to a product API).
+- **Wave** number and **Depends on** (step numbers, or `none`) so `/goat-implement` can fan out Code Writers.
 
-Order steps by dependency, number them, and give each a checkbox (`- [ ]`) so the executor can track progress in the file. Prefer many small verifiable steps over one large step. If a step fails verification, the executor should stop and report, not improvise — say so in the plan.
+Number steps globally and give each a checkbox (`- [ ]`) so the executor can track progress in the file. Prefer many small verifiable steps over one large step — independent file sets should be separate steps so they can share a wave. If a step fails verification, the executor should stop and report, not improvise — say so in the plan.
+
+## Parallel waves
+
+A **wave** is a set of steps that can run at the same time. `/goat-implement` issues one **Code Writer** per step in a wave, in the same turn, then verifies the wave before starting the next. Sequential Code Writer → Verifier per step is the fallback, not the default. Fill in **Parallel waves** on every plan (keep the section; do not delete it).
+
+Split work so independent file sets become separate numbered steps. Then group those steps into the fewest waves that stay safe:
+
+| Put in the same wave | Put in a later wave |
+| --- | --- |
+| Disjoint file-map rows (no shared create/edit/delete) | The same file appears in two steps |
+| No step consumes a type, route, event, schema, or function another step in the wave produces | Consumer of a new or changed contract |
+| Each step's Verify can pass without the other steps' new files existing | Verify needs another step's output |
+| Different repos, or the same repo with no overlapping symbols | Shared-contract producer (API, event, schema, generated client) is still unfinished |
+
+Rules:
+
+- Order **waves** by dependency (wave 1, then 2, …). Steps keep their global numbers.
+- Two writers must never receive the same file. Same-file work stays one step, or sequential steps in later waves.
+- Shared-contract producers finish before consumer waves.
+- If independence is uncertain, use a later wave. Do not invent parallelism.
+- Write `None — all steps sequential` only when every step depends on the previous one. That is a last resort, not the starting shape.
+- A one-step wave is fine when the next change truly needs that output.
+
+The **Parallel waves** table lists wave number, step numbers, and why those steps are independent (or why a single step must wait). Each step repeats its `Wave` and `Depends on` so a compacted Implementer does not have to infer the graph.
 
 ## Finish the plan
 
@@ -73,7 +98,7 @@ Order steps by dependency, number them, and give each a checkbox (`- [ ]`) so th
 - End with **Verification** (the full test/lint commands per repo, from that repo's `tooling.suggested_verify`) and **Done when** (the stop condition; from Jira `done_when` when present).
 - Include risks and a rollback note when the change touches shared contracts (APIs, events, schemas).
 - Tell the user the plan's relative path. Planning and executing are separate: do not start implementing the plan in the same breath unless the user asks.
-- Tell them to start implementation with **`/goat-implement`** (implementing skill). That command survives chat compaction: the chat becomes Implementer, invokes **Code Writer** for product files, and invokes **Verifier** for verify checks. A new chat with only the plan file and no `/goat-implement` writes the files itself. Never spawn Implementer. Do not start implementing in this planning turn.
+- Tell them to start implementation with **`/goat-implement`** (implementing skill). That command survives chat compaction: the chat becomes Implementer, fans out **Code Writer** per independent step in a wave, and invokes **Verifier** after each wave (plus the **Verification** section). A new chat with only the plan file and no `/goat-implement` writes the files itself. Never spawn Implementer. Do not start implementing in this planning turn.
 
 ## Who executes this plan
 
@@ -81,9 +106,9 @@ Never spawn Implementer. The Implementer *role* is something the primary chat ta
 
 | Who is implementing | What they do |
 | --- | --- |
-| **`/goat-implement`** (preferred; works after compaction) | You become Implementer. Load the implementing skill. Invoke **Code Writer** for product files and **Verifier** for each Verify check plus the **Verification** section. Code Writer pins Copilot Auto (`Auto (copilot)`) — do not override the model. You still run `goat branch` and write feature notes. Do not spawn Implementer. |
+| **`/goat-implement`** (preferred; works after compaction) | You become Implementer. Load the implementing skill. Fan out one **Code Writer** per independent step in a **Parallel waves** row, then **Verifier** for that wave plus the **Verification** section. Code Writer pins Copilot Auto (`Auto (copilot)`) — do not override the model. You still run `goat branch` and write feature notes. Do not spawn Implementer. |
 | **Same chat that wrote this plan** (expensive planner continues without the slash command) | Same as `/goat-implement`. After compact, tell them to run `/goat-implement` so the protocol is reloaded — a bare "implement it" is not enough. |
-| **New chat handed only the `plans/` file** (often a smaller model; no `/goat-implement`) | You are the executor. Follow the file map and write product files yourself. Do not spawn Implementer, Code Writer, or Verifier. |
+| **New chat handed only the `plans/` file** (often a smaller model; no `/goat-implement`) | You are the executor. Follow the file map and **Parallel waves** for order. Write product files yourself. Do not spawn Implementer, Code Writer, or Verifier. |
 | **VS Code Agents dropdown** | User picks Implementer as the primary chat — same as `/goat-implement`. |
 
 - Subagents must not spawn other subagents. If you were yourself started as a subagent, write the files yourself — do not nest Code Writer or Verifier.

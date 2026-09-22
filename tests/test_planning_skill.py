@@ -58,6 +58,9 @@ def test_skill_targets_low_context_executors():
         "/goat-implement",
         "verifier",
         "compaction",
+        "parallel waves",
+        "fan out",
+        "disjoint",
     ):
         assert token in lowered
 
@@ -70,6 +73,7 @@ def test_plan_template_has_required_sections():
         "## Out of scope",
         "## Preconditions",
         "## File map",
+        "## Parallel waves",
         "## Steps",
         "## Verification",
         "## Done when",
@@ -85,6 +89,10 @@ def test_plan_template_has_required_sections():
     assert "/goat-implement" in text
     assert "Verifier" in text
     assert "Do not invoke Implementer, Code Writer, or Verifier" in text
+    assert "Wave:" in text
+    assert "Depends on:" in text
+    assert "fan out" in text.lower()
+    assert "None — all steps sequential" in text
 
 
 def test_always_on_docs_support_goat_implement_and_new_chat_executor():

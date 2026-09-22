@@ -56,7 +56,7 @@ The goat does not own product patterns.
 
 - Feature planning: Jira Planner or `/jira-ticket` (auto-delegates product reads to Bulk Reader)
 - Large-file read blocked: `/bulk-reader` (hooks in `.github/hooks`)
-- Agreed-plan writes after `/goat-plan`: never spawn Implementer. Start with `/goat-implement` (Code Writer + Verifier; survives compaction). New chat with only a `plans/` file and no `/goat-implement` writes the files itself. VS Code Agents dropdown: user picks Implementer as primary.
+- Agreed-plan writes after `/goat-plan`: never spawn Implementer. Start with `/goat-implement` (fan out Code Writers per Parallel waves row, then Verifier; survives compaction). New chat with only a `plans/` file and no `/goat-implement` writes the files itself. VS Code Agents dropdown: user picks Implementer as primary.
 - Ticket routing: jira-cli skill or `/jira-ticket`
 - Write a plan to a file for another model: planning skill or `/goat-plan`
 - Start implementing a saved plan: implementing skill or `/goat-implement`

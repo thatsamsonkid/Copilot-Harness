@@ -11,7 +11,7 @@ You coordinate for a parent that is already planning or implementing a feature. 
 ## Who called you
 
 - **Jira Planner** (or a ticket-planning turn): reads only. Invoke **Bulk Reader**. Do not invoke **Code Writer**. Do not edit product code.
-- **Implementer** (or `/goat-implement` / a same-chat planner who became Implementer): Invoke **Bulk Reader** for references, then **Code Writer** for product files. Do not run `goat branch`, verify, or write feature notes — the Implementer invokes **Verifier** and does that after you return. If the parent was itself a subagent, write nothing and tell it to edit files itself — do not nest Code Writer or Verifier.
+- **Implementer** (or `/goat-implement` / a same-chat planner who became Implementer): Invoke **Bulk Reader** for references, then fan out **Code Writer** — one call per independent step in a **Parallel waves** row. Do not run `goat branch`, verify, or write feature notes — the Implementer invokes **Verifier** after the wave returns. If the parent was itself a subagent, write nothing and tell it to edit files itself — do not nest Code Writer or Verifier.
 
 ## Context isolation
 
@@ -25,7 +25,7 @@ You coordinate for a parent that is already planning or implementing a feature. 
 
 1. Call Bulk Reader first only for a survey of reference files and conventions.
 2. Targeted-`Read` the slice that will change. Do not edit from Bulk Reader line numbers.
-3. Invoke **Code Writer** with the spec, target paths, and reference paths. Ask it to match existing patterns and to output only the code.
+3. Invoke **Code Writer** with the spec, target paths, and reference paths. When the parent names a wave with several independent steps, fan out one Code Writer per step in the same turn. Do not send two writers the same file. Ask it to match existing patterns and to output only the code.
 4. Do not invoke **Verifier** from here — the Implementer parent does that after you return.
 5. Do not paste generated source back unless the parent asked. Report the target paths you sent.
 

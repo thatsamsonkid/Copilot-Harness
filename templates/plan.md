@@ -14,8 +14,8 @@ What must be true when this plan is complete, in two or three sentences. Restate
 
 Never spawn Implementer. Which path you are on:
 
-- **`/goat-implement`** (preferred after compaction): you become Implementer. Invoke Code Writer for product files and Verifier for verify checks. Do not spawn Implementer.
-- **New chat** (this file is your only brief; no `/goat-implement`): you are the executor. Write the listed files yourself. Do not invoke Implementer, Code Writer, or Verifier. Subagents must not spawn other subagents.
+- **`/goat-implement`** (preferred after compaction): you become Implementer. Fan out one Code Writer per independent step in a Parallel waves row, then Verifier for that wave. Do not spawn Implementer.
+- **New chat** (this file is your only brief; no `/goat-implement`): you are the executor. Follow Parallel waves for order. Write the listed files yourself. Do not invoke Implementer, Code Writer, or Verifier. Subagents must not spawn other subagents.
 - **Same chat that wrote this plan** (no slash command): same as `/goat-implement`. After compact, run `/goat-implement` so the protocol is reloaded.
 
 Everything a model with zero prior context needs before step 1: what the feature/bug is, how the involved repos relate, which instruction files to read first (exact paths), and any terms of art defined in one line each.
@@ -37,12 +37,24 @@ Every file this plan creates, edits, or deletes — the complete set. Paths are 
 | <repo> | `src/…` | edit | <one line: what and why> | 1, 3 |
 | <repo> | `src/… (new)` | create | <one line> | 2 |
 
+## Parallel waves
+
+Group independent steps so `/goat-implement` can fan out one Code Writer per step in a wave, then verify the wave before the next. A new-chat executor still follows waves for order but writes files itself. Same file, or a consumer of a new type/route/event/schema, belongs in a later wave. Write `None — all steps sequential` only when every step depends on the previous one.
+
+| Wave | Steps | Why independent |
+| --- | --- | --- |
+| 1 | 1, 2 | <disjoint files / different repos; no shared contract> |
+| 2 | 3 | <consumes the output of steps 1–2> |
+| 3 | 4, 5 | <same repo, disjoint files; both need step 3> |
+
 ## Steps
 
-Number every step. Each step must name the repo and cwd, exact file paths and symbols, the concrete change (snippets when non-obvious), exact commands, expected result, and a verify check. If a verify check fails, stop and report — do not improvise.
+Number every step. Each step must name the repo and cwd, wave, dependencies, exact file paths and symbols, the concrete change (snippets when non-obvious), exact commands, expected result, and a verify check. If a verify check fails, stop and report — do not improvise. Do not start the next wave until this wave's verify checks pass.
 
 - [ ] **Step 1 — <short name>**
   - Repo / cwd:
+  - Wave: 1
+  - Depends on: none
   - Files: (from the file map)
   - Locate: (symbol name or a short unique fragment to search for — never a line number)
   - Model after: (an existing file in the repo that already follows the target pattern, or "none")

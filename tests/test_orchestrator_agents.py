@@ -129,6 +129,8 @@ def test_orchestrator_is_hidden_and_not_user_invocable():
         "stateless",
         "auto (copilot)",
         "do not override the model",
+        "fan out",
+        "parallel waves",
     ):
         assert token in lowered
 
@@ -153,6 +155,8 @@ def test_jira_planner_auto_delegates_reads_not_writes():
         "safety-critical",
         "auto (copilot)",
         "do not override the model",
+        "parallel waves",
+        "fan out",
     ):
         assert token in lowered
 
@@ -184,6 +188,8 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "verifier",
         "auto (copilot)",
         "do not override the model",
+        "parallel waves",
+        "fan out",
     ):
         assert token in lowered
 
@@ -221,5 +227,7 @@ def test_goat_implement_prompt_requires_code_writer_and_verifier():
         "compaction",
         "goat branch",
         "done_when",
+        "parallel waves",
+        "fan out",
     ):
         assert token in lowered
