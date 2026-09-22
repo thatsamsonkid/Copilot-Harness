@@ -41,7 +41,11 @@ def test_skill_and_prompt_point_at_the_agent():
         assert "safety-critical" in lowered
         assert "auto (copilot)" in lowered
         assert "do not override the model" in lowered
+        assert "fan out" in lowered
     assert "survey" in skill_body.lower()
+    assert "survey groups" in skill_body.lower()
+    assert "handful of files" in skill_body.lower()
+    assert "never send the same file" in skill_body.lower()
     assert "do not reason about bugs" in agent_body.lower()
     assert "limit" in agent_body.lower()
     assert "350" in skill_body
