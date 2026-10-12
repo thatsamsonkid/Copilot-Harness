@@ -24,8 +24,10 @@ For those, stay in this chat. Open the section with a targeted `Read` (`limit` /
 1. Invoke the **Bulk Reader** agent with `#tool:agent`. Agent names are case-sensitive. Its profile pins Copilot Auto (`Auto (copilot)`) — do not override the model.
 2. Each call is stateless. Include the exact survey question, repo-relative paths or symbols, and what to skip.
 3. Ask for structured bullets only (name, type, and `path:line`). No source dump.
-4. Parallelize independent file groups. Cap a call at a handful of files.
+4. **Fan out Bulk Readers.** In the same turn, invoke one `#tool:agent` Bulk Reader per independent group. Prefer one group per repo, or disjoint path sets in the same repo. Cap a group at a handful of files. Never send the same file to two readers. A single group is a single call — sequential readers are the fallback, not the default.
 5. Stay inside `workspace.repos` from `goat context` / `prepare`. Never read `.env` or tokens.
+
+When `/goat-plan` or Jira Planner is gathering context, record those groups in the plan's **Survey groups** table so `/goat-implement` can fan out the same way before a wave. If **Survey groups** is `None` (or missing), group that wave's `Model after` / reference paths by repo yourself.
 
 ## Output you should expect
 
@@ -38,5 +40,6 @@ Synthesize those bullets as a map. Do not paste the file. Do not apply edits unt
 ## Related Copilot customizations
 
 - Feature planning: Jira Planner or `/jira-ticket`
-- Start implementing a saved plan: implementing skill or `/goat-implement`
+- Write a plan: planning skill or `/goat-plan` (fan out Bulk Readers; fill **Survey groups**)
+- Start implementing a saved plan: implementing skill or `/goat-implement` (fan out Bulk Readers, then Code Writers)
 - Hooks: `.github/hooks/check-file-size.json`, `.github/hooks/check-bash-read.json`, `.github/hooks/bulk-read-routing.json`

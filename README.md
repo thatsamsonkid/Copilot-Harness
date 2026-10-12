@@ -299,8 +299,8 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 | `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
 | `.github/skills/glossary/SKILL.md` | Workplace terms and acronyms (`/glossary`) |
 | `.github/skills/skills-install/SKILL.md` | Lift sibling or remote skills into this Yard Goat repo for VS Code Agents (`/skills-install`) |
-| `.github/skills/planning/SKILL.md` | Write a `plans/` file for a later executor (`/goat-plan`) |
-| `.github/skills/implementing/SKILL.md` | Start implementing a plan with Code Writer + Verifier (`/goat-implement`) |
+| `.github/skills/planning/SKILL.md` | Write a `plans/` file with Parallel waves for a later executor (`/goat-plan`) |
+| `.github/skills/implementing/SKILL.md` | Start implementing a plan; fan out Code Writers per wave (`/goat-implement`) |
 | `.github/skills/bulk-reader/SKILL.md` | Structured bullets from large files (`/bulk-reader`) |
 | `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
@@ -338,7 +338,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/orient` is for vague prompts against large repos. It runs `goat context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
 
-**Jira Planner** (and `/jira-ticket`) orchestrates automatically: it invokes the hidden **Bulk Reader** subagent for product files so the plan chat stays a map. After `/goat-plan`, never spawn Implementer. Start implementation with **`/goat-implement`** — that command survives chat compaction: the chat becomes Implementer, invokes **Code Writer** for product files and **Verifier** for verify checks (it still runs `goat branch` and feature notes). A new chat with only the `plans/` file and no `/goat-implement` (often a smaller model) is the executor and writes the files itself. VS Code Agents dropdown (pick **Implementer** as primary) is the same as `/goat-implement`. Subagents must not spawn other subagents. Do not pick Orchestrator — it is not in the agents dropdown.
+**Jira Planner** (and `/jira-ticket`) orchestrates automatically: it fans out the hidden **Bulk Reader** subagent (one call per independent file group) so the plan chat stays a map. After `/goat-plan`, never spawn Implementer. Plans record **Survey groups** and group independent steps into **Parallel waves**. Start implementation with **`/goat-implement`** — that command survives chat compaction: the chat becomes Implementer, fans out **Bulk Reader** per survey group, then **Code Writer** per independent step in a wave, then **Verifier** for that wave (it still runs `goat branch` and feature notes). A new chat with only the `plans/` file and no `/goat-implement` (often a smaller model) is the executor and writes the files itself. VS Code Agents dropdown (pick **Implementer** as primary) is the same as `/goat-implement`. Subagents must not spawn other subagents. Do not pick Orchestrator — it is not in the agents dropdown.
 
 Two Copilot hooks in `.github/hooks` stop whole-file dumps. `check-file-size` fires on every `Read`/`view` and denies files over the line threshold (default 350; `GOAT_BULK_READ_MAX_LINES` or `.github/hooks/read-guard.json`). `Read` with `limit` passes through — use that for edits, debugging, architecture, and safety-critical code. `check-bash-read` denies `cat`/`head`/`tail`/`less`/`more` on those large files; a pipe (`cat file | grep`) or `head -n`/`tail -n` is treated as targeted and passes. `bulk-read-routing` injects the same split on every prompt: Bulk Reader is survey-only; do not delegate debugging, architectural decisions, or safety-critical analysis; do not edit from worker line numbers.
 
@@ -355,7 +355,7 @@ Typical loop:
 3. Copilot runs `goat prepare PROJ-123` and `goat status`
 4. You open the recommended `.code-workspace` so every needed repo is a root
 5. To run the local apps: `/start-workspace` (or `uv run goat start --workspace <id>`). Save the sequence once with `--save` so later chats reuse `workspaces/<id>.start.yml`.
-6. Copilot writes a plan (using Graphify reports and each repo's instructions when present). When you are ready, run `/goat-implement` (Code Writer + Verifier; works after chat compaction) — or open a new chat on the `plans/` file with a smaller model — or, in VS Code Agents, pick Implementer from the dropdown.
+6. Copilot writes a plan (using Graphify reports and each repo's instructions when present), grouping independent steps into Parallel waves. When you are ready, run `/goat-implement` (fan-out Code Writers per wave, then Verifier; works after chat compaction) — or open a new chat on the `plans/` file with a smaller model — or, in VS Code Agents, pick Implementer from the dropdown.
 7. Pause with `/handoff`. Review with `/review` against `done_when`.
 
 To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.
