@@ -226,7 +226,11 @@ def load_launch_runtime(
     env: dict[str, str] = {}
     env_file = (summary or {}).get("env_file") or _env_file_relative(repo_path, selected)
     if env_file:
-        env.update(load_env_file(_resolve_workspace_path(repo_path, env_file)))
+        env.update(
+            load_env_file(
+                _resolve_workspace_path(repo_path, env_file, workspace_folders)
+            )
+        )
     raw_env = selected.get("env") if selected else None
     if isinstance(raw_env, dict):
         for key, value in raw_env.items():
@@ -428,11 +432,23 @@ def _config_score(item: dict[str, Any], repo_name: str | None) -> int:
     return score
 
 
-def _resolve_workspace_path(repo_path: Path, value: str) -> Path:
-    text = value.strip()
-    match = _WORKSPACE_FOLDER.search(text)
-    if match:
-        text = _WORKSPACE_FOLDER.sub(str(repo_path), text, count=1)
+def _resolve_workspace_path(
+    repo_path: Path,
+    value: str,
+    workspace_folders: dict[str, Path] | None = None,
+) -> Path:
+    folders = workspace_folders or {}
+
+    def repl(match: re.Match[str]) -> str:
+        name = match.group(1)
+        if not name:
+            return str(repo_path)
+        target = folders.get(name)
+        # For an unknown named folder, leave the token intact rather than
+        # silently substituting this repo (which would load the wrong file).
+        return str(target) if target is not None else match.group(0)
+
+    text = _WORKSPACE_FOLDER.sub(repl, value.strip())
     path = Path(text)
     if not path.is_absolute():
         path = repo_path / path
