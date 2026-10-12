@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import stat
 from pathlib import Path
@@ -12,7 +13,12 @@ from goat.uv_check import os_family
 
 MARKER = "goat-global-shim"
 LEGACY_MARKER = "coboose-global-shim"
-SHIM_VERSION = "1"
+SHIM_VERSION = "2"
+# Old shims ran `uv run … goat`. When the console script is missing, uv
+# resolves that name to the shim and loops until UV_RUN_RECURSION_DEPTH trips.
+_REINVOKES_GOAT = re.compile(r"uv run --project\s+\S+\s+goat\b")
+_UNIX_ROOT = re.compile(r"^export GOAT_ROOT=(.*)$", re.M)
+_WIN_ROOT = re.compile(r'^set "GOAT_ROOT=(.*)"\s*$', re.M)
 
 PATH_HINTS = {
     "macos": (
@@ -290,11 +296,17 @@ def _unix_shim(root: Path, *, posix: bool) -> str:
         f"# {MARKER} {SHIM_VERSION}\n"
         "set -euo pipefail\n"
         f"export GOAT_ROOT={quoted}\n"
-        'if command -v uv >/dev/null 2>&1; then\n'
-        '  exec uv run --project "$GOAT_ROOT" goat "$@"\n'
+        'ROOT="$GOAT_ROOT"\n'
+        'if [[ -x "$ROOT/.venv/bin/python" ]] && "$ROOT/.venv/bin/python" -c "import goat" >/dev/null 2>&1; then\n'
+        '  exec "$ROOT/.venv/bin/python" -m goat "$@"\n'
         "fi\n"
-        'if [[ -x "$GOAT_ROOT/.venv/bin/goat" ]]; then\n'
-        '  exec "$GOAT_ROOT/.venv/bin/goat" "$@"\n'
+        'if [[ -x "$ROOT/.venv/Scripts/python.exe" ]] && "$ROOT/.venv/Scripts/python.exe" -c "import goat" >/dev/null 2>&1; then\n'
+        '  exec "$ROOT/.venv/Scripts/python.exe" -m goat "$@"\n'
+        "fi\n"
+        'if command -v uv >/dev/null 2>&1 && [[ -f "$ROOT/pyproject.toml" ]]; then\n'
+        '  # Never `uv run goat`: that name is this shim, and uv will execute it\n'
+        "  # again until UV_RUN_RECURSION_DEPTH trips.\n"
+        '  exec uv run --project "$ROOT" python -m goat "$@"\n'
         "fi\n"
         'echo "uv is required. See docs/install-uv.md" >&2\n'
         "exit 127\n"
@@ -307,18 +319,91 @@ def _windows_cmd_shim(root: Path) -> str:
         "@echo off\n"
         f"rem {MARKER} {SHIM_VERSION}\n"
         f'set "GOAT_ROOT={location}"\n'
+        'if exist "%GOAT_ROOT%\\.venv\\Scripts\\python.exe" (\n'
+        '  "%GOAT_ROOT%\\.venv\\Scripts\\python.exe" -c "import goat" >nul 2>&1\n'
+        "  if %ERRORLEVEL%==0 (\n"
+        '    "%GOAT_ROOT%\\.venv\\Scripts\\python.exe" -m goat %*\n'
+        "    exit /b %ERRORLEVEL%\n"
+        "  )\n"
+        ")\n"
+        'if exist "%GOAT_ROOT%\\.venv\\bin\\python" (\n'
+        '  "%GOAT_ROOT%\\.venv\\bin\\python" -c "import goat" >nul 2>&1\n'
+        "  if %ERRORLEVEL%==0 (\n"
+        '    "%GOAT_ROOT%\\.venv\\bin\\python" -m goat %*\n'
+        "    exit /b %ERRORLEVEL%\n"
+        "  )\n"
+        ")\n"
         "where uv >nul 2>&1\n"
         "if %ERRORLEVEL%==0 (\n"
-        '  uv run --project "%GOAT_ROOT%" goat %*\n'
-        "  exit /b %ERRORLEVEL%\n"
-        ")\n"
-        'if exist "%GOAT_ROOT%\\.venv\\Scripts\\goat.exe" (\n'
-        '  "%GOAT_ROOT%\\.venv\\Scripts\\goat.exe" %*\n'
+        '  uv run --project "%GOAT_ROOT%" python -m goat %*\n'
         "  exit /b %ERRORLEVEL%\n"
         ")\n"
         "echo uv is required. See docs/install-uv.md 1>&2\n"
         "exit /b 127\n"
     )
+
+
+def shim_reinvokes_goat(text: str) -> bool:
+    """True when a shim runs `uv run … goat`, which loops back into itself."""
+    return _REINVOKES_GOAT.search(text) is not None
+
+
+def refresh_installed_shims(bin_dir: Path | None = None) -> list[str]:
+    """Rewrite PATH shims that call `uv run goat` so they cannot recurse.
+
+    Keeps the checkout path already embedded in the shim. A missing console
+    script used to make `uv run goat` execute this file again until uv stopped
+    at 100 nested runs.
+    """
+    dest = Path(bin_dir).expanduser() if bin_dir else default_bin_dir()
+    rewritten: list[str] = []
+    if not dest.is_dir():
+        return rewritten
+    for name in ("goat", "goat.cmd"):
+        path = dest / name
+        if not path.is_file() or not is_our_shim(path):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if not shim_reinvokes_goat(text):
+            continue
+        root_text = _root_from_shim(text)
+        if not root_text:
+            continue
+        root = Path(root_text)
+        if name.endswith(".cmd"):
+            contents = _windows_cmd_shim(root)
+        else:
+            posix = bool(re.match(r"^[A-Za-z]:/", root_text))
+            contents = _unix_shim(root, posix=posix)
+        if contents == text:
+            continue
+        try:
+            path.write_text(contents, encoding="utf-8", newline="\n")
+            _make_executable(path)
+        except OSError:
+            continue
+        rewritten.append(str(path))
+    return rewritten
+
+
+def _root_from_shim(text: str) -> str | None:
+    unix = _UNIX_ROOT.search(text)
+    if unix:
+        return _bash_single_unquote(unix.group(1).strip())
+    windows = _WIN_ROOT.search(text)
+    if windows:
+        return windows.group(1)
+    return None
+
+
+def _bash_single_unquote(value: str) -> str:
+    if len(value) >= 2 and value[0] == "'" and value[-1] == "'":
+        inner = value[1:-1]
+        return inner.replace("'\\''", "'")
+    return value
 
 
 def _bash_single_quote(value: str) -> str:

@@ -54,5 +54,7 @@ def test_skill_body_is_the_cli_contract():
         "do not pass `--clone-missing`",
         "failed to spawn",
         "--project",
+        "recursively invoked",
+        "python -m goat",
     ):
         assert token in lowered

@@ -87,7 +87,8 @@ This skill is the CLI contract, not an implementer.
 | 401 / 403 from the CLI | Tell them to rotate the Atlassian API token and run `uv run goat jira login` |
 | Placeholder clone URLs | Tell them to edit `repositories.yml`; do not invent remotes |
 | `uv` missing | `docs/install-uv.md` — macOS/Linux `setup.sh`, Windows `setup.ps1` |
-| `Failed to spawn: goat` / no `pyproject.toml` | Cwd is a sibling. Re-run from the goat folder, `uv run --project "$GOAT_ROOT" goat …`, or `uv run goat install` so `goat` is on PATH |
+| `Failed to spawn: goat` / no `pyproject.toml` | Cwd is a sibling. Re-run from the goat folder, `uv run --project "$GOAT_ROOT" python -m goat …`, or `./scripts/goat.sh` |
+| ``uv run` was recursively invoked`` | Do not retry `uv run goat`. Run `./scripts/goat.sh …` or `uv run --project "$GOAT_ROOT" python -m goat …`. A PATH shim was calling itself. This does not block Jira once that command works |
 
 ## Related Copilot customizations
 

@@ -112,7 +112,8 @@ Do not try to reconstruct the screen from JSON. The Images payload is only ids a
 | Comments 403 / `file_comments:read` | Their token is images-only. Tell them to create a token that includes file comments read |
 | No `node-id` on images/nodes | Ask for a frame URL, or `--ids 12:34` |
 | `uv` missing | `docs/install-uv.md` — macOS/Linux `setup.sh`, Windows `setup.ps1` |
-| `Failed to spawn: goat` / no `pyproject.toml` | Cwd is a sibling. Re-run from the goat folder or `uv run --project "$GOAT_ROOT" goat …` |
+| `Failed to spawn: goat` / no `pyproject.toml` | Cwd is a sibling. Re-run from the goat folder, `uv run --project "$GOAT_ROOT" python -m goat …`, or `./scripts/goat.sh` |
+| ``uv run` was recursively invoked`` | Do not retry `uv run goat`. Run `./scripts/goat.sh …` or `uv run --project "$GOAT_ROOT" python -m goat …`. A PATH shim was calling itself. This does not block Figma once that command works |
 
 ## Related Copilot customizations
 

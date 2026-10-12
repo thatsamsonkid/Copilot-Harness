@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Any, Sequence
@@ -24,7 +25,12 @@ from goat.doctor import run_doctor
 from goat.envspec import find_var, list_env, set_env_value, unset_env_value
 from goat.figma_client import FigmaClient, figma_token_from_env, figma_var
 from goat.handoff import latest_handoff, list_handoffs, write_handoff
-from goat.install import install_cli, resolve_install_root, uninstall_cli
+from goat.install import (
+    install_cli,
+    refresh_installed_shims,
+    resolve_install_root,
+    uninstall_cli,
+)
 from goat.jira_client import JiraClient, jira_settings_from_env, parse_issue_key
 from goat.keychain import login_token, logout_token
 from goat.onboard import run_init
@@ -60,6 +66,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     raw = list(argv) if argv is not None else sys.argv[1:]
     args = parser.parse_args(raw)
     _apply_leading_globals(args, raw)
+    _refresh_shim_quietly()
     try:
         payload = dispatch(args)
         if payload is not None:
@@ -1503,6 +1510,20 @@ def _client() -> JiraClient:
 
 def _figma_client(catalog: Any) -> FigmaClient:
     return FigmaClient(figma_token_from_env(catalog.env_vars))
+
+
+def _refresh_shim_quietly() -> None:
+    """Upgrade a PATH shim that still calls `uv run goat`.
+
+    Skip under pytest so a temp `--root` cannot retarget the real shim.
+    Failures stay quiet: a read-only bin dir must not block jira or figma.
+    """
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+    try:
+        refresh_installed_shims()
+    except Exception:
+        return
 
 
 def _apply_leading_globals(args: argparse.Namespace, argv: list[str]) -> None:

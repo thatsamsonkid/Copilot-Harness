@@ -9,7 +9,9 @@ Product code lives in clones next to this goat (flat siblings or grouped folders
 
 ## Commands
 
-Run these from the goat repo. After `cd` into a sibling, use `uv run --project "$GOAT_ROOT" goat …` or `./scripts/goat.sh` — bare `uv run goat` cannot spawn from a product clone.
+Run these from the goat repo. After `cd` into a sibling, use `uv run --project "$GOAT_ROOT" python -m goat …` or `./scripts/goat.sh` — bare `uv run goat` cannot spawn from a product clone.
+
+If stderr says ``uv run` was recursively invoked`, stop retrying `uv run goat`. A `goat` shim on PATH is calling `uv run goat`, and uv runs that shim again until it hits the recursion limit. Run `./scripts/goat.sh context --format json` or `uv run --project "$GOAT_ROOT" python -m goat context --format json`. That error is not a missing workspace, and it is not a Jira or Figma failure.
 
 | User intent | Command |
 | --- | --- |
