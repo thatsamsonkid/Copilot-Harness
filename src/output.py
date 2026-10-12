@@ -805,7 +805,8 @@ def _commands_markdown(payload: dict[str, Any]) -> str:
         "# Goat CLI",
         "",
         "Run from this repo: `uv run goat <command>`. After `cd` into a sibling, "
-        "use `uv run --project \"$GOAT_ROOT\" goat …` or `./scripts/goat.sh`.",
+        "use `uv run --project \"$GOAT_ROOT\" python -m goat …` or `./scripts/goat.sh`. "
+        "If `uv run` was recursively invoked, do not retry `uv run goat`.",
         "",
         "Stdout is JSON by default. Use `--format markdown` or `text` for a human view.",
         "",

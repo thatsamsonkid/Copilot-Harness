@@ -46,6 +46,8 @@ def test_skill_body_is_the_cli_contract():
         "never curl",
         "failed to spawn",
         "--project",
+        "recursively invoked",
+        "python -m goat",
         "visual source of truth",
         "targeted frame",
         "raw",

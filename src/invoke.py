@@ -10,7 +10,10 @@ _SPAWN_NOTE = (
     "Bare `uv run goat` only works when the process cwd is this Goat "
     "repo (it has pyproject.toml). After cd into a sibling clone, uv cannot "
     "spawn `goat`. Set the command cwd to `cwd`, or run `command` / `script` "
-    "from any directory. Do not reuse an app terminal for goat commands."
+    "from any directory. Do not reuse an app terminal for goat commands. "
+    "If uv says `uv run` was recursively invoked, a PATH shim is calling "
+    "`uv run goat` and uv is running that shim again. Use `command` "
+    "(`python -m goat`) or `script`. Do not retry `uv run goat`."
 )
 
 
@@ -19,7 +22,7 @@ def invoke_spec(root: Path) -> dict[str, str]:
     root = Path(root).resolve()
     return {
         "cwd": str(root),
-        "command": f"uv run --project {shlex.quote(str(root))} goat",
+        "command": f"uv run --project {shlex.quote(str(root))} python -m goat",
         "script": str(root / "scripts" / "goat.sh"),
         "windows_script": str(root / "scripts" / "goat.ps1"),
         "note": _SPAWN_NOTE,

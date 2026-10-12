@@ -33,7 +33,7 @@ def test_invoke_spec_points_at_goat_root(tmp_path: Path):
     assert spec["cwd"] == str(root.resolve())
     assert "--project" in spec["command"]
     assert str(root.resolve()) in spec["command"]
-    assert spec["command"].endswith(" goat")
+    assert spec["command"].endswith(" python -m goat")
     assert spec["script"].endswith("scripts/goat.sh")
     assert spec["windows_script"].endswith("scripts/goat.ps1")
     assert "spawn" in spec["note"].lower()
@@ -102,3 +102,21 @@ def test_uv_run_goat_spawns_from_sibling_with_project(tmp_path: Path):
         text=True,
     )
     assert wrapped.returncode == 0, wrapped.stderr
+
+    script_file = repo / ".venv" / "bin" / "goat"
+    hidden = script_file.with_name("goat.hidden-by-test")
+    if script_file.exists():
+        script_file.rename(hidden)
+    try:
+        wrapped_again = subprocess.run(
+            [str(script), "--version"],
+            cwd=sibling,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+    finally:
+        if hidden.exists():
+            hidden.replace(script_file)
+    assert wrapped_again.returncode == 0, wrapped_again.stderr
+    assert "recursively invoked" not in wrapped_again.stderr

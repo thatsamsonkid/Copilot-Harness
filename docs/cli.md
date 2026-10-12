@@ -1,6 +1,6 @@
 # Goat CLI quick reference
 
-Run from this repo: `uv run goat <command>`. After `cd` into a sibling, `uv run goat` cannot spawn — use `uv run --project "$GOAT_ROOT" goat …` or `./scripts/goat.sh` (Windows: `.\scripts\goat.ps1`). To type `goat` from any directory, run `uv run goat install` once (macOS, Linux, and Windows). That writes a shim to `~/.local/bin` which pins this kit and calls `uv run --project`.
+Run from this repo: `uv run goat <command>`. After `cd` into a sibling, `uv run goat` cannot spawn — use `uv run --project "$GOAT_ROOT" python -m goat …` or `./scripts/goat.sh` (Windows: `.\scripts\goat.ps1`). To type `goat` from any directory, run `uv run goat install` once (macOS, Linux, and Windows). That writes a shim to `~/.local/bin` which pins this kit and runs `python -m goat` (not `uv run goat`, which loops when the shim is what `goat` resolves to).
 
 Stdout is JSON by default. Use `--format markdown` or `text` for a human view. Errors are JSON on stderr.
 

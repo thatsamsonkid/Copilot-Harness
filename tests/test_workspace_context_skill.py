@@ -44,5 +44,7 @@ def test_skill_covers_graphify_and_standards():
         "docs/features",
         "cannot spawn",
         "glossary get",
+        "recursively invoked",
+        "python -m goat",
     ):
         assert token in lowered

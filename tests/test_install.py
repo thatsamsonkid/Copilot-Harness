@@ -13,7 +13,9 @@ from goat.install import (
     MARKER,
     cli_path_status,
     install_cli,
+    refresh_installed_shims,
     resolve_install_root,
+    shim_reinvokes_goat,
     uninstall_cli,
 )
 from goat.output import to_text
@@ -38,6 +40,8 @@ def test_install_writes_unix_shim(tmp_path: Path, goat_root: Path):
     assert MARKER in text
     assert str(goat_root.resolve()) in text
     assert "uv run --project" in text
+    assert "python -m goat" in text
+    assert 'uv run --project "$GOAT_ROOT" goat' not in text
     assert "command -v goat" not in text
     assert shim.stat().st_mode & stat.S_IXUSR
 
@@ -50,6 +54,8 @@ def test_install_writes_windows_shims(tmp_path: Path, goat_root: Path):
     assert [item["name"] for item in payload["shims"]] == ["goat.cmd", "goat"]
     assert MARKER in cmd
     assert "uv run --project" in cmd
+    assert "python -m goat" in cmd
+    assert 'uv run --project "%GOAT_ROOT%" goat %*' not in cmd
     assert str(goat_root.resolve()) in cmd
     assert MARKER in bash
     assert goat_root.resolve().as_posix() in bash
@@ -225,6 +231,59 @@ def test_shim_quotes_awkward_root(tmp_path: Path):
     text = (bin_dir / "goat").read_text(encoding="utf-8")
     assert "kit'\\''s goat" in text
     assert "GOAT_ROOT='" in text
+
+
+def test_refresh_rewrites_shim_that_reinvokes_goat(tmp_path: Path):
+    root = tmp_path / "kit's goat"
+    root.mkdir()
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    shim = bin_dir / "goat"
+    shim.write_text(
+        "#!/usr/bin/env bash\n"
+        f"# {MARKER} 1\n"
+        "set -euo pipefail\n"
+        "export GOAT_ROOT='" + str(root).replace("'", "'\\''") + "'\n"
+        'exec uv run --project "$GOAT_ROOT" goat "$@"\n',
+        encoding="utf-8",
+    )
+    assert shim_reinvokes_goat(shim.read_text(encoding="utf-8"))
+    rewritten = refresh_installed_shims(bin_dir)
+    assert rewritten == [str(shim)]
+    text = shim.read_text(encoding="utf-8")
+    assert "python -m goat" in text
+    assert not shim_reinvokes_goat(text)
+    assert "kit'\\''s goat" in text
+    assert refresh_installed_shims(bin_dir) == []
+
+
+def test_shim_does_not_recurse_when_console_script_is_missing(tmp_path: Path):
+    if not shutil.which("uv"):
+        raise AssertionError("uv is required to run the installed shim")
+    bin_dir = tmp_path / "bin"
+    assert install_cli(REAL_ROOT, bin_dir=bin_dir, system="Linux")["action"] == "install"
+    script = REAL_ROOT / ".venv" / "bin" / "goat"
+    hidden = script.with_name("goat.hidden-by-test")
+    if not script.exists():
+        raise AssertionError(f"expected console script at {script}")
+    script.rename(hidden)
+    try:
+        env = os.environ.copy()
+        env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+        env.pop("UV_RUN_RECURSION_DEPTH", None)
+        result = subprocess.run(
+            [str(bin_dir / "goat"), "--version"],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
+    finally:
+        if hidden.exists():
+            hidden.replace(script)
+    assert result.returncode == 0, result.stderr
+    assert "recursively invoked" not in result.stderr
+    assert "goat" in result.stdout.lower()
 
 
 def test_installed_shim_runs_commands(tmp_path: Path, monkeypatch):

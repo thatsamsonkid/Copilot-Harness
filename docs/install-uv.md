@@ -90,6 +90,6 @@ Windows (PowerShell):
 uv run goat install
 ```
 
-That writes a shim to `~/.local/bin` (macOS/Linux) or `%USERPROFILE%\.local\bin` (Windows). The shim sets `GOAT_ROOT` to this checkout and runs `uv run --project`. It does **not** `pip install` the package. `setup.sh` / `setup.ps1` run `goat install` at the end. Remove it with `goat uninstall`.
+That writes a shim to `~/.local/bin` (macOS/Linux) or `%USERPROFILE%\.local\bin` (Windows). The shim sets `GOAT_ROOT` to this checkout and runs `python -m goat` in that checkout's environment. It does **not** call `uv run goat` (that name is the shim, so uv would run it again until the recursion limit) and it does **not** `pip install` the package. `setup.sh` / `setup.ps1` run `goat install` at the end. The next successful `goat` command rewrites an older shim that still calls `uv run goat`. Remove it with `goat uninstall`.
 
 If `uv` is still not found, the installer put the binary in `~/.local/bin` (macOS/Linux) or `%USERPROFILE%\.local\bin` (Windows). Open a new terminal, or add that directory to PATH, then retry.
