@@ -186,7 +186,7 @@ goat bootstrap --template spartan-stack --name shop-web --https --dry-run
 | `--tags` | Tags to store when registering |
 | `--dry-run` | Print the plan without cloning |
 
-Copilot uses the same commands. If you ask it to bootstrap a new project, it should run `goat templates` and then `goat bootstrap --template <name> --name <folder>` instead of scaffolding from scratch. The `/bootstrap-project` prompt follows that loop.
+Copilot uses the same commands. If you ask it to bootstrap a new project, it should run `goat templates` and then `goat bootstrap --template <name> --name <folder>` instead of scaffolding from scratch. `/bootstrap-project` (`.github/skills/bootstrap-project/SKILL.md`) follows that loop.
 
 ## Jira CLI (basic auth)
 
@@ -286,51 +286,48 @@ Clones always land in `parent_dir` from `repositories.yml` (default `..`), inclu
 
 ## Copilot in VS Code
 
+Slash commands below are user-triggered skills (`disable-model-invocation: true`). The CLI and workflow skills next to them stay agent-loadable.
+
 | File | Role |
 | --- | --- |
-| `.github/skills/get-started/SKILL.md` | First-run walkthrough (`/get-started`) |
-| `.github/skills/workspace-context/SKILL.md` | Graphify + sibling standards (`/orient`) |
-| `.github/skills/workspace-start/SKILL.md` | Local stack plan + sequential start (`/start-workspace`) |
-| `.github/skills/workspace-create/SKILL.md` | Compact workspace picker (`/new-workspace`) |
-| `.github/skills/jira-cli/SKILL.md` | On-demand Jira CLI contract (`/jira-cli`) |
-| `.github/skills/prepare-jira/SKILL.md` | Draft a ticket from notes into `jira-tickets/` (`/prepare-jira`) |
-| `.github/skills/figma-cli/SKILL.md` | On-demand Figma Images / comments / nodes CLI contract (`/figma-frame`) |
-| `.github/skills/bruno-cli/SKILL.md` | On-demand Bruno collections / workflows / bru wrap (`/bruno`) |
-| `.github/skills/handoff/SKILL.md` | Pause / resume a session (`/handoff`) |
-| `.github/skills/glossary/SKILL.md` | Workplace terms and acronyms (`/glossary`) |
-| `.github/skills/skills-install/SKILL.md` | Lift sibling or remote skills into this Yard Goat repo for VS Code Agents (`/skills-install`) |
-| `.github/skills/planning/SKILL.md` | Write a `plans/` file for a later executor (`/goat-plan`) |
-| `.github/skills/implementing/SKILL.md` | Start implementing a plan with Code Writer + Verifier (`/goat-implement`) |
-| `.github/skills/bulk-reader/SKILL.md` | Structured bullets from large files (`/bulk-reader`) |
+| `.github/skills/get-started/SKILL.md` | `/get-started` — first-run walkthrough |
+| `.github/skills/orient/SKILL.md` | `/orient` — follows workspace-context |
+| `.github/skills/workspace-context/SKILL.md` | Agent-loadable Graphify + sibling standards |
+| `.github/skills/start-workspace/SKILL.md` | `/start-workspace` — follows workspace-start |
+| `.github/skills/workspace-start/SKILL.md` | Agent-loadable local stack plan + sequential start |
+| `.github/skills/new-workspace/SKILL.md` | `/new-workspace` — follows workspace-create |
+| `.github/skills/workspace-create/SKILL.md` | Agent-loadable compact workspace picker |
+| `.github/skills/jira-ticket/SKILL.md` | `/jira-ticket` — planning workflow; uses jira-cli |
+| `.github/skills/jira-cli/SKILL.md` | Agent-loadable Jira CLI contract |
+| `.github/skills/prepare-jira/SKILL.md` | `/prepare-jira` — draft a ticket into `jira-tickets/` |
+| `.github/skills/figma-frame/SKILL.md` | `/figma-frame` — follows figma-cli |
+| `.github/skills/figma-cli/SKILL.md` | Agent-loadable Figma Images / comments / nodes contract |
+| `.github/skills/bruno/SKILL.md` | `/bruno` — follows bruno-cli |
+| `.github/skills/bruno-cli/SKILL.md` | Agent-loadable Bruno collections / workflows / bru wrap |
+| `.github/skills/bootstrap-project/SKILL.md` | `/bootstrap-project` |
+| `.github/skills/goat-plan/SKILL.md` | `/goat-plan` — follows planning |
+| `.github/skills/planning/SKILL.md` | Agent-loadable `plans/` writer |
+| `.github/skills/goat-implement/SKILL.md` | `/goat-implement` — follows implementing |
+| `.github/skills/implementing/SKILL.md` | Agent-loadable Code Writer + Verifier protocol |
+| `.github/skills/bulk-reader/SKILL.md` | `/bulk-reader` — structured bullets from large files |
+| `.github/skills/handoff/SKILL.md` | `/handoff` — pause / resume a session |
+| `.github/skills/glossary/SKILL.md` | `/glossary` — workplace terms and acronyms |
+| `.github/skills/review/SKILL.md` | `/review` — Reviewer workflow |
+| `.github/skills/skills-install/SKILL.md` | `/skills-install` — lift sibling or remote skills for VS Code Agents |
 | `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
 | `.github/hooks/bulk-read-routing.json` | Keep debug / architecture / safety in the parent agent |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
 | `AGENTS.md` | Same rules for other agents |
 | `docs/cli.md` | Human cheat sheet of every `goat` command (`goat commands`) |
-| `.github/prompts/jira-ticket.prompt.md` | `/jira-ticket` |
-| `.github/prompts/prepare-jira.prompt.md` | `/prepare-jira` |
-| `.github/prompts/figma-frame.prompt.md` | `/figma-frame` |
-| `.github/prompts/bruno.prompt.md` | `/bruno` |
-| `.github/prompts/new-workspace.prompt.md` | `/new-workspace` |
-| `.github/prompts/orient.prompt.md` | `/orient` |
-| `.github/prompts/start-workspace.prompt.md` | `/start-workspace` |
-| `.github/prompts/bootstrap-project.prompt.md` | `/bootstrap-project` |
-| `.github/prompts/goat-plan.prompt.md` | `/goat-plan` |
-| `.github/prompts/goat-implement.prompt.md` | `/goat-implement` |
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |
 | `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 | `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
 | `.github/agents/orchestrator.agent.md` | Hidden coordinator (not in the dropdown) |
 | `.github/agents/bulk-reader.agent.md` | Hidden subagent (Copilot Auto): structured bullets from named files |
-| `.github/prompts/bulk-reader.prompt.md` | `/bulk-reader` |
 | `.github/agents/code-writer.agent.md` | Hidden subagent (Copilot Auto): Implementer's product-file writer |
 | `.github/agents/verifier.agent.md` | Hidden subagent: Implementer's verify-command runner |
-| `.github/prompts/handoff.prompt.md` | `/handoff` |
-| `.github/prompts/glossary.prompt.md` | `/glossary` |
-| `.github/prompts/review.prompt.md` | `/review` |
-| `.github/prompts/skills-install.prompt.md` | `/skills-install` |
 
 The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
 

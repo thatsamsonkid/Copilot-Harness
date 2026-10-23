@@ -2,6 +2,7 @@
 name: prepare-jira
 description: Walk the user through drafting a Jira ticket from dumped notes, format it with templates/jira-ticket.md, and write a copy-paste file under jira-tickets/. Use when they say /prepare-jira, draft a ticket, write a Jira description, or dump feature context to format. Do not call Jira write APIs, read .env, or implement the feature.
 argument-hint: paste notes, Figma links, or a one-line ask
+disable-model-invocation: true
 ---
 
 # Prepare a Jira ticket

@@ -11,11 +11,12 @@ SKILL = (
     / "workspace-start"
     / "SKILL.md"
 )
-PROMPT = (
+SLASH = (
     Path(__file__).resolve().parents[1]
     / ".github"
-    / "prompts"
-    / "start-workspace.prompt.md"
+    / "skills"
+    / "start-workspace"
+    / "SKILL.md"
 )
 
 
@@ -72,9 +73,12 @@ def test_skill_is_plan_then_sequential_start():
         assert token in lowered
 
 
-def test_prompt_points_at_the_skill():
-    meta, body = _frontmatter_and_body(PROMPT)
+def test_slash_skill_points_at_the_contract():
+    meta, body = _frontmatter_and_body(SLASH)
     assert meta["name"] == "start-workspace"
+    assert meta.get("disable-model-invocation") is True
+    assert "tools" not in meta
+    assert "agent" not in meta
     lowered = body.lower()
     assert "workspace-start/skill.md" in lowered
     assert "goat start" in lowered

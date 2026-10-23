@@ -5,7 +5,6 @@ from pathlib import Path
 import yaml
 
 SKILL = Path(__file__).resolve().parents[1] / ".github" / "skills" / "glossary" / "SKILL.md"
-PROMPT = Path(__file__).resolve().parents[1] / ".github" / "prompts" / "glossary.prompt.md"
 
 
 def _frontmatter_and_body(path: Path) -> tuple[dict, str]:
@@ -48,13 +47,15 @@ def test_skill_keeps_glossary_out_of_product_wiki():
         assert token in lowered
 
 
-def test_prompt_points_at_skill_and_get():
-    meta, body = _frontmatter_and_body(PROMPT)
+def test_slash_skill_is_user_triggered_lookup():
+    meta, body = _frontmatter_and_body(SKILL)
     assert meta["name"] == "glossary"
+    assert meta.get("disable-model-invocation") is True
+    assert "tools" not in meta
+    assert "agent" not in meta
     lowered = body.lower()
-    assert "skills/glossary/skill.md" in lowered
     assert "goat glossary get" in lowered
     assert "do not invent" in lowered
     assert "public" in lowered
     assert "private" in lowered
-    assert "do not assume" in lowered
+    assert "do not default" in lowered

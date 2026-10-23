@@ -2,6 +2,7 @@
 name: glossary
 description: Look up or add workplace words and acronyms so Copilot uses the team's language. Use when a prompt has unknown jargon, someone asks what a term means, or they want to grow the shared or personal dictionary. Always ask whether a new term is public or private. Short definitions only — not product architecture.
 argument-hint: TERM
+disable-model-invocation: true
 ---
 
 # Workplace glossary

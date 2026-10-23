@@ -2,6 +2,7 @@
 name: skills-install
 description: List sibling or remote agent skills and copy them into the goat .github/skills root so VS Code Agents can load them. Use when the Agents window cannot see child-repo skills, the user asks to lift/install/copy skills, or a git URL of skills should be pulled. Temporary multi-root shim. Do not commit lifted copies. Do not nest clones inside goat.
 argument-hint: list | lift | pull <git-url>
+disable-model-invocation: true
 ---
 
 # Skills install (VS Code Agents shim)

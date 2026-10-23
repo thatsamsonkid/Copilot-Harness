@@ -9,7 +9,7 @@ SKILL = ROOT / ".github" / "skills" / "planning" / "SKILL.md"
 TEMPLATE = ROOT / "templates" / "plan.md"
 AGENTS = ROOT / "AGENTS.md"
 COPILOT = ROOT / ".github" / "copilot-instructions.md"
-GOAT_PLAN = ROOT / ".github" / "prompts" / "goat-plan.prompt.md"
+GOAT_PLAN = ROOT / ".github" / "skills" / "goat-plan" / "SKILL.md"
 
 
 def _frontmatter_and_body() -> tuple[dict, str]:

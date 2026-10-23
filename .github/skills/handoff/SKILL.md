@@ -2,6 +2,7 @@
 name: handoff
 description: Write or resume a Copilot session note under handoffs/ using goat status. Use when the user says they are stopping, switching chats, handing off, or asking what they were last doing. Never store secrets or .env values in the note.
 argument-hint: PROJ-123
+disable-model-invocation: true
 ---
 
 # Session handoff

@@ -2,13 +2,13 @@
 name: review
 description: Review sibling diffs against done_when, repo linters, and goat invariants
 argument-hint: PROJ-123
-agent: agent
+disable-model-invocation: true
 ---
 
-The user wants a review, not more implementation. Use the **Reviewer** agent rules.
+The user wants a review, not more implementation. Follow `.github/agents/reviewer.agent.md` — the **Reviewer** agent rules.
 
-1. Run `#tool:runCommands` with `uv run goat status --format json`.
-2. If a Jira key is present, run `uv run goat prepare ${input:issue} --format json` and treat `done_when` as the checklist.
+1. Run `uv run goat status --format json`.
+2. If a Jira key is present, run `uv run goat prepare <KEY> --format json` and treat `done_when` as the checklist.
 3. For each dirty or ahead sibling, run `uv run goat context --repo <name> --format json`.
 4. Read that repo's instruction files. Do not invent style rules.
 5. Inspect the working tree / diff in that sibling only. Flag hand-edits under `tooling.generated`.

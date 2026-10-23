@@ -11,11 +11,12 @@ SKILL = (
     / "workspace-create"
     / "SKILL.md"
 )
-PROMPT = (
+SLASH = (
     Path(__file__).resolve().parents[1]
     / ".github"
-    / "prompts"
-    / "new-workspace.prompt.md"
+    / "skills"
+    / "new-workspace"
+    / "SKILL.md"
 )
 AGENT = (
     Path(__file__).resolve().parents[1]
@@ -71,12 +72,14 @@ def test_skill_body_is_the_compact_picker_contract():
     assert "goat workspace list --format json" not in lowered
 
 
-def test_prompt_and_agent_point_at_the_skill():
-    prompt_meta, prompt_body = _frontmatter_and_body(PROMPT)
+def test_slash_skill_and_agent_point_at_the_contract():
+    slash_meta, slash_body = _frontmatter_and_body(SLASH)
     agent_meta, agent_body = _frontmatter_and_body(AGENT)
-    assert prompt_meta["name"] == "new-workspace"
+    assert slash_meta["name"] == "new-workspace"
+    assert slash_meta.get("disable-model-invocation") is True
+    assert "tools" not in slash_meta
     assert agent_meta["name"] == "Workspace Creator"
-    for body in (prompt_body, agent_body):
+    for body in (slash_body, agent_body):
         lowered = body.lower()
         assert "workspace-create/skill.md" in lowered
         assert "workspace create --menu" in lowered

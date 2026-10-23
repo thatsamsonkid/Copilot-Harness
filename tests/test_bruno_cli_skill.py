@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 
 SKILL = Path(__file__).resolve().parents[1] / ".github" / "skills" / "bruno-cli" / "SKILL.md"
-PROMPT = Path(__file__).resolve().parents[1] / ".github" / "prompts" / "bruno.prompt.md"
+PROMPT = Path(__file__).resolve().parents[1] / ".github" / "skills" / "bruno" / "SKILL.md"
 DOCS = Path(__file__).resolve().parents[1] / "docs" / "bruno.md"
 
 
@@ -56,9 +56,12 @@ def test_skill_body_is_the_cli_contract():
         assert token in lowered
 
 
-def test_prompt_points_at_the_skill():
+def test_slash_skill_points_at_the_contract():
     meta, body = _frontmatter_and_body(PROMPT)
     assert meta["name"] == "bruno"
+    assert meta.get("disable-model-invocation") is True
+    assert "tools" not in meta
+    assert "agent" not in meta
     lowered = body.lower()
     assert "bruno-cli/skill.md" in lowered
     assert "bruno collections" in lowered
