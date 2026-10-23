@@ -2,6 +2,7 @@
 name: bulk-reader
 description: Survey large files as structured bullets. Do not use for debugging, architectural decisions, safety-critical analysis, or as the source of truth for edits.
 argument-hint: survey question and file paths
+disable-model-invocation: true
 ---
 
 # Bulk reader

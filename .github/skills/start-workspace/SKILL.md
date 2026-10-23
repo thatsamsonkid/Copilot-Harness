@@ -2,12 +2,12 @@
 name: start-workspace
 description: Plan and start every local app in the current feature workspace
 argument-hint: optional workspace id or repo names
-agent: agent
+disable-model-invocation: true
 ---
 
-The user wants to run the local stack (Java, Angular, Node, or mixed) for the open feature workspace. Load `.github/skills/workspace-start/SKILL.md` and follow it.
+The user wants to run the local stack (Java, Angular, Node, or mixed) for the open feature workspace. Load `.github/skills/workspace-start/SKILL.md` and follow it. This slash is user-triggered; `workspace-start` stays the agent-loadable contract.
 
-1. Run `#tool:runCommands` with cwd = the goat workspace folder (first root, named `goat`) and `uv run goat start --format json` (add `--workspace <id>` or `--repo <names>` when the user named them). The command follows `GOAT_WORKSPACE` when a feature `.code-workspace` is open. If `workspace_scope.detected` is false, pass `--workspace <id>` or ask — do not plan every clone on disk. Do not `cd` into a product repo first. If cwd is already a sibling, use `uv run --project "$GOAT_ROOT" goat start --format json` or `./scripts/goat.sh start --format json` (Windows: `.\scripts\goat.ps1`). Bare `uv run goat` cannot spawn from a sibling.
+1. Run `uv run goat start --format json` with cwd = the goat workspace folder (first root, named `goat`). Add `--workspace <id>` or `--repo <names>` when the user named them. The command follows `GOAT_WORKSPACE` when a feature `.code-workspace` is open. If `workspace_scope.detected` is false, pass `--workspace <id>` or ask — do not plan every clone on disk. Do not `cd` into a product repo first. If cwd is already a sibling, use `uv run --project "$GOAT_ROOT" goat start --format json` or `./scripts/goat.sh start --format json` (Windows: `.\scripts\goat.ps1`). Bare `uv run goat` cannot spawn from a sibling.
 2. If `plan_source` is `saved`, follow that sequence. If it is `discovered` and the order looks right, save it once with `uv run goat start --save --format json` so later starts skip rediscovery (`workspaces/<id>.start.yml`).
 3. Summarize the plan: start order, `run_via`, command, port hints, proxy files, launch configuration names / env keys, and blocked items. Do not read `.vscode/launch.json` or `.env`.
 4. Start backends first, one process at a time, **one VS Code terminal per app**. If `run_via` is `goat`, run `copilot_command` (`uv run --project "$GOAT_ROOT" goat start run --repo <name>`) from the goat cwd — the CLI starts the process in the repo folder and applies launch env to that child. To inspect keys/collisions without starting, run `goat start env --repo <name> --format json`. To apply env in a terminal without starting the app, run `goat start env --repo <name> --shell`. If `run_via` is `vscode`, use **Run Without Debugging** on the named launch configuration (not Debug unless asked). If `run_via` is `terminal`, run `command` as usual. If a terminal already exists for that repo, reuse it and read its log. Never start a second long-running app in a busy terminal.

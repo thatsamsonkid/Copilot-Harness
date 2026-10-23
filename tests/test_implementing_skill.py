@@ -9,7 +9,7 @@ SKILL = ROOT / ".github" / "skills" / "implementing" / "SKILL.md"
 TEMPLATE = ROOT / "templates" / "plan.md"
 AGENTS = ROOT / "AGENTS.md"
 COPILOT = ROOT / ".github" / "copilot-instructions.md"
-GOAT_IMPLEMENT = ROOT / ".github" / "prompts" / "goat-implement.prompt.md"
+GOAT_IMPLEMENT = ROOT / ".github" / "skills" / "goat-implement" / "SKILL.md"
 SETTINGS = ROOT / ".vscode" / "settings.json"
 
 
@@ -51,12 +51,15 @@ def test_skill_reloads_code_writer_and_verifier_after_compaction():
         assert token in lowered
 
 
-def test_prompt_points_at_the_skill():
+def test_slash_skill_points_at_the_contract():
     text = GOAT_IMPLEMENT.read_text(encoding="utf-8")
     assert text.startswith("---\n")
     _, raw_meta, body = text.split("---", 2)
     meta = yaml.safe_load(raw_meta)
     assert meta["name"] == "goat-implement"
+    assert meta.get("disable-model-invocation") is True
+    assert "tools" not in meta
+    assert "agent" not in meta
     lowered = body.lower()
     assert "implementing/skill.md" in lowered
     assert "code writer" in lowered

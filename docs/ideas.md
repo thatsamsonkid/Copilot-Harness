@@ -116,7 +116,7 @@ These are separate from the themes above but fit the same goat:
 - **Pinned SHAs** — a `lock` file of sibling commit SHAs so a Cloud Agent / eval run is reproducible. Optional, not for daily work.
 - **CI awareness** — `gh pr checks` per sibling before anyone says “ship it.” GitHub MCP is fine; Jira MCP is not.
 - **MCP allowlist in instructions** — say explicitly: GitHub MCP okay, Jira MCP never. Stops a well-meaning teammate from installing Atlassian MCP “to help.”
-- **Assignment board in chat** — `/mine` prompt that runs `jira mine` then `prepare` on the chosen key. Thin wrapper; only add if people keep forgetting the command.
+- **Assignment board in chat** — a `/mine` slash skill that runs `jira mine` then `prepare` on the chosen key. Thin wrapper; only add if people keep forgetting the command.
 - **Figma comments / targeted raw nodes** — shipped as `figma comments` (allowlisted) and `figma nodes` (raw Figma node map, depth-capped, targeted frames only). Images stay the visual source of truth. Variable names / tokens stay a later clip if designers actually write them.
 
 ## 7. Bruno API collections
@@ -127,7 +127,7 @@ These are separate from the themes above but fit the same goat:
 - `goat bruno collections` / `requests` / `envs` / `workflows` / `run` / `schema`. Discovery reads `bruno.json` and `.bru` files. `run` only wraps `bru` with the collection cwd and `--env`.
 - Workflows live in the Bruno repo as `goat.workflows.yml` (search → pick a product → cart). Yard Goat prints the plan; Copilot picks values and passes `--env-var`.
 - Service → default env via `goat.services.yml` or `bruno.services`. Environment **values** never appear in CLI JSON.
-- bruno-cli skill + `/bruno` prompt. `bru` itself stays the HTTP runner.
+- bruno-cli skill + `/bruno` skill (`.github/skills/bruno/SKILL.md`). `bru` itself stays the HTTP runner.
 
 **Worth adding next**
 

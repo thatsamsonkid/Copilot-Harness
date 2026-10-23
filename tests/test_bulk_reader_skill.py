@@ -6,7 +6,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / ".github" / "skills" / "bulk-reader" / "SKILL.md"
-PROMPT = ROOT / ".github" / "prompts" / "bulk-reader.prompt.md"
 AGENT = ROOT / ".github" / "agents" / "bulk-reader.agent.md"
 
 
@@ -24,24 +23,23 @@ def test_skill_name_matches_directory():
     assert meta["name"] == SKILL.parent.name
 
 
-def test_skill_and_prompt_point_at_the_agent():
+def test_skill_points_at_the_agent():
     skill_meta, skill_body = _frontmatter_and_body(SKILL)
-    prompt_meta, prompt_body = _frontmatter_and_body(PROMPT)
     agent_meta, agent_body = _frontmatter_and_body(AGENT)
     assert skill_meta["name"] == "bulk-reader"
-    assert prompt_meta["name"] == "bulk-reader"
+    assert skill_meta.get("disable-model-invocation") is True
+    assert "tools" not in skill_meta
     assert agent_meta["name"] == "Bulk Reader"
     assert agent_meta.get("model") == "Auto (copilot)"
-    for body in (skill_body, prompt_body):
-        lowered = body.lower()
-        assert "bulk reader" in lowered
-        assert "#tool:agent" in lowered
-        assert "debugging" in lowered
-        assert "architectural" in lowered
-        assert "safety-critical" in lowered
-        assert "auto (copilot)" in lowered
-        assert "do not override the model" in lowered
-    assert "survey" in skill_body.lower()
+    lowered = skill_body.lower()
+    assert "bulk reader" in lowered
+    assert "#tool:agent" in lowered
+    assert "debugging" in lowered
+    assert "architectural" in lowered
+    assert "safety-critical" in lowered
+    assert "auto (copilot)" in lowered
+    assert "do not override the model" in lowered
+    assert "survey" in lowered
     assert "do not reason about bugs" in agent_body.lower()
     assert "limit" in agent_body.lower()
     assert "350" in skill_body

@@ -5,7 +5,6 @@ from pathlib import Path
 import yaml
 
 SKILL = Path(__file__).resolve().parents[1] / ".github" / "skills" / "prepare-jira" / "SKILL.md"
-PROMPT = Path(__file__).resolve().parents[1] / ".github" / "prompts" / "prepare-jira.prompt.md"
 GITIGNORE = Path(__file__).resolve().parents[1] / ".gitignore"
 KEEP = Path(__file__).resolve().parents[1] / "jira-tickets" / ".gitkeep"
 
@@ -53,12 +52,14 @@ def test_skill_is_a_draft_walkthrough_not_jira_write():
         assert token in lowered
 
 
-def test_prompt_points_at_the_skill_and_output_dir():
-    meta, body = _frontmatter_and_body(PROMPT)
+def test_slash_skill_is_user_triggered_draft():
+    meta, body = _frontmatter_and_body(SKILL)
     assert meta["name"] == "prepare-jira"
+    assert meta.get("disable-model-invocation") is True
+    assert "tools" not in meta
+    assert "agent" not in meta
     lowered = body.lower()
     for token in (
-        ".github/skills/prepare-jira/skill.md",
         "templates/jira-ticket.md",
         "jira-tickets/",
         "goat prepare",

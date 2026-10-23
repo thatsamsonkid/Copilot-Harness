@@ -11,8 +11,8 @@ ORCHESTRATOR = ROOT / ".github" / "agents" / "orchestrator.agent.md"
 PLANNER = ROOT / ".github" / "agents" / "jira-planner.agent.md"
 IMPLEMENTER = ROOT / ".github" / "agents" / "implementer.agent.md"
 VERIFIER = ROOT / ".github" / "agents" / "verifier.agent.md"
-JIRA_PROMPT = ROOT / ".github" / "prompts" / "jira-ticket.prompt.md"
-GOAT_IMPLEMENT = ROOT / ".github" / "prompts" / "goat-implement.prompt.md"
+JIRA_TICKET = ROOT / ".github" / "skills" / "jira-ticket" / "SKILL.md"
+GOAT_IMPLEMENT = ROOT / ".github" / "skills" / "goat-implement" / "SKILL.md"
 AUTO_MODEL = "Auto (copilot)"
 
 
@@ -188,11 +188,14 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         assert token in lowered
 
 
-def test_jira_ticket_prompt_uses_reader_not_writer():
-    meta, body = _frontmatter_and_body(JIRA_PROMPT)
+def test_jira_ticket_skill_uses_reader_not_writer():
+    meta, body = _frontmatter_and_body(JIRA_TICKET)
     assert meta["name"] == "jira-ticket"
-    assert "agent" in meta.get("tools", [])
+    assert meta.get("disable-model-invocation") is True
+    assert "tools" not in meta
+    assert "agent" not in meta
     lowered = body.lower()
+    assert "#tool:agent" in lowered
     assert "bulk reader" in lowered
     assert "do not invoke **code writer**" in lowered
     assert "do not edit product code" in lowered
@@ -207,11 +210,14 @@ def test_jira_ticket_prompt_uses_reader_not_writer():
     assert "do not override the model" in lowered
 
 
-def test_goat_implement_prompt_requires_code_writer_and_verifier():
+def test_goat_implement_skill_requires_code_writer_and_verifier():
     meta, body = _frontmatter_and_body(GOAT_IMPLEMENT)
     assert meta["name"] == "goat-implement"
-    assert "agent" in meta.get("tools", [])
+    assert meta.get("disable-model-invocation") is True
+    assert "tools" not in meta
+    assert "agent" not in meta
     lowered = body.lower()
+    assert "#tool:agent" in lowered
     for token in (
         "implementing/skill.md",
         "never spawn implementer",

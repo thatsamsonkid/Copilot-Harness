@@ -1,6 +1,7 @@
 ---
 name: get-started
 description: Walk a new user through goat setup (install uv on macOS or Windows, Jira email, API token in the OS keychain, repositories.yml, clones). Use when someone is first opening the goat, uv is missing, asks how to create an Atlassian token, or auth/doctor is failing. Never read .env, never ask for the token in chat, never use a Jira MCP server.
+disable-model-invocation: true
 ---
 
 # Get started

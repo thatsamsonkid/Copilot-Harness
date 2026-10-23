@@ -2,12 +2,12 @@
 name: orient
 description: Map sibling repos with Graphify and local instructions when the prompt is vague
 argument-hint: what area or ticket is this about?
-agent: plan
+disable-model-invocation: true
 ---
 
-The user has a vague, broad, or low-context request (no ticket, unclear repo, or "how does this work?"). Load `.github/skills/workspace-context/SKILL.md`.
+The user has a vague, broad, or low-context request (no ticket, unclear repo, or "how does this work?"). Load `.github/skills/workspace-context/SKILL.md`. This slash is user-triggered; `workspace-context` stays the agent-loadable contract.
 
-1. Run `#tool:runCommands` with cwd = the goat folder and `uv run goat context --format json`. Do not `cd` into a sibling first. If cwd is already a product clone, use `uv run --project "$GOAT_ROOT" goat context --format json`. Stay inside `workspace.repos`. If `workspace_scope.detected` is false, ask which feature workspace to open — do not summarize every clone on disk.
+1. Run `uv run goat context --format json` with cwd = the goat folder. Do not `cd` into a sibling first. If cwd is already a product clone, use `uv run --project "$GOAT_ROOT" goat context --format json`. Stay inside `workspace.repos`. If `workspace_scope.detected` is false, ask which feature workspace to open — do not summarize every clone on disk.
 2. Summarize each listed repo: Graphify report present or not, instruction files, knowledge notes/ADRs, and suggested verify commands.
 3. If any `graphify.report` or `knowledge.files` exist, read those Markdown files before searching product code.
 4. If the user named two concepts, prefer `graphify path` / `graphify query` from the JSON over grepping a monorepo.
