@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from goat import GoatError
-from goat.envfile import upsert_env_file
+from goat.envfile import blank_env_keys
 
 SERVICE = "goat"
 LEGACY_SERVICE = "coboose"
@@ -365,13 +365,10 @@ def missing_token_action() -> str:
 
 def _clear_env_token(goat_root: Path) -> bool:
     env_path = goat_root / ".env"
-    had_env = bool(env_token())
     for key in ("JIRA_API_TOKEN", "JIRA_TOKEN"):
         os.environ.pop(key, None)
-    if env_path.exists():
-        upsert_env_file(env_path, {"JIRA_API_TOKEN": ""})
-        return True
-    return had_env
+    blanked = blank_env_keys(env_path, ("JIRA_API_TOKEN", "JIRA_TOKEN"))
+    return bool(blanked)
 
 
 def _store() -> TokenStore:

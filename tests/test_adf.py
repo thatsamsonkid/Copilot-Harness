@@ -1,6 +1,23 @@
 from goat.adf import adf_to_markdown
 
 
+def test_hard_break_preserves_line_break():
+    doc = {
+        "type": "doc",
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {"type": "text", "text": "line one"},
+                    {"type": "hardBreak"},
+                    {"type": "text", "text": "line two"},
+                ],
+            }
+        ],
+    }
+    assert adf_to_markdown(doc) == "line one\nline two"
+
+
 def test_paragraph_marks_and_link():
     doc = {
         "type": "doc",

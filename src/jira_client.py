@@ -140,9 +140,13 @@ class JiraClient:
         payload = self._json(
             "GET",
             f"/rest/api/3/issue/{quote(key)}/comment",
-            params={"maxResults": str(max_results), "orderBy": "created"},
+            params={"maxResults": str(max_results), "orderBy": "-created"},
         )
-        comments = [normalize_comment(comment) for comment in payload.get("comments") or []]
+        # Request newest-first so maxResults keeps the most recent comments, then
+        # present them oldest-first for readable, chronological context.
+        raw = list(payload.get("comments") or [])
+        raw.reverse()
+        comments = [normalize_comment(comment) for comment in raw]
         return project(comments, settings.comments_projection())
 
     def search(

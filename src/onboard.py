@@ -52,6 +52,10 @@ def run_init(
     created_env = False
     if not env_path.exists() and (goat_root / ".env.example").exists():
         shutil.copyfile(goat_root / ".env.example", env_path)
+        try:
+            os.chmod(env_path, 0o600)
+        except OSError:
+            pass
         created_env = True
 
     written_keys: list[str] = []

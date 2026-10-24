@@ -337,3 +337,61 @@ def test_catalog_to_dict_includes_bruno(goat_root: Path, sample_catalog_data: di
     assert payload["bruno"]["default_env"] == "local"
     assert payload["bruno"]["workflows_file"] == "goat.workflows.yml"
     assert payload["bruno"]["services"][0]["id"] == "cart"
+
+
+BRU_WITH_APOSTROPHE = """meta {
+  name: X
+  type: http
+  seq: 1
+}
+
+docs {
+  Don't drop the blocks that come after this one.
+}
+
+post {
+  url: {{baseUrl}}/x
+}
+"""
+
+
+def test_apostrophe_in_docs_does_not_drop_later_blocks(tmp_path: Path):
+    path = tmp_path / "x.bru"
+    path.write_text(BRU_WITH_APOSTROPHE, encoding="utf-8")
+    names = [name for name, _ in parse_bru_blocks(BRU_WITH_APOSTROPHE)]
+    assert names == ["meta", "docs", "post"]
+    parsed = parse_bru_request(path, tmp_path)
+    assert parsed is not None
+    assert parsed["method"] == "POST"
+    assert parsed["url"] == "{{baseUrl}}/x"
+
+
+def test_malformed_workflow_file_warns_and_returns_empty(tmp_path: Path):
+    from goat.bruno import parse_workflow_file
+
+    path = tmp_path / "goat.workflows.yml"
+    path.write_text("workflows: [oops\n  - broken", encoding="utf-8")
+    with pytest.warns(UserWarning, match="malformed"):
+        result = parse_workflow_file(path)
+    assert result == []
+
+
+def test_nested_collection_requests_not_folded_into_parent(
+    goat_root: Path, sample_catalog_data: dict
+):
+    catalog = _catalog_with_bruno(goat_root, sample_catalog_data)
+    root = goat_root.parent / "api-collections"
+    nested = root / "nested"
+    nested.mkdir()
+    (nested / "bruno.json").write_text(
+        '{"version": "1", "name": "nested-api", "type": "collection"}\n',
+        encoding="utf-8",
+    )
+    (nested / "ping.bru").write_text(
+        "meta {\n  name: Ping\n  type: http\n  seq: 1\n}\n\nget {\n  url: {{baseUrl}}/ping\n}\n",
+        encoding="utf-8",
+    )
+    payload = collect_bruno_inventory(catalog, goat_root)
+    by_name = {item["name"]: item for item in payload["collections"]}
+    assert by_name["cart-api"]["request_count"] == 2
+    assert by_name["nested-api"]["request_count"] == 1
