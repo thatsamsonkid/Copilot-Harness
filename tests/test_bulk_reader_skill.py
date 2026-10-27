@@ -42,4 +42,4 @@ def test_skill_points_at_the_agent():
     assert "survey" in lowered
     assert "do not reason about bugs" in agent_body.lower()
     assert "limit" in agent_body.lower()
-    assert "350" in skill_body
+    assert "800" in skill_body

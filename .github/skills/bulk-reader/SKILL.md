@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # Bulk reader
 
-Whole-file reads of large files are blocked by the `check-file-size` and `check-bash-read` hooks (default 350 lines, `GOAT_BULK_READ_MAX_LINES` or `.github/hooks/read-guard.json`). Delegation saves tokens on **understanding** only.
+Whole-file reads of large files are blocked by the `check-file-size` and `check-bash-read` hooks (default 800 lines, `GOAT_BULK_READ_MAX_LINES` or `.github/hooks/read-guard.json`). Delegation saves tokens on **understanding** only.
 
 ## Do not use
 
