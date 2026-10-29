@@ -16,6 +16,7 @@ SKILLS = ROOT / ".github" / "skills"
 
 # name -> argument-hint from the old prompt, or None when the prompt had none.
 SLASH_SKILLS = {
+    "ai-readiness": "workspace id or repo name",
     "bootstrap-project": "template-name new-folder",
     "bruno": "collection, request, or workflow",
     "bulk-reader": "survey question and file paths",

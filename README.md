@@ -313,6 +313,7 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `.github/skills/handoff/SKILL.md` | `/handoff` — pause / resume a session |
 | `.github/skills/glossary/SKILL.md` | `/glossary` — workplace terms and acronyms |
 | `.github/skills/review/SKILL.md` | `/review` — Reviewer workflow |
+| `.github/skills/ai-readiness/SKILL.md` | `/ai-readiness` — Readiness Auditor workflow |
 | `.github/skills/skills-install/SKILL.md` | `/skills-install` — lift sibling or remote skills for VS Code Agents |
 | `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
@@ -324,6 +325,7 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
 | `.github/agents/implementer.agent.md` | Implement an agreed plan |
 | `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
+| `.github/agents/readiness-auditor.agent.md` | Read-only AI-readiness audit of workspace product repos |
 | `.github/agents/orchestrator.agent.md` | Hidden coordinator (not in the dropdown) |
 | `.github/agents/bulk-reader.agent.md` | Hidden subagent (Copilot Auto): structured bullets from named files |
 | `.github/agents/code-writer.agent.md` | Hidden subagent (Copilot Auto): Implementer's product-file writer |
