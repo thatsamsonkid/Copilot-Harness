@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
-DEFAULT_MAX_LINES = 350
+DEFAULT_MAX_LINES = 800
 ENV_MAX_LINES = "GOAT_BULK_READ_MAX_LINES"
 CONFIG_RELATIVE = Path(".github") / "hooks" / "read-guard.json"
 

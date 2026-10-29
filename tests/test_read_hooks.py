@@ -24,9 +24,37 @@ def _write_lines(path: Path, count: int) -> Path:
     return path
 
 
-def test_default_threshold_is_350():
-    assert DEFAULT_MAX_LINES == 350
-    assert max_lines(environ={}) == 350
+def test_default_threshold_is_800():
+    assert DEFAULT_MAX_LINES == 800
+    assert max_lines(environ={}) == 800
+
+
+def test_whole_file_reads_allow_800_and_block_801(tmp_path: Path):
+    """Uncounted reads at the configured limit stay allowed; one line over is denied."""
+    assert max_lines(environ={}) == 800
+    for count, expected in ((799, "allow"), (800, "allow"), (801, "deny")):
+        path = _write_lines(tmp_path / f"boundary-{count}.txt", count)
+        file_decision = decide_file_size(
+            {
+                "tool_name": "Read",
+                "tool_input": {"file_path": str(path)},
+                "cwd": str(tmp_path),
+            },
+            environ={},
+        )
+        bash_decision = decide_bash_read(
+            {
+                "tool_name": "bash",
+                "tool_input": {"command": f"cat {path}"},
+                "cwd": str(tmp_path),
+            },
+            environ={},
+        )
+        assert file_decision["permissionDecision"] == expected, count
+        assert bash_decision["permissionDecision"] == expected, count
+        if expected == "deny":
+            assert "threshold 800" in file_decision["permissionDecisionReason"]
+            assert "threshold 800" in bash_decision["permissionDecisionReason"]
 
 
 def test_env_overrides_threshold(tmp_path: Path):
