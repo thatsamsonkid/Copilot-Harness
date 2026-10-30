@@ -47,7 +47,6 @@ def collect_status(
         "feature workspace are out of scope.",
         "Use this snapshot before planning or handing off. Do not assume siblings are clean.",
         "Create one branch and one pull request per sibling. Do not squash unrelated repos.",
-        "If graphify.stale is true, offer a scoped refresh in that repo after the user agrees.",
         "Do not hand-edit files listed under tooling.generated.",
     ]
     if not scope.detected:

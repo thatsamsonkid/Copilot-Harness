@@ -61,7 +61,7 @@ Use these objects only:
 - `routing.missing_repos` / `routing.clone_command`
 - `routing.repos` — inspect only these folders unless the ticket clearly needs more
 - `current_workspace` — the open window, when `GOAT_WORKSPACE` is set. If it differs from `routing.workspace_id`, tell the user to open `routing.open_command`
-- `routing.repos[].graphify` / `instructions` / `tooling` — use these before grepping or inventing verify commands
+- `routing.repos[].instructions` / `knowledge` / `tooling` — read instruction files, then `search/codebase` and `search/usages`, before a text search or an invented verify command
 - `routing.suggested_branch`
 - `done_when` — stop condition (ticket AC + repo verify + goat invariants)
 - `next_steps`

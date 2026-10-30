@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
 from goat.catalog import Catalog, Repo
-from goat.gitinfo import last_commit_unix
 from goat.glossary import glossary_summary
 from goat.skills import list_skills
 from goat.workspace_detect import resolve_workspace_scope, scoped_repos
@@ -78,14 +76,17 @@ def collect_context(
     guidance = [
         "Stay inside workspace.repos. Do not inspect sibling clones that are "
         "only on disk and not in this feature workspace.",
-        "For vague or low-context prompts, read each cloned repo's graphify.report "
-        "before grepping the tree.",
+        "Find code in this order: this payload names the repo and its instruction "
+        "files; search/codebase finds candidate code; search/usages on the named "
+        "symbol covers definitions, references, and implementations; then targeted "
+        "reads with limit/offset. Use text search only for strings and config.",
         "Before editing a sibling repo, load its instruction files and use its tooling.",
-        "Product knowledge lives in each sibling (docs/features, ADRs, Graphify). "
+        "Product knowledge lives in each sibling (docs/features, ADRs). "
         "Do not start a second wiki in the Goat repo.",
-        "Do not copy product standards into the Goat repo. Do not rebuild a graph "
-        "unless the user asked.",
-        "If graphify.stale is true, offer a scoped refresh in that repo after the user agrees.",
+        "Do not copy product standards into the Goat repo. Do not open a whole "
+        "monorepo as the first move.",
+        "For cross-repo links use goat graph path and goat graph neighbors "
+        "(docs/cli.md).",
         "Do not hand-edit tooling.generated paths.",
         "To start local apps in this workspace, run `goat start` "
         "(see the workspace-start skill). That command prints a plan; "
@@ -141,48 +142,11 @@ def inspect_repo(catalog: Catalog, goat_root: Path, repo: Repo | str) -> dict[st
         "cloned": cloned,
         "placeholder": repo.is_placeholder,
         "tags": repo.tags,
-        "graphify": discover_graphify(path, repo) if cloned else _empty_graphify(repo, cloned=False),
         "instructions": discover_instructions(path) if cloned else [],
         "knowledge": discover_knowledge(path, extra_dirs=repo.knowledge_dirs) if cloned else _empty_knowledge(),
         "tooling": discover_tooling(path) if cloned else _empty_tooling(),
         "env_example": discover_env_example(path) if cloned else None,
     }
-
-
-def discover_graphify(repo_path: Path, repo: Repo) -> dict[str, Any]:
-    payload = _empty_graphify(repo)
-    if not repo.graphify.enabled:
-        return payload
-    out_dir = repo_path / repo.graphify.out
-    payload["out_dir"] = str(out_dir)
-    if not out_dir.is_dir():
-        payload["detail"] = f"{repo.graphify.out}/ is not present"
-        return payload
-
-    report = out_dir / "GRAPH_REPORT.md"
-    graph = out_dir / "graph.json"
-    html = out_dir / "graph.html"
-    payload.update(
-        {
-            "present": True,
-            "report": str(report) if report.is_file() else None,
-            "graph": str(graph) if graph.is_file() else None,
-            "html": str(html) if html.is_file() else None,
-            "updated_at": _mtime(graph if graph.is_file() else out_dir),
-            "query_command": (
-                f'graphify query --graph "{graph}" "<question>"' if graph.is_file() else None
-            ),
-            "path_command": (
-                f'graphify path --graph "{graph}" "<from>" "<to>"' if graph.is_file() else None
-            ),
-            "explain_command": (
-                f'graphify explain --graph "{graph}" "<concept>"' if graph.is_file() else None
-            ),
-            "detail": "graph is available",
-        }
-    )
-    payload.update(_graphify_freshness(repo_path, graph if graph.is_file() else None))
-    return payload
 
 
 def discover_instructions(repo_path: Path) -> list[dict[str, str]]:
@@ -283,30 +247,6 @@ def discover_tooling(repo_path: Path) -> dict[str, Any]:
     }
 
 
-def _empty_graphify(repo: Repo, *, cloned: bool = True) -> dict[str, Any]:
-    if not repo.graphify.enabled:
-        detail = "disabled in repositories.yml"
-    elif not cloned:
-        detail = "repo is not cloned"
-    else:
-        detail = "graph not found"
-    return {
-        "enabled": repo.graphify.enabled,
-        "present": False,
-        "out_dir": None,
-        "report": None,
-        "graph": None,
-        "html": None,
-        "updated_at": None,
-        "query_command": None,
-        "path_command": None,
-        "explain_command": None,
-        "stale": None,
-        "stale_detail": None,
-        "detail": detail,
-    }
-
-
 def _empty_tooling() -> dict[str, Any]:
     return {
         "markers": [],
@@ -383,24 +323,6 @@ def discover_env_example(repo_path: Path) -> dict[str, Any] | None:
                 ),
             }
     return None
-
-
-def _graphify_freshness(repo_path: Path, graph: Path | None) -> dict[str, Any]:
-    if graph is None or not graph.is_file():
-        return {"stale": None, "stale_detail": None}
-    graph_mtime = int(graph.stat().st_mtime)
-    commit_unix = last_commit_unix(repo_path)
-    if commit_unix is None:
-        return {"stale": None, "stale_detail": "no git history to compare"}
-    stale = commit_unix > graph_mtime + 60
-    return {
-        "stale": stale,
-        "stale_detail": (
-            "graph.json is older than the latest commit"
-            if stale
-            else "graph.json is at least as new as the latest commit"
-        ),
-    }
 
 
 def _instruction_kind(relative: str) -> str:
@@ -482,8 +404,3 @@ def _js_runner(repo_path: Path) -> str:
     if (repo_path / "bun.lockb").exists() or (repo_path / "bun.lock").exists():
         return "bun run"
     return "npm run"
-
-
-def _mtime(path: Path) -> str:
-    stamp = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
-    return stamp.isoformat()

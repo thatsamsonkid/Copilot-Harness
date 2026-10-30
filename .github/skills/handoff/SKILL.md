@@ -37,5 +37,5 @@ Handoff notes live in this goat (`handoffs/`), not in product repos. They are gi
 ## Hard rules
 
 - Do not read `.env` or print tokens.
-- Do not write product architecture into the note. Point at sibling `docs/features` / Graphify instead.
+- Do not write product architecture into the note. Point at sibling `docs/features` and the repo's instruction files instead.
 - Do not nest clones inside the goat.

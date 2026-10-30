@@ -103,12 +103,11 @@ repositories:
 | `group` | no | Organize the clone under `parent_dir/<group>/<name>` (`frontend`, `backend`, `infra`, `shared`) |
 | `path` | no | Exact destination under `parent_dir`. May be nested (`frontend/shop-web`). Defaults to `name`, or `group/name` when `group` is set |
 | `default_branch` | no | Defaults to `main` |
-| `graphify` | no | `{ out: graphify-out }` or `false` to disable discovery |
 | `knowledge` | no | `{ dirs: [handbook] }` extra folders to treat as feature notes |
 
 `catalog/stack.yaml` is the shipped source of truth for team feature workspaces and Jira routing. Personal mixes live in `catalog/stack.local.yaml` (gitignored) and are merged at load time. `workspaces/*.code-workspace` files are generated locally from the merged catalog and gitignored — do not commit or hand-edit them. Workspace `folders` are repository **names**, not clone paths. Workspace `tags` pull in every manifest repo with those tags. Clone, context, doctor, prepare, status, branch, and generated `.code-workspace` files all resolve `group` / `path` to the real folder.
 
-Cross-repo architecture (APIs, events, ADRs) is `goat graph` — see [docs/workspace-graph.md](docs/workspace-graph.md). Declare implicit edges in `catalog/graph.yaml` or `<repo>/.workspace/component.yaml`. The generated file is `.workspace/generated/workspace-graph.json` (gitignored). Graphify remains a per-repo index, not the workspace graph.
+Cross-repo architecture (APIs, events, ADRs) is `goat graph` — see [docs/workspace-graph.md](docs/workspace-graph.md). Declare implicit edges in `catalog/graph.yaml` or `<repo>/.workspace/component.yaml`. The generated file is `.workspace/generated/workspace-graph.json` (gitignored). Per-repo symbols use the editor language server (`search/codebase`, then `search/usages`), not the workspace graph.
 
 One clone cannot live inside another (`frontend` and `frontend/shop-web` together is an error). Do not point `path` at a folder inside this Yard Goat repo.
 
@@ -267,7 +266,7 @@ The API token stays in the OS keychain (or `.env` as a fallback). The CLI loads 
 
 `status`, `context`, `start`, `doctor`, and `branch` follow the open feature workspace. Generated `.code-workspace` files set `GOAT_WORKSPACE` so those commands stay on `workspace.repos` instead of every clone under `parent_dir`. `goat workspace current` reports the window. Pass `--workspace <id>` to pin one, or `--all` only when you want the full catalog.
 
-`status` is a read-only git snapshot of the scoped siblings (branch, dirty, ahead/behind, Graphify staleness). `branch PROJ-123` suggests the same Jira-key branch in each in-scope clone; `--create` only runs on a clean tree. `handoff` writes a gitignored session note under `handoffs/` so the next chat can resume without re-fetching the world. `jira mine` lists unresolved issues assigned to you.
+`status` is a read-only git snapshot of the scoped siblings (branch, dirty, ahead/behind). `branch PROJ-123` suggests the same Jira-key branch in each in-scope clone; `--create` only runs on a clean tree. `handoff` writes a gitignored session note under `handoffs/` so the next chat can resume without re-fetching the world. `jira mine` lists unresolved issues assigned to you.
 
 `goat start` is the local-stack entry point: inspect the workspace siblings and print a start **plan** (kind, command, port hint, Angular proxy files, redacted `launch.json` names and env keys). It does not launch processes. After the first good plan, pin it next to the workspace with `goat start --save` (or `--workspace <id> --save`). That writes `workspaces/<id>.start.yml`. Later starts prefer that sequence over rediscovery; pass `--refresh` to inspect clones again. Copilot uses `/start-workspace` to start backends one at a time, read the live port, rewrite frontend proxies, then start UIs. When a repo keeps args or secrets in `.vscode/launch.json`, the plan sets `run_via: goat` and Copilot runs `goat start run --repo <name>` so those values stay in-process (or the user uses VS Code **Run Without Debugging**). `start run` applies env to the child process only. `goat start env --repo <name>` lists keys and collisions; `--shell` execs a terminal that already has the values. Application keys are unprefixed by default (same names as VS Code). `--keep-existing` leaves current terminal values alone; `--prefix BACKEND` is opt-in namespacing and will not satisfy an app looking up `DB_PASSWORD`. Do not put `start:` on `repositories.yml` entries — edit the workspace plan when discovery is wrong.
 
@@ -292,7 +291,7 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | --- | --- |
 | `.github/skills/get-started/SKILL.md` | `/get-started` — first-run walkthrough |
 | `.github/skills/orient/SKILL.md` | `/orient` — follows workspace-context |
-| `.github/skills/workspace-context/SKILL.md` | Agent-loadable Graphify + sibling standards |
+| `.github/skills/workspace-context/SKILL.md` | Agent-loadable repo instructions and language-server navigation |
 | `.github/skills/start-workspace/SKILL.md` | `/start-workspace` — follows workspace-start |
 | `.github/skills/workspace-start/SKILL.md` | Agent-loadable local stack plan + sequential start |
 | `.github/skills/new-workspace/SKILL.md` | `/new-workspace` — follows workspace-create |
@@ -335,7 +334,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/get-started` is the human onboarding path. It runs `goat init` and points at the token doc. Copilot must never ask anyone to paste the API token into chat.
 
-`/orient` is for vague prompts against large repos. It runs `goat context`, reads any sibling `graphify-out/GRAPH_REPORT.md`, and loads that repo's own instructions instead of inventing standards here.
+`/orient` is for vague prompts against large repos. It runs `goat context`, loads that repo's own instructions, then uses `search/codebase` and `search/usages` instead of inventing standards here.
 
 **Jira Planner** (and `/jira-ticket`) orchestrates automatically: it invokes the hidden **Bulk Reader** subagent for product files so the plan chat stays a map. After `/goat-plan`, never spawn Implementer. Start implementation with **`/goat-implement`** — that command survives chat compaction: the chat becomes Implementer, invokes **Code Writer** for product files and **Verifier** for verify checks (it still runs `goat branch` and feature notes). A new chat with only the `plans/` file and no `/goat-implement` (often a smaller model) is the executor and writes the files itself. VS Code Agents dropdown (pick **Implementer** as primary) is the same as `/goat-implement`. Subagents must not spawn other subagents. Do not pick Orchestrator — it is not in the agents dropdown.
 
@@ -354,7 +353,7 @@ Typical loop:
 3. Copilot runs `goat prepare PROJ-123` and `goat status`
 4. You open the recommended `.code-workspace` so every needed repo is a root
 5. To run the local apps: `/start-workspace` (or `uv run goat start --workspace <id>`). Save the sequence once with `--save` so later chats reuse `workspaces/<id>.start.yml`.
-6. Copilot writes a plan (using Graphify reports and each repo's instructions when present). When you are ready, run `/goat-implement` (Code Writer + Verifier; works after chat compaction) — or open a new chat on the `plans/` file with a smaller model — or, in VS Code Agents, pick Implementer from the dropdown.
+6. Copilot writes a plan (using each repo's instructions, `search/codebase`, and `search/usages`). When you are ready, run `/goat-implement` (Code Writer + Verifier; works after chat compaction) — or open a new chat on the `plans/` file with a smaller model — or, in VS Code Agents, pick Implementer from the dropdown.
 7. Pause with `/handoff`. Review with `/review` against `done_when`.
 
 To add a workspace from chat, run **Workspace Creator** or `/new-workspace` instead of editing YAML.

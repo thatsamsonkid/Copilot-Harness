@@ -83,7 +83,7 @@ def test_prepare_recommends_frontend_and_lists_missing(catalog, goat_root: Path)
     )
     assert (goat_root / "workspaces" / "frontend.code-workspace").exists()
     frontend = next(repo for repo in payload["routing"]["repos"] if repo["id"] == "frontend")
-    assert frontend["graphify"]["present"] is False
+    assert "graphify" not in frontend
     assert frontend["instructions"] == []
     assert frontend["knowledge"]["files"] == []
     assert "Read the issue summary" in payload["next_steps"][0]

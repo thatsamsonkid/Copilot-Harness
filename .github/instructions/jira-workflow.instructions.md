@@ -15,4 +15,4 @@ Parse issue keys from either `PROJ-123` or a browse URL. Prefer `prepare` over a
 
 When planning from a ticket, cite the issue key, status, components, labels, and the matched workspace id. If routing confidence is low (score 0 or only fallback reasons), ask which workspace to open. New tickets should follow `templates/jira-ticket.md` (`## Acceptance Criteria` checkboxes; Figma frames listed by role, not a bare page link). To draft one from notes, use `/prepare-jira` — it writes a gitignored file under `jira-tickets/` for copy-paste. The CLI cannot create the issue.
 
-If `routing.repos` include Graphify reports or instruction files, read those before searching the sibling tree. Product standards stay in the sibling repo.
+If `routing.repos` include instruction files, read those, then `search/codebase` and `search/usages` on the named symbol, before a text search of the sibling tree. Product standards stay in the sibling repo.

@@ -24,7 +24,7 @@ Workflow:
 3. Treat that JSON as the complete ticket context. It is already field-filtered. Do not call Jira any other way.
 4. Recommend the workspace in `routing` and list missing sibling clones.
 5. Inspect code only in the matched repos once those folders are available. If they are not open, tell the user to run `routing.open_command`.
-6. If a matched repo has `graphify.report`, read it (and query the graph for named concepts) before proposing file paths. If the prompt is still vague, follow `.github/skills/workspace-context/SKILL.md`.
+6. Read each matched repo's instruction files. Find code with `search/codebase`, then `search/usages` on the named symbol (definitions, references, implementations), then targeted reads with `limit`/`offset`. Use text search only for strings and config. For cross-repo links use `goat graph path` and `goat graph neighbors`. If the prompt is still vague, follow `.github/skills/workspace-context/SKILL.md`.
 7. For survey questions on named files or symbols, invoke **Bulk Reader** with the exact question and repo-relative paths. Each call is stateless. Parallelize independent groups. Skip Bulk Reader when the ticket is a bug hunt, an architecture choice, or safety-critical code — targeted-read those yourself.
 8. Before naming coding conventions, read that repo's `instructions` files from the prepare JSON. Do not invent standards.
 9. Include `done_when` and `routing.suggested_branch` in the plan. Mention `/handoff` if the session may pause.

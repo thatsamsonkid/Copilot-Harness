@@ -81,17 +81,6 @@ def run_doctor(
             ok_when_false=True,
         )
     )
-    graphify_cli = shutil.which("graphify")
-    checks.append(
-        _check(
-            "graphify_cli",
-            bool(graphify_cli),
-            f"graphify is on PATH ({graphify_cli})"
-            if graphify_cli
-            else "graphify is not on PATH; still use committed graphify-out/ artifacts",
-            ok_when_false=True,
-        )
-    )
     bru = bru_cli_status()
     checks.append(
         _check(
@@ -204,15 +193,6 @@ def run_doctor(
         )
         if cloned:
             snapshot = inspect_repo(catalog, goat_root, repo)
-            graphify = snapshot["graphify"]
-            checks.append(
-                _check(
-                    f"graphify:{repo.id}",
-                    bool(graphify.get("present")) or not graphify.get("enabled"),
-                    graphify.get("detail") or "graphify status unknown",
-                    ok_when_false=True,
-                )
-            )
             instruction_count = len(snapshot["instructions"])
             checks.append(
                 _check(
@@ -496,7 +476,6 @@ def run_doctor(
         "keychain_guide": storage_guides(),
         "env": env_payload,
         "uv": uv,
-        "graphify_cli": graphify_cli,
         "env_age": env_age,
         "invoke": invoke_spec(goat_root),
         "checks": checks,

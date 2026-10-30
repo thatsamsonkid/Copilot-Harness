@@ -237,8 +237,6 @@ def _status_text(payload: dict[str, Any]) -> str:
             flags.append(f"behind {git['behind']}")
         if git.get("ahead"):
             flags.append(f"ahead {git['ahead']}")
-        if (repo.get("graphify") or {}).get("stale"):
-            flags.append("graph stale")
         extra = f" ({', '.join(flags)})" if flags else ""
         loc = f" [{repo['relpath']}]" if repo.get("relpath") and repo.get("relpath") != name else ""
         lines.append(f"- {name}{loc}: {git.get('branch') or '?'}{extra}")

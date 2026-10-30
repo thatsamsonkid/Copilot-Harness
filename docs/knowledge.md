@@ -12,7 +12,7 @@ Workplace **vocabulary** is the exception. Terms and acronyms (how people talk) 
 | --- | --- | --- |
 | How a feature works today | `<repo>/docs/features/<slug>.md` | User-visible or non-obvious behavior |
 | Why we chose A over B | `<repo>/docs/adr/` or `docs/decisions/` | A real alternative was rejected |
-| How the code is shaped | Graphify `graphify-out/` plus `# WHY:` / `# NOTE:` comments | Always; Graphify already indexes these |
+| How the code is shaped | Editor language server (`search/codebase`, then `search/usages`) plus `# WHY:` / `# NOTE:` comments | When locating a symbol; text search only for strings and config |
 | Ticket intent | Jira, via `goat prepare` | The work item, not the architecture |
 | How we say it at work | `catalog/glossary.yml` (public org) or `catalog/glossary.local.yml` (private) or `<repo>/docs/glossary.yml` (one product) | An acronym or nickname that confuses Copilot |
 
@@ -30,9 +30,9 @@ Do not require a novel on every ticket. People will stop writing, and Copilot wi
 
 ## How Copilot should use it
 
-1. Vague prompt → `goat context` → read Graphify reports **and** `knowledge.files`.
+1. Vague prompt → `goat context` → read instruction files and `knowledge.files`, then `search/codebase` and `search/usages`.
 2. Unknown jargon → `goat glossary get TERM` (or `search`). Do not guess team language.
 3. After a feature change → update or add `docs/features/<slug>.md` in that sibling.
-4. Next Graphify extract in that repo picks up the new markdown.
+4. The next `goat context` lists that markdown under `knowledge.files`.
 
 Confluence (or any company wiki) is optional later, and only if the **product spec** already lives there. Implementation knowledge still belongs next to the code.

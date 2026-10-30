@@ -219,7 +219,8 @@ def test_clone_dry_run_and_doctor(goat_root: Path, capsys, monkeypatch):
     assert "onboarding" in doctor
     assert "uv" in doctor
     assert any(check["name"] == "env_age" for check in doctor["checks"])
-    assert any(check["name"] == "graphify_cli" for check in doctor["checks"])
+    assert "graphify_cli" not in doctor
+    assert all("graphify" not in check["name"] for check in doctor["checks"])
     assert any(check["name"] == "bru_cli" for check in doctor["checks"])
     assert "bruno" in doctor
     assert "env_age" in doctor

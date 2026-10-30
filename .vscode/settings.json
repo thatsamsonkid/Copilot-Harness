@@ -6,7 +6,7 @@
   "chat.useCustomizationsInParentRepositories": true,
   "chat.promptFilesRecommendations": {
     "get-started": "First time here? Set up Jira email and API token.",
-    "orient": "Vague task? Map Graphify and repo instructions first.",
+    "orient": "Vague task? Map the repo with goat context and the language server first.",
     "bulk-reader": "Large file? Structured bullets instead of a source dump.",
     "glossary": "Unknown jargon? Look up or add a workplace term.",
     "goat-plan": "Write a detailed plans/ file for a later executor.",
@@ -33,9 +33,11 @@
   "files.exclude": {
     "**/__pycache__": true,
     "**/*.egg-info": true,
-    ".pytest_cache": true
+    ".pytest_cache": true,
+    "**/.workspace/generated": true
   },
   "search.exclude": {
-    "**/.env": true
+    "**/.env": true,
+    "**/.workspace/generated": true
   }
 }

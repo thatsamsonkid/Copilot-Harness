@@ -8,7 +8,7 @@ argument-hint: optional-id
 
 Chat collects an id and which `repositories.yml` projects to include. The CLI writes `catalog/stack.local.yaml` (gitignored) and a local `.code-workspace` file. Do not pass `--shared` unless they ask to ship the id in `catalog/stack.yaml`. Do not hand-edit those files. Do not run the interactive CLI from chat (no TTY).
 
-This skill is only the picker. Ignore Jira, Figma, Bruno, Graphify, start plans, and the full CLI catalog unless the user asks for those next.
+This skill is only the picker. Ignore Jira, Figma, Bruno, start plans, and the full CLI catalog unless the user asks for those next.
 
 ## Commands
 
@@ -20,7 +20,7 @@ Run these from the goat repo. After `cd` into a sibling, `uv run goat` cannot sp
 | Create after confirm | `uv run goat workspace create <id> --projects <names> --no-prompt --format json` |
 | Create by tag | `uv run goat workspace create <id> --tag ui,api --no-prompt --format json` |
 
-`--menu` is the only inventory command. It is `n`, `name`, `tags`, short `description`, `cloned`, existing workspace ids, and known tags. It does **not** include remotes, Graphify, knowledge dirs, skills, env, start files, or `goat commands`.
+`--menu` is the only inventory command. It is `n`, `name`, `tags`, short `description`, `cloned`, existing workspace ids, and known tags. It does **not** include remotes, knowledge dirs, skills, env, start files, or `goat commands`.
 
 ## Walkthrough
 
@@ -43,7 +43,7 @@ Run these from the goat repo. After `cd` into a sibling, `uv run goat` cannot sp
 ## Hard rules
 
 - Do not run `goat repos`, `goat catalog`, `goat workspace list`, `goat commands`, `goat skills list`, or `goat context` for this flow.
-- Do not dump skills, CLI help, Graphify, or start-plan next steps.
+- Do not dump skills, CLI help, or start-plan next steps.
 - Do not implement product code.
 - Never nest git clones inside this goat repo.
 - Never invent repository names that are not in `--menu` `projects[]`.

@@ -46,17 +46,6 @@ def inspect_git(
     }
 
 
-def last_commit_unix(path: Path, *, run: RunFn | None = None) -> int | None:
-    runner = run or _run
-    raw = _stdout(runner, path, ["log", "-1", "--format=%ct"], check=False)
-    if not raw:
-        return None
-    try:
-        return int(raw.strip())
-    except ValueError:
-        return None
-
-
 def _looks_like_git(path: Path, run: RunFn) -> bool:
     if (path / ".git").exists():
         return True

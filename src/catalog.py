@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -129,12 +130,6 @@ def _as_shapes(
 
 
 @dataclass(frozen=True)
-class GraphifyConfig:
-    out: str = "graphify-out"
-    enabled: bool = True
-
-
-@dataclass(frozen=True)
 class Repo:
     name: str
     url: str
@@ -143,7 +138,6 @@ class Repo:
     description: str = ""
     tags: list[str] = field(default_factory=list)
     enabled: bool = True
-    graphify: GraphifyConfig = field(default_factory=GraphifyConfig)
     group: str = ""
     knowledge_dirs: tuple[str, ...] = ()
 
@@ -347,6 +341,7 @@ def load_repositories(path: Path) -> tuple[list[Repo], str]:
                 "and give each entry name, url, and tags."
             )
         parent_dir = str(raw.get("parent_dir") or "..")
+        _ignore_removed_external_index(raw, str(path))
         items = raw.get("repositories") or []
     else:
         raise GoatError(f"{path} must be a mapping or a list of repositories")
@@ -384,6 +379,7 @@ def _parse_repo(item: Any) -> Repo:
     tags = _as_list(item.get("tags"))
     if not tags:
         raise GoatError(f"Repository {name} needs at least one tag")
+    _ignore_removed_external_index(item, f"repository {name} in {REPOS_RELATIVE}")
     if item.get("start") is not None:
         raise GoatError(
             f"Repository {name} has a start: block. repositories.yml no longer "
@@ -399,7 +395,6 @@ def _parse_repo(item: Any) -> Repo:
         description=str(item.get("description") or ""),
         tags=tags,
         enabled=bool(item.get("enabled", True)),
-        graphify=_parse_graphify(name, item.get("graphify")),
         group=group,
         knowledge_dirs=_parse_knowledge_dirs(name, item.get("knowledge")),
     )
@@ -498,26 +493,21 @@ def _assert_no_path_collisions(repos: list[Repo]) -> None:
                 )
 
 
-def _parse_graphify(repo_name: str, raw: Any) -> GraphifyConfig:
-    if raw is None:
-        return GraphifyConfig()
-    if raw is False:
-        return GraphifyConfig(enabled=False)
-    if raw is True:
-        return GraphifyConfig()
-    if isinstance(raw, str):
-        out = raw
-    elif isinstance(raw, dict):
-        out = str(raw.get("out") or "graphify-out")
-        enabled = bool(raw.get("enabled", True))
-        _require_relative_dir(f"Repository {repo_name} graphify.out", out)
-        return GraphifyConfig(out=out, enabled=enabled)
-    else:
-        raise GoatError(
-            f"Repository {repo_name} graphify must be a mapping, path, or boolean"
-        )
-    _require_relative_dir(f"Repository {repo_name} graphify.out", out)
-    return GraphifyConfig(out=out)
+# GRAPHIFY_REMOVED_OK
+def _ignore_removed_external_index(raw: Any, where: str) -> str | None:
+    """Ignore a leftover graphify catalog key. Returns the key when it was present."""
+    key = "graphify"
+    if not isinstance(raw, dict) or key not in raw:
+        return None
+    warnings.warn(
+        f"Ignoring leftover graphify key in {where}. "
+        "Graphify is no longer detected. Use the editor language server "
+        "and goat graph for cross-repo links.",
+        UserWarning,
+        stacklevel=2,
+    )
+    return key
+# GRAPHIFY_REMOVED_END
 
 
 def _parse_knowledge_dirs(repo_name: str, raw: Any) -> tuple[str, ...]:
@@ -554,6 +544,7 @@ def load_stack(
         raise GoatError(
             f"{path} must not list repositories. Put them in {REPOS_RELATIVE}."
         )
+    _ignore_removed_external_index(raw, str(path))
 
     workspaces = _parse_workspaces(
         raw.get("workspaces"), repo_names, source=path, local=False
@@ -596,7 +587,11 @@ def load_local_workspaces(path: Path, repo_names: set[str]) -> list[Workspace]:
         return []
     if not isinstance(raw, dict):
         raise GoatError(f"Local stack catalog root must be a mapping: {path}")
-    extra = sorted(set(raw) - {"workspaces"})
+    removed = _ignore_removed_external_index(raw, str(path))
+    allowed = {"workspaces"}
+    if removed:
+        allowed.add(removed)
+    extra = sorted(set(raw) - allowed)
     if extra:
         raise GoatError(
             f"{path} may only contain workspaces:. "
@@ -646,6 +641,7 @@ def _parse_workspaces(
             raise GoatError(f"Workspace {workspace_id} match must be a mapping")
         folders = _as_list(item.get("folders"))
         tags = _as_list(item.get("tags"))
+        _ignore_removed_external_index(item, f"workspace {workspace_id} in {source}")
         unknown = [folder for folder in folders if folder not in repo_names]
         if unknown:
             raise GoatError(
@@ -829,10 +825,6 @@ def catalog_to_dict(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
                 "tags": repo.tags,
                 "enabled": repo.enabled,
                 "placeholder": repo.is_placeholder,
-                "graphify": {
-                    "out": repo.graphify.out,
-                    "enabled": repo.graphify.enabled,
-                },
                 "knowledge_dirs": list(repo.knowledge_dirs),
             }
             for repo in catalog.repos

@@ -68,5 +68,5 @@ Do not paste Code Writer output back unless the user asked. Do not paste Verifie
 - Do not clone repositories into the goat folder.
 - Do not write `.env`, tokens, or secrets. Do not hand-edit `tooling.generated` paths.
 - Do not name repos outside the matched workspace (`workspace.repos` / `routing.repos`) unless a blocker forces a documented detour.
-- If `graphify.stale` is true after edits, remind the user to refresh that repo's graph; do not auto-extract a monorepo.
+- After edits, check `read/problems` for diagnostics you introduced. That is fast feedback before Verifier runs the full verify commands. Do not open a whole monorepo to find a symbol; use `search/codebase`, then `search/usages`.
 - `/review` (Reviewer) is a later human review of the diff. It does not replace Verifier during implementation.

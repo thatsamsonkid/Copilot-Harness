@@ -55,8 +55,6 @@ Score each item pass, partial, or fail. Evidence is `path:line` or the goat-cont
 7. Entry points. Pass when the README has sections for how to run, how to test, and where the code lives. Partial when only some of those exist. Fail when the README is missing or has none of them.
 8. Monorepo tool hints. `tooling.markers` includes `nx` for `nx.json` and `turbo` for `turbo.json`. Pass when both are absent, or when one is present and an instruction file or README names `nx show project` or `turbo run` (`docs/ideas.md`: scope with those commands instead of opening the whole tree). Partial when `nx` or `turbo` is present and that hint is missing. Fail when the marker is present and `instructions` is empty.
 
-Graphify (not scored, not a fix): after the scorecard, one chat line citing context `graphify.present` and `graphify.stale` only; do not add a scorecard row and do not put it in the ranked fixes.
-
 ## Output
 
 One scorecard table per repo (the eight scored items; columns Item, Score, Evidence). Then a ranked fix list, highest impact first: a fail outranks a partial, and within the same score use language-server config, agent instructions, `tooling.suggested_verify`, hot-path size, README run/test/structure, monorepo scope hint, generated-code callout, then `knowledge.files`. Each fix names the product repo and the file to add or change. End with a one-line overall verdict.

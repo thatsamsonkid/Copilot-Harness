@@ -56,6 +56,7 @@ def test_readiness_auditor_frontmatter_is_dropdown_and_read_only():
         "do not edit, create, or delete",
     ):
         assert token in lowered
+    assert "graphify" not in lowered
 
 
 def test_ai_readiness_skill_points_at_the_auditor():

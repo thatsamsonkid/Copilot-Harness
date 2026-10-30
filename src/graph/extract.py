@@ -9,7 +9,7 @@ from typing import Any, Callable, Protocol
 import yaml
 
 from goat.catalog import Catalog, Repo
-from goat.context import discover_graphify, discover_knowledge
+from goat.context import discover_knowledge
 from goat.graph.manifests import (
     component_batch,
     load_component_manifest,
@@ -86,7 +86,6 @@ def default_extractors() -> list[Extractor]:
         FnExtractor("adr", extract_adrs),
         FnExtractor("proxy", extract_proxies),
         FnExtractor("bruno", extract_bruno),
-        FnExtractor("graphify", extract_graphify),
     ]
 
 
@@ -511,84 +510,6 @@ def extract_bruno(ctx: ExtractContext) -> ExtractBatch:
     return batch
 
 
-def extract_graphify(ctx: ExtractContext) -> ExtractBatch:
-    batch = ExtractBatch(detail="Graphify graph.json promoted at workspace scale only")
-    architectural = {
-        "api",
-        "service",
-        "application",
-        "database",
-        "event",
-        "queue",
-        "topic",
-        "external-system",
-        "domain",
-    }
-    skip = {"file", "class", "method", "function", "symbol", "module", "directory"}
-    for repo, path in _cloned(ctx):
-        snapshot = discover_graphify(path, repo)
-        graph_path = snapshot.get("graph")
-        if not graph_path or not Path(graph_path).is_file():
-            continue
-        rel = str(Path(graph_path).relative_to(path)) if path in Path(graph_path).parents or Path(graph_path).parent == path else "graphify-out/graph.json"
-        batch.files.append(str(graph_path))
-        repo_id = node_id("repository", repo.name)
-        evidence = Evidence(
-            type="graphify",
-            extractor="graphify",
-            repository=repo.name,
-            file=rel,
-            value="graph.json",
-        )
-        data = _read_json(Path(graph_path))
-        promoted = 0
-        nodes_raw = []
-        if isinstance(data, dict):
-            nodes_raw = data.get("nodes") or data.get("communities") or []
-        if not isinstance(nodes_raw, list):
-            nodes_raw = []
-        for item in nodes_raw:
-            if promoted >= 25 or not isinstance(item, dict):
-                continue
-            kind = str(item.get("type") or item.get("kind") or item.get("label") or "").lower()
-            if kind in skip:
-                continue
-            if kind not in architectural and not _looks_architectural(item):
-                continue
-            name = str(item.get("name") or item.get("id") or item.get("label") or "")
-            if not name:
-                continue
-            use_type = kind if kind in architectural else "external-system"
-            node = make_node(use_type, name, repository=repo_id)
-            batch.nodes.append(node)
-            batch.candidates.append(
-                Candidate(
-                    source=repo_id,
-                    target=node.id,
-                    relationship="CONTAINS",
-                    classification="EXTRACTED",
-                    confidence=0.8,
-                    evidence=[evidence],
-                    note="promoted from Graphify",
-                )
-            )
-            promoted += 1
-        if promoted == 0:
-            batch.candidates.append(
-                _extracted(
-                    repo_id,
-                    "CONTAINS",
-                    repo_id,
-                    evidence,
-                    "Graphify present; no architectural nodes promoted",
-                )
-            )
-            # CONTAINS self is invalid — drop that. Just record file.
-            batch.candidates.pop()
-        batch.detail = f"promoted {promoted} Graphify node(s)"
-    return batch
-
-
 def _cloned(ctx: ExtractContext) -> list[tuple[Repo, Path]]:
     found: list[tuple[Repo, Path]] = []
     for repo in ctx.repos:
@@ -739,8 +660,3 @@ def _adr_meta(path: Path) -> dict[str, Any]:
                 meta["title"] = line[2:].strip()
                 break
     return meta
-
-
-def _looks_architectural(item: dict[str, Any]) -> bool:
-    name = str(item.get("name") or item.get("id") or item.get("label") or "")
-    return bool(re.search(r"(Service|Api|API|Client|Database|Queue|Topic|Event)$", name))
