@@ -1,11 +1,11 @@
 ---
 name: workspace-context
-description: Discover Graphify graphs, instruction files, feature notes/ADRs, and verify commands in sibling repos. Use for vague or low-context prompts, large monorepos, "where does X live?", or before implementing in a product repo. Prefer graphify query/path/explain, local AGENTS.md, and docs/features over grepping the whole tree.
+description: Discover instruction files, feature notes/ADRs, and verify commands in sibling repos. Use for vague or low-context prompts, large monorepos, "where does X live?", or before implementing in a product repo. Prefer goat context, search/codebase, search/usages, local AGENTS.md, and docs/features over grepping the whole tree.
 ---
 
 # Workspace context
 
-Product code lives in clones next to this goat (flat siblings or grouped folders such as `frontend/shop-web`). Those repos may already have Graphify output and their own Copilot instructions. The goat only discovers them.
+Product code lives in clones next to this goat (flat siblings or grouped folders such as `frontend/shop-web`). Those repos have their own Copilot instructions. The goat discovers the repo, its instruction files, feature notes, and verify commands. It does not index source.
 
 ## Commands
 
@@ -20,9 +20,9 @@ If stderr says ``uv run` was recursively invoked`, stop retrying `uv run goat`. 
 | One catalog workspace | `uv run goat context --workspace frontend --format json` |
 | One or more repos | `uv run goat context --repo frontend,backend --format json` |
 | Every enabled repo | `uv run goat context --all --format json` (only if the user asked for the full catalog) |
-| Ticket plus routing | `uv run goat prepare <KEY> --format json` (each `routing.repos[]` already includes `graphify`, `instructions`, `knowledge`, `tooling`) |
+| Ticket plus routing | `uv run goat prepare <KEY> --format json` (each `routing.repos[]` already includes `instructions`, `knowledge`, `tooling`) |
 | Local stack start plan | `uv run goat start --format json` (see the workspace-start skill). Saved sequences live in `workspaces/<id>.start.yml`. |
-| Cross-repo architecture | `uv run goat graph build` then `goat graph explain <a> <b>` (see `docs/workspace-graph.md`). Prefer this over guessing repo-to-repo imports. |
+| Cross-repo architecture | `uv run goat graph build` then `goat graph path` or `goat graph neighbors` (see `docs/cli.md` and `docs/workspace-graph.md`). Prefer this over guessing repo-to-repo imports. |
 | Unknown workplace word or acronym | `uv run goat glossary get TERM --format json` (see the glossary skill). Do not guess team language. |
 | Sibling / remote agent skills | `uv run goat skills list` then `skills lift` or `skills pull <url>` (see the skills-install skill). VS Code Agents does not scan multi-root child folders. |
 
@@ -30,10 +30,10 @@ If stderr says ``uv run` was recursively invoked`, stop retrying `uv run goat`. 
 
 1. Run `goat context` (or use `prepare` if a Jira key is present). Stay inside `workspace.repos`. Sibling clones that are only on disk are out of scope.
 2. If `workspace_scope.detected` is false, do not treat every `parent_dir` clone as in scope. Ask which feature workspace to open, or pass `--workspace <id>`.
-3. For each cloned repo with `graphify.present`, read `graphify.report` (`GRAPH_REPORT.md`) before opening source files. Also skim `knowledge.files` (feature notes and ADRs).
-4. For "how does A relate to B?", run the repo's `graphify.query_command` / `path_command` / `explain_command`.
-5. If no graph exists, do **not** extract a whole monorepo. Say so, inspect instruction files, and ask which package or area to scope. Rebuild only if the user asks, preferably `graphify extract --code-only <path>`.
-6. Ask which repo or Graphify community to use when routing is unclear. Do not mention repos outside `workspace.repos`.
+3. Read each cloned repo's `instructions` files and skim `knowledge.files` (feature notes and ADRs).
+4. Find code in this order: `search/codebase` for candidate code, `search/usages` on the named symbol (definitions, references, implementations), then targeted reads with `limit`/`offset`. Use text search only for strings and config.
+5. For "how does repo A relate to repo B?", use `goat graph path` and `goat graph neighbors`. Do not open a whole monorepo to answer that.
+6. Ask which repo to use when routing is unclear. Do not mention repos outside `workspace.repos`.
 
 ## Standards
 
@@ -49,9 +49,8 @@ The goat does not own product patterns.
 
 - Stay in the listed clone folders (including grouped paths). Never nest clones inside the goat.
 - Do not flag, start, or plan repos that are not in the open feature workspace. Pass `--all` only when the user asked for the full catalog.
-- Do not grep a large monorepo as the first move when a graph or instruction file exists.
+- Do not grep a large monorepo as the first move when instruction files or a named symbol exist.
 - Do not print `.env` or Jira tokens.
-- If `graphify.stale` is true, say so and offer a *scoped* rebuild only after the user agrees.
 - Do not hand-edit `tooling.generated` paths.
 
 ## Related Copilot customizations

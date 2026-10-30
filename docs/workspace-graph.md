@@ -1,12 +1,12 @@
 # Workspace graph
 
-Goat already answers “which sibling is cloned?” (`context`, `start`, Graphify per repo). The workspace graph answers **how those siblings relate** at architecture scale: APIs, events, databases, ADRs — including relationships that never appear as an import.
+Goat already answers “which sibling is cloned?” (`context`, `start`). The workspace graph answers **how those siblings relate** at architecture scale: APIs, events, databases, ADRs — including relationships that never appear as an import.
 
 ```
 repositories → extractors → evidence → correlator → workspace-graph.json
 ```
 
-This is **not** a Graphify replacement, not Neo4j, and not an LLM architecture sketch. Graphify stays a repo-level index. The workspace graph is a navigation layer: where to look, then open the sibling graph or source.
+This is the cross-repo navigation layer, not Neo4j, and not an LLM architecture sketch. Per-repo symbols use the editor language server (`search/codebase`, then `search/usages`). The workspace graph says where to look across repos; then open the sibling source.
 
 ## Phase 1 inventory (this kit)
 
@@ -25,7 +25,6 @@ Signals Goat already knows how to discover (and the extractors we shipped):
 | ADRs + `governs:` frontmatter | `docs/adr`, `docs/adrs`, `docs/decisions`, `adr/` | `adr` |
 | Dev-server proxies | Angular `proxy.conf` | `proxy` |
 | Bruno collections | repos tagged `bruno` | `bruno` |
-| Graphify `graph.json` | `graphify-out/` | `graphify` (promote API/service-scale nodes only) |
 
 Not implemented: Kubernetes, Helm, Terraform, AsyncAPI, GraphQL schemas, Maven/Gradle POM graphs, Docker, HTTP AST, OpenTelemetry. Add an extractor when a sibling actually has those files.
 
@@ -99,9 +98,9 @@ Shards under `.workspace/generated/evidence.json` keep a per-extractor file list
 
 Ask the graph *where*, then open that sibling:
 
-1. `goat graph explain traveler-web booking-v2`
-2. `goat context --repo booking-service`
-3. Read that repo's Graphify report / ADR / OpenAPI
+1. `goat graph explain`, `goat graph path`, or `goat graph neighbors` for the cross-repo link
+2. `goat context --repo booking-service` for that repo's instruction files
+3. `search/codebase` for candidate code, then `search/usages` on the named symbol, then a targeted read of the ADR or OpenAPI
 4. Edit source
 
 Do not treat `INFERRED` or `AMBIGUOUS` as confirmed facts. `REJECTED` means a human already said no.

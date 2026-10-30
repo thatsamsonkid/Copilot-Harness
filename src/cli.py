@@ -715,7 +715,7 @@ def build_parser() -> argparse.ArgumentParser:
     context = sub.add_parser(
         "context",
         parents=[shared],
-        help="Discover Graphify graphs, instruction files, and verify commands in sibling repos",
+        help="Discover instruction files, feature notes, and verify commands in sibling repos",
     )
     context.add_argument("--repo", help="Comma-separated repository names")
     _add_scope_flags(context)

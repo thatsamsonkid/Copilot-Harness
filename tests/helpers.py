@@ -33,6 +33,7 @@ def write_goat_config(root: Path, data: dict) -> Path:
                 "enabled": item.get("enabled", True),
             }
         )
+        # Forward a leftover graphify key so catalog tests can prove it warns.
         if item.get("graphify") is not None:
             repositories[-1]["graphify"] = item["graphify"]
         if item.get("knowledge") is not None:

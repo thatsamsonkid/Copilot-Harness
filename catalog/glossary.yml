@@ -50,15 +50,10 @@ terms:
     meaning: "goat prepare ISSUE fetches a Jira ticket, chooses a workspace, reports missing clones, and attaches done_when. Prefer this over assembling jira get + workspace match yourself."
     see: [done_when]
 
-  - term: Graphify
-    kind: term
-    meaning: "Per-repo code graph (graphify-out/). Evidence for one sibling, not the cross-repo workspace graph. Discover it with goat context."
-    see: [workspace graph]
-
   - term: workspace graph
     kind: term
-    meaning: "Cross-repo map of APIs, events, and ADRs from goat graph build. Do not treat Graphify as this graph."
-    see: [Graphify]
+    meaning: "Cross-repo map of APIs, events, and ADRs from goat graph build. Per-repo symbols use the editor language server (search/codebase, then search/usages)."
+    see: [catalog]
 
   - term: Bruno
     kind: term

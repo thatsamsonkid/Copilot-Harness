@@ -25,21 +25,21 @@ What we should **not** do: copy product architecture or style guides into this r
 
 - Agents does not scan multi-root child skills. `goat skills list` / `lift` / `pull` copy selected `SKILL.md` folders into this goat `.github/skills` (or `parent_dir/.github/skills` with `--parent`). `init`, `prepare`, and `workspace generate` already lift goat + in-scope siblings. Remove the overlay when Agents grows real multi-root support.
 
-## 2. Large repos and Graphify
+## 2. Large repos and language-server navigation
 
 **Shipped**
 
-- Discover `graphify-out/` per sibling. `context` / `prepare` / `status` report `graphify.stale` by comparing `graph.json` mtime to the latest commit.
-- `doctor` notes when the Graphify CLI is missing and still uses committed artifacts.
-- Instructions: never extract a whole monorepo; offer a scoped rebuild only after the user agrees.
-- Workspace-scale map: `goat graph build` writes `.workspace/generated/workspace-graph.json` from extractors + `catalog/graph.yaml`. Graphify is an evidence source, not the canonical workspace graph.
+- `goat context` names the repo, its instruction files, feature notes, and verify commands. It does not index source.
+- Find code with `search/codebase`, then `search/usages` on the named symbol (definitions, references, implementations), then targeted reads (`limit`/`offset`). Text search is for strings and config.
+- Cross-repo links: `goat graph path` and `goat graph neighbors` after `goat graph build`. See `docs/workspace-graph.md` and `docs/cli.md`.
+- Do not open a whole monorepo as the first move.
+- Workspace-scale map: `goat graph build` writes `.workspace/generated/workspace-graph.json` from extractors + `catalog/graph.yaml`.
 
 **Worth adding next**
 
 - More extractors only when siblings actually have those files (Terraform, Helm, Maven).
 - Incremental rebuild of one changed repo's evidence shard.
-- After Implementer edits, a one-line reminder is already in the agent. Auto-refresh is still a no.
-- For Nx/Turborepo, prefer Graphify communities + `nx show project` / `turbo run` over opening the whole tree.
+- For Nx/Turborepo, prefer `nx show project` / `turbo run` over opening the whole tree.
 
 ## 3. Standards and patterns
 
@@ -67,7 +67,6 @@ What we should **not** do: copy product architecture or style guides into this r
 
 **Worth adding next**
 
-- After a feature note lands, offer a *scoped* Graphify refresh in that repo.
 - Confluence later, and only for specs that already live there — never as the implementation source of truth.
 
 ## 5. Day-to-day ticket loop
@@ -76,7 +75,7 @@ This is the slice people feel after onboarding: prepare is not enough once work 
 
 **Shipped**
 
-- `goat status` — branch, dirty, ahead/behind, Graphify staleness, “you opened a single folder” hint.
+- `goat status` — branch, dirty, ahead/behind, and a “you opened a single folder” hint.
 - `goat branch PROJ-123` — same Jira-key branch in each sibling; `--create` only on a clean tree.
 - `prepare` `done_when` — ticket acceptance criteria + each repo's verify commands + goat invariants.
 - `/handoff` + `goat handoff write/latest` — session notes under `handoffs/` (gitignored).
@@ -112,7 +111,7 @@ These are separate from the themes above but fit the same goat:
 - **Jira write path** — `goat jira comment` / transition, still CLI-only, still no token in chat. Wait until read-only onboarding stays boringly reliable.
 - **Worktrees** — `goat worktree PROJ-123` so Implementer does not dirty a shared checkout that someone else has open.
 - **Personal overlay** — optional gitignored `repositories.local.yml` for extra remotes you do not want to commit.
-- **Sparse / partial clone hints** — for a huge monorepo, `clone` can suggest `git clone --filter=blob:none` / sparse-checkout of the package Graphify named. Do not invent the sparse paths here.
+- **Sparse / partial clone hints** — for a huge monorepo, `clone` can suggest `git clone --filter=blob:none` / sparse-checkout of the package `nx show project` or the language server named. Do not invent the sparse paths here.
 - **Pinned SHAs** — a `lock` file of sibling commit SHAs so a Cloud Agent / eval run is reproducible. Optional, not for daily work.
 - **CI awareness** — `gh pr checks` per sibling before anyone says “ship it.” GitHub MCP is fine; Jira MCP is not.
 - **MCP allowlist in instructions** — say explicitly: GitHub MCP okay, Jira MCP never. Stops a well-meaning teammate from installing Atlassian MCP “to help.”

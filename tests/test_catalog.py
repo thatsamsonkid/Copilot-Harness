@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from goat import GoatError
 from goat.catalog import catalog_to_dict, load_catalog
@@ -107,20 +108,70 @@ def test_include_coboose_yaml_still_works(tmp_path: Path, sample_catalog_data: d
     assert catalog.workspace("backend").include_goat is True
 
 
-def test_parses_graphify_out_and_rejects_parent_escape(
+def test_leftover_graphify_key_is_ignored_with_a_warning(
     tmp_path: Path, sample_catalog_data: dict
 ):
-    sample_catalog_data["repos"][0]["graphify"] = {"out": "docs/graphify-out"}
+    sample_catalog_data["repos"][0]["graphify"] = {"out": "../escape"}
     root = tmp_path / "goat"
     write_goat_config(root, sample_catalog_data)
-    catalog = load_catalog(root)
-    assert catalog.repo("frontend").graphify.out == "docs/graphify-out"
-    assert catalog.repo("frontend").graphify.enabled is True
+    stack_path = root / "catalog" / "stack.yaml"
+    stack = yaml.safe_load(stack_path.read_text(encoding="utf-8"))
+    stack["graphify"] = False
+    stack["workspaces"][0]["graphify"] = {"out": "graphify-out"}
+    stack_path.write_text(yaml.safe_dump(stack, sort_keys=False), encoding="utf-8")
+    repos_path = root / "repositories.yml"
+    repos = yaml.safe_load(repos_path.read_text(encoding="utf-8"))
+    repos["graphify"] = "graphify-out"
+    repos_path.write_text(yaml.safe_dump(repos, sort_keys=False), encoding="utf-8")
+    local = {
+        "graphify": True,
+        "workspaces": [
+            {
+                "id": "personal",
+                "name": "Personal",
+                "folders": ["frontend"],
+                "graphify": {"out": "../nope"},
+            }
+        ],
+    }
+    (root / "catalog" / "stack.local.yaml").write_text(
+        yaml.safe_dump(local, sort_keys=False), encoding="utf-8"
+    )
 
-    sample_catalog_data["repos"][0]["graphify"] = {"out": "../escape"}
-    write_goat_config(root, sample_catalog_data)
-    with pytest.raises(GoatError, match="relative path"):
-        load_catalog(root)
+    with pytest.warns(UserWarning, match="leftover graphify") as recorded:
+        catalog = load_catalog(root)
+
+    assert not hasattr(catalog.repo("frontend"), "graphify")
+    assert catalog.workspace("frontend").folders == ["frontend", "backend"]
+    assert catalog.workspace("personal").local is True
+    assert catalog.workspace("personal").folders == ["frontend"]
+    wheres = []
+    for item in recorded:
+        message = str(item.message)
+        start = message.index(" in ") + 4
+        end = message.index(". Graphify is no longer")
+        wheres.append(message[start:end])
+    assert any(
+        item.endswith("repositories.yml") and not item.startswith("repository ")
+        for item in wheres
+    )
+    assert "repository frontend in repositories.yml" in wheres
+    assert any(item.endswith("catalog/stack.yaml") and not item.startswith("workspace ") for item in wheres)
+    assert any(
+        item.startswith("workspace frontend in ") and item.endswith("catalog/stack.yaml")
+        for item in wheres
+    )
+    assert any(
+        item.endswith("catalog/stack.local.yaml") and not item.startswith("workspace ")
+        for item in wheres
+    )
+    assert any(
+        item.startswith("workspace personal in ")
+        and item.endswith("catalog/stack.local.yaml")
+        for item in wheres
+    )
+    payload = catalog_to_dict(catalog, root)
+    assert "graphify" not in payload["repos"][0]
 
 
 def test_parses_knowledge_dirs(tmp_path: Path, sample_catalog_data: dict):

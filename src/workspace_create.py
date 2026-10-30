@@ -275,7 +275,7 @@ def create_workspace(
 
 
 def create_menu(catalog: Catalog, goat_root: Path) -> dict[str, Any]:
-    """Compact picker for /new-workspace. No URLs, graphify, skills, or CLI catalog."""
+    """Compact picker for /new-workspace. No URLs, skills, or CLI catalog."""
     projects: list[dict[str, Any]] = []
     for index, repo in enumerate(catalog.repos, start=1):
         repo_path = catalog.repo_path(goat_root, repo)

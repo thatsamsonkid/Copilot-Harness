@@ -27,17 +27,20 @@ def test_skill_name_matches_directory():
     assert meta["name"] == SKILL.parent.name
 
 
-def test_skill_covers_graphify_and_standards():
+def test_skill_covers_language_server_navigation_and_standards():
     meta, body = _frontmatter_and_body()
     description = meta["description"].lower()
-    for token in ("graphify", "vague", "agents.md"):
+    for token in ("vague", "agents.md", "search/usages"):
         assert token in description
     lowered = body.lower()
     for token in (
         "uv run goat context",
         "workspace current",
         "workspace.repos",
-        "graphify.report",
+        "search/codebase",
+        "search/usages",
+        "goat graph path",
+        "goat graph neighbors",
         "suggested_verify",
         "do not copy",
         "whole monorepo",
@@ -46,5 +49,8 @@ def test_skill_covers_graphify_and_standards():
         "glossary get",
         "recursively invoked",
         "python -m goat",
+        "limit",
     ):
         assert token in lowered
+    assert "graphify" not in lowered
+    assert "graph_report" not in lowered

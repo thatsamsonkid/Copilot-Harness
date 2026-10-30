@@ -113,7 +113,7 @@ These follow the open feature workspace (`GOAT_WORKSPACE`). Pass `--workspace <i
 
 | Command | What it does |
 | --- | --- |
-| `goat context` | Graphify graphs, instruction files, feature notes, verify commands |
+| `goat context` | Instruction files, feature notes, and verify commands in sibling repos |
 | `goat glossary list` | Workplace terms (team catalog + personal overlay + sibling `docs/glossary.yml`) |
 | `goat glossary get TERM` | Look up one term or alias (suggestions if unmatched) |
 | `goat glossary search QUERY` | Search names, aliases, and meanings |
@@ -127,6 +127,12 @@ These follow the open feature workspace (`GOAT_WORKSPACE`). Pass `--workspace <i
 | `goat start` | Print a start plan (does not launch) |
 | `goat start run` | Start one repo with launch.json env loaded in-process (`--repo` required) |
 | `goat start env` | List or apply one repo's launch env (`--shell` execs a terminal) |
+
+<!-- GRAPHIFY_REMOVED_OK -->
+### Removed: Graphify
+
+Goat no longer detects Graphify, an external code-graph CLI. It was never a Python dependency. `goat context`, `prepare`, `status`, and `doctor` do not report it, and `goat graph` does not read a per-repo code graph. A leftover `graphify:` key in `repositories.yml`, `catalog/stack.yaml`, or `catalog/stack.local.yaml` is ignored with a warning. Find code with `goat context`, then `search/codebase`, then `search/usages` on the named symbol, then targeted reads. Text search is for strings and config. Cross-repo links stay on `goat graph path` and `goat graph neighbors`.
+<!-- GRAPHIFY_REMOVED_END -->
 
 Workplace language is `goat glossary` (see `.github/skills/glossary/SKILL.md`). Public org terms live in `catalog/glossary.yml` (committed). Personal nicknames live in `catalog/glossary.local.yml` (gitignored). Product-only acronyms can live in a sibling `docs/glossary.yml`. Always say `--visibility public` or `private` when adding. This is a dictionary, not a feature wiki — see [knowledge.md](knowledge.md).
 

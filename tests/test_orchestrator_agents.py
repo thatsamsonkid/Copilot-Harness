@@ -64,6 +64,7 @@ def test_code_writer_is_implementer_write_worker():
     tools = set(meta["tools"])
     assert "edit" in tools
     assert "read" in tools
+    assert "read/problems" in tools
     assert "runCommands" not in tools
     assert "agent" not in tools
     lowered = body.lower()
@@ -80,6 +81,7 @@ def test_code_writer_is_implementer_write_worker():
         "verifier",
         ".env",
         "tooling.generated",
+        "read/problems",
     ):
         assert token in lowered
 
@@ -162,6 +164,7 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
     assert meta["name"] == "Implementer"
     assert "agent" in meta["tools"]
     assert "edit" in meta["tools"]
+    assert "read/problems" in meta["tools"]
     assert meta["agents"] == ["Bulk Reader", "Code Writer", "Verifier"]
     lowered = body.lower()
     for token in (
@@ -184,8 +187,22 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "verifier",
         "auto (copilot)",
         "do not override the model",
+        "read/problems",
     ):
         assert token in lowered
+
+
+def test_reviewer_checks_problems_before_verify():
+    reviewer = ROOT / ".github" / "agents" / "reviewer.agent.md"
+    meta, body = _frontmatter_and_body(reviewer)
+    assert meta["name"] == "Reviewer"
+    assert "read/problems" in meta["tools"]
+    assert "runCommands" in meta["tools"]
+    assert "edit" not in meta["tools"]
+    lowered = body.lower()
+    assert "read/problems" in lowered
+    assert "suggested_verify" in lowered
+    assert "graphify" not in lowered
 
 
 def test_jira_ticket_skill_uses_reader_not_writer():
