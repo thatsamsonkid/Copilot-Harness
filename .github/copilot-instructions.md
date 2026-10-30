@@ -133,6 +133,7 @@ These stay few and stable. Everything else lives in the product repo.
 - Assigned work: `uv run goat jira mine --format json`.
 - Pause / next chat: `/handoff` or `uv run goat handoff write --issue <KEY> --note "..."`.
 - Review a diff: `/review` (`.github/skills/review/SKILL.md`) or the **Reviewer** agent. Do not implement while reviewing.
+- AI readiness of product repos in the open workspace: `/ai-readiness` (`.github/skills/ai-readiness/SKILL.md`) or the **Readiness Auditor** agent. Read-only; do not edit product repos or this harness.
 - Feature planning: **Jira Planner** or `/jira-ticket`. It automatically delegates product reads to **Bulk Reader**.
 - Agreed-plan writes after `/goat-plan`: never spawn Implementer. Start with `/goat-implement` (survives compaction): you become Implementer, invoke **Code Writer** for product files and **Verifier** for verify checks (you still branch and write feature notes). New chat with only a `plans/` file and no `/goat-implement`: you are the executor — write product files yourself; do not spawn Code Writer or Verifier. VS Code Agents dropdown: user picks **Implementer** as primary (same as `/goat-implement`).
 - Large-file read blocked: `/bulk-reader` or the bulk-reader skill. Hooks live in `.github/hooks`.
