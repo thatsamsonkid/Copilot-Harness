@@ -4,6 +4,8 @@ This repository is tooling only. Application code lives in **git clones next to 
 
 Copilot Chat slash commands are skills at `.github/skills/<name>/SKILL.md` with `disable-model-invocation: true` (the user types the slash). Agent-loadable contracts stay in `jira-cli`, `figma-cli`, `bruno-cli`, `workspace-context`, `implementing`, `planning`, `workspace-create`, and `workspace-start`.
 
+Engineering principles for every file: `.github/instructions/engineering-principles.instructions.md`.
+
 ## First-run and vague prompts
 
 - First time in this repo, missing Jira auth, or "how do I set this up?": load `.github/skills/get-started/SKILL.md` and run `uv run goat init --format json`. Never collect the API token in chat.

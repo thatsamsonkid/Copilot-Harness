@@ -4,6 +4,8 @@ This repo is **Goat** (Yard Goat), a Copilot Kit — not the product codebase.
 
 Application repositories are cloned **next to** this folder (flat siblings, or grouped under `parent_dir` folders such as `frontend/`, `backend/`, `infra/`, `shared/`). The full-app list lives in `repositories.yml`. Starter remotes for new projects live in `templates.yml`. Feature workspaces and Jira routing live in `catalog/stack.yaml`. Personal mixes live in `catalog/stack.local.yaml` (gitignored). `workspaces/*.code-workspace` files are generated locally from the merged catalog (`goat workspace generate`) and are gitignored — do not commit them. See also `.github/copilot-instructions.md`.
 
+Engineering principles for every file: `.github/instructions/engineering-principles.instructions.md`.
+
 Copilot Chat slash commands are skills at `.github/skills/<name>/SKILL.md` with `disable-model-invocation: true` (the user types the slash). Agent-loadable contracts stay in `jira-cli`, `figma-cli`, `bruno-cli`, `workspace-context`, `implementing`, `planning`, `workspace-create`, and `workspace-start`.
 
 Run `uv run goat …` from this Goat repo (or `uv run --project "$GOAT_ROOT" python -m goat …` / `./scripts/goat.sh`). After `cd` into a sibling clone, bare `uv run goat` cannot spawn. `uv run goat install` writes a `~/.local/bin` shim so `goat` works from any cwd (macOS, Linux, Windows). If `uv run` reports it was recursively invoked, do not retry `uv run goat` — the PATH shim is calling itself. Use `./scripts/goat.sh` or `uv run --project "$GOAT_ROOT" python -m goat`. That error does not block Jira or Figma. Full command catalog: `uv run goat commands --format json` or [docs/cli.md](docs/cli.md).
