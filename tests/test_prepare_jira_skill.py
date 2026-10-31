@@ -107,6 +107,17 @@ def test_skill_records_type_and_warns_on_bad_acceptance_shape():
     assert "**one** batched" in lowered
 
 
+def test_arbitrary_type_names_stay_inside_the_template_dir():
+    _, body = _frontmatter_and_body(SKILL)
+    assert "lowercase `[a-z0-9-]` only" in body
+    assert "Spaces become hyphens" in body
+    assert "Drop everything else" in body
+    assert "Reject an empty result and fall back" in body
+    assert "templates/jira-ticket.md" in body
+    assert "`/` or `..`" in body
+    assert "templates/jira/local/" in body
+
+
 def test_local_jira_templates_are_gitignored_except_keep():
     root = GITIGNORE.parent
     keep = root / "templates" / "jira" / "local" / ".gitkeep"
