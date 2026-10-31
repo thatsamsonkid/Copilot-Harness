@@ -105,11 +105,29 @@ def test_verifier_is_implementer_verify_worker():
         "result: fail",
         "expected: fail",
         "expected result",
+        "named test",
+        "raw exit code",
         "do not spawn other agents",
         "do not invent extra",
         "/goat-implement",
     ):
         assert token in lowered
+
+
+def test_verifier_expected_fail_cannot_mask_other_failures():
+    meta, body = _frontmatter_and_body(VERIFIER)
+    description = meta["description"].lower()
+    assert "exit code" in description
+    assert "expected result" in description
+    assert "default: pass" in description
+    lowered = body.lower()
+    assert "if they did not pass one, the expectation is pass" in lowered
+    assert "raw exit code" in lowered
+    assert "no named test" in lowered
+    assert "unmatched" in lowered
+    assert "exactly the named test" in lowered
+    assert "any other failing test" in lowered
+    assert "collection failure" in lowered
 
 
 def test_orchestrator_is_hidden_and_not_user_invocable():
@@ -221,6 +239,7 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "do not override the model",
         "read/problems",
         "expected: fail",
+        "named test",
     ):
         assert token in lowered
 
@@ -278,5 +297,6 @@ def test_goat_implement_skill_requires_code_writer_and_verifier():
         "goat branch",
         "done_when",
         "expected: fail",
+        "named test",
     ):
         assert token in lowered

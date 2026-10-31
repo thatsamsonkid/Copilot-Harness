@@ -30,14 +30,14 @@ A plain chat that is not on that path writes the files directly. If you were sta
 
 ## Which command
 
-From this Goat repo, run `uv run goat context --repo <name> --format json` and use that repo's `tooling.suggested_verify`. When the list is the whole suite and that repo already has a way to run one test, run the new test. Do not invent npm or make targets. Do not pass a flag that `docs/cli.md` does not list.
+From this Goat repo, run `uv run goat context --repo <name> --format json` and use that repo's `tooling.suggested_verify` for the suite. Do not invent npm or make targets. Do not pass a flag that `docs/cli.md` does not list.
 
 When this chat is the primary Implementer, invoke **Verifier** (`.github/agents/verifier.agent.md`) with `#tool:agent`, the exact command, the cwd, and the expected result.
 
-- First run: `expected: fail on test X`. A per-command `fail` that matches that sentence is the expected red. Verifier's summary for a matched expectation is `result: pass`. That is not the stop in `.github/skills/goat-implement/SKILL.md` (Verifier `result: fail`).
-- After the fix: `expected: pass`. A `fail` here, or any run that does not match what you passed, is `result: fail`. Stop and report.
+- First run: target only the new test, for example `uv run pytest path::test_name`, and pass `expected: fail on <node id>`. It matches only when that named test failed and nothing else did. Verifier's summary for that match is `result: pass`. That is not the stop in `.github/skills/goat-implement/SKILL.md` (Verifier `result: fail`).
+- After the fix: run the full suite with `expected: pass`. A `fail` here, or any other failure, is `result: fail`. Stop and report.
 
-Otherwise run the command in this chat. The first run is still expected to fail. If you were started as a subagent, run it yourself. Verifier never delegates.
+Otherwise run those same commands in this chat. The first run still targets only the new test and is expected to fail. If you were started as a subagent, run it yourself. Verifier never delegates.
 
 ## If a failing test is impractical
 
