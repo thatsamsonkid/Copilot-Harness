@@ -35,17 +35,19 @@ Do not cite the code as evidence of its own intent. Do not treat the newest comm
 
 Build this before you conclude. File paths and line ranges, the key symbols, and the commits that touched them.
 
+Do not `cd` into a sibling first. Stay in the Goat folder. Run `uv run goat context --format json` and take `<repo-path>` from that repo's `repos[].path`. That field is the absolute clone path. Do not use `relpath`, and do not use a file path under `knowledge.files`. Every git command is `git -C <repo-path>`.
+
 ```bash
-git log --follow -- <file>
-git blame -L <start>,<end> <file>
-git log -1 --format=%B <commit>
+git -C <repo-path> log --follow -- <file>
+git -C <repo-path> blame -L <start>,<end> <file>
+git -C <repo-path> log -1 --format=%B <commit>
 ```
 
-`git log --follow` is the history through renames. `git blame -L` is who last touched the lines. `git log -1 --format=%B` is the full message of a commit you cite. Read PR numbers out of those subjects, such as `(#1234)`.
+`git -C <repo-path> log --follow` is the history through renames. `git -C <repo-path> blame -L` is who last touched the lines. `git -C <repo-path> log -1 --format=%B` is the full message of a commit you cite. Read PR numbers out of those subjects, such as `(#1234)`.
 
-If `gh` is on PATH, run `gh pr view <number>` for each of those PRs. If `gh` is missing, write that pull-request bodies were not read. Do not describe them as searched.
+If `gh` is on PATH, run `git -C <repo-path> remote get-url origin` and take `owner/repo` from that URL. Then run `gh pr view <number> -R owner/repo`. `-R` is gh's `--repo` flag (`[HOST/]OWNER/REPO`). If `gh` is missing, write that pull-request bodies were not read. Do not describe them as searched.
 
-ADRs and feature notes: run `uv run goat context --format json` and read the paths under `knowledge.files` (`docs/knowledge.md`). When the question names two repos or two concepts, run `uv run goat graph explain`, `goat graph path`, or `goat graph neighbors` and read nodes of type `adr` (`docs/workspace-graph.md`). If the graph is not built yet, run `uv run goat graph build` first.
+ADRs and feature notes: from that same JSON, read the paths under `knowledge.files` (`docs/knowledge.md`). When the question names two repos or two concepts, run `uv run goat graph explain`, `goat graph path`, or `goat graph neighbors` and read nodes of type `adr` (`docs/workspace-graph.md`). If the graph is not built yet, run `uv run goat graph build` first. Each repo still has its own `repos[].path` for `git -C <repo-path>`.
 
 Tickets: when an issue key appears in the question, a commit message, or a PR body, run `uv run goat jira context ISSUE`. If no key appears, say the issue tracker was not queried. Do not invent a search that did not happen.
 
@@ -88,7 +90,7 @@ These five have no source in this harness. Write each as skipped. Do not imply t
 - **Real-time team chat:** skipped. No chat source in this harness.
 - **Docs platforms:** skipped. No Notion, Confluence, or similar source in this harness. In-repo ADRs and feature notes are not this category.
 - **Infrastructure observability:** skipped. No observability source in this harness.
-- **Error and exception tracking:** skipped. No error-tracker source in this harness. Defensive code does not add this search.
+- **Error tracking:** skipped. No error-tracking source in this harness. Defensive code does not add this search.
 - **Product analytics:** skipped. No analytics source in this harness.
 
 ### Confidence Summary

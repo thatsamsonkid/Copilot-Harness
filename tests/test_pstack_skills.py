@@ -172,8 +172,47 @@ def test_how_surveys_with_bulk_reader_then_rereads():
     assert knowledge_at < search_at
 
 
+_WHY_SKIPPED = (
+    "chat",
+    "docs platform",
+    "observability",
+    "error tracking",
+    "analytics",
+)
+
+
+def _skipped_near(text: str, category: str) -> bool:
+    lowered = text.lower()
+    start = 0
+    while True:
+        at = lowered.find(category, start)
+        if at < 0:
+            return False
+        if "skipped" in lowered[at : at + 200]:
+            return True
+        start = at + len(category)
+
+
 def test_why_marks_missing_harness_sources_skipped():
     text = (SKILLS / "why" / "SKILL.md").read_text(encoding="utf-8")
     assert "Sources Consulted" in text
-    assert "skipped" in text
     assert _SUBAGENT_RULE in text
+    for category in _WHY_SKIPPED:
+        assert _skipped_near(text, category), category
+    invoked = re.findall(r"`git [^`]+`", text) + re.findall(r"(?m)^git .+$", text)
+    assert invoked, "expected git commands"
+    for command in invoked:
+        assert command.startswith(("`git -C ", "git -C ")), command
+
+
+def test_teach_follows_how_then_why_in_this_chat():
+    text = (SKILLS / "teach" / "SKILL.md").read_text(encoding="utf-8")
+    how_at = text.index(".github/skills/how/SKILL.md")
+    why_at = text.index(".github/skills/why/SKILL.md")
+    assert how_at < why_at
+    assert "in this chat" in text
+    assert "sequential" in text.lower()
+    assert _SUBAGENT_RULE in text
+    assert "Do not hand either skill to a subagent." in text
+    assert "Bulk Reader survey calls remain allowed" in text
+    assert "/unslop" in text

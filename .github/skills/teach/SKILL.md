@@ -16,7 +16,7 @@ Do not read `.env`, print a token, or ask anyone to paste a token. Do not clone 
 ## Steps
 
 1. From the conversation, pick the few things they should walk away understanding. Skip what they already know. Do not quiz them.
-2. Load `.github/skills/how/SKILL.md` and follow its investigation. Then load `.github/skills/why/SKILL.md` and follow its investigation. Sequential, in this chat. Do not run them at the same time. Do not spawn another agent to run either file.
+2. Run `/how` and `/why` yourself in this chat. Load `.github/skills/how/SKILL.md` and follow it, then load `.github/skills/why/SKILL.md` and follow it. Sequential. Do not hand either skill to a subagent. `/how`'s own Bulk Reader survey calls remain allowed under `/how`'s rules, including the subagent rule.
 3. Publish one explanation, not the two reports pasted together. Keep the confidence hedges from why. Those hedges are findings. Reword the rest so it teaches.
 4. Write that explanation through `/unslop` (`.github/skills/unslop/SKILL.md`).
 5. Diagrams are Mermaid only. No image generation. When the picture has three or more parts, draw a short series. Each diagram redraws the last and adds one part. A single diagram of the whole thing is a reference, not teaching. For a flow from A to B to C, draw A to B, then redraw and add C, then redraw and add the return or the next piece.
