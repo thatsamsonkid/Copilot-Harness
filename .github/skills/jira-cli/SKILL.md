@@ -47,7 +47,7 @@ Accept `PROJ-123` or a browse URL. The CLI extracts the key.
 
 Prefer `prepare` over assembling get + match + clone yourself.
 
-New or thin tickets: run `/prepare-jira` (prepare-jira skill) so the user can dump notes and get a formatted draft under `jira-tickets/`. The description shape is `templates/jira-ticket.md` (`## Acceptance Criteria` checkboxes become `done_when`; Figma frames are labeled by role because `figma images` returns ids and URLs only). Do not invent a different heading set. Do not write the issue through the CLI.
+New or thin tickets: run `/prepare-jira` (prepare-jira skill) so the user can dump notes and get a formatted draft under `jira-tickets/`. The description shape is `templates/jira/local/<type>.md`, then `templates/jira/<type>.md` (`story`, `bug`, `spike`), then `templates/jira-ticket.md` for task, sub-task, epic, and unknown types. Acceptance checkboxes (`Acceptance Criteria`, `Definition of Done`, `Done when`, or `AC`) become `done_when`. Figma frames on story and bug are labeled by role because `figma images` returns ids and URLs only. Do not invent a heading the chosen template does not have. Do not write the issue through the CLI. When the notes do not name a type and a key is already known, read `issue_type` from `uv run goat jira get <KEY> --format json` (shared `--format` flag; default json). Do not list issue types from Jira.
 
 Do not pass `--clone-missing` unless the user asked to clone. If `routing.missing_repos` is set, show `routing.clone_command` and let them confirm. Never `git clone` into the goat folder.
 

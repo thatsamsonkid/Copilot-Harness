@@ -74,7 +74,11 @@ There is no Jira MCP server. Never read `.env` or paste a token into chat.
 | `goat jira login` | Store the API token in the OS keychain |
 | `goat jira logout` | Remove the API token from the OS keychain |
 
-Prefer `prepare` over assembling get + match + clone yourself. See `.github/skills/jira-cli/SKILL.md`. Draft a new ticket from notes with `/prepare-jira` (writes `jira-tickets/`, gitignored) from `templates/jira-ticket.md` so `## Acceptance Criteria` parses into `done_when` and each Figma frame is labeled by role (the Images API returns ids and URLs only). The CLI cannot create or update the issue.
+Prefer `prepare` over assembling get + match + clone yourself. See `.github/skills/jira-cli/SKILL.md`. Draft a new ticket from notes with `/prepare-jira` (writes `jira-tickets/`, gitignored). Story, bug, and spike use `templates/jira/<type>.md`; task, epic, and unknown types use `templates/jira-ticket.md`. An acceptance heading (`Acceptance Criteria`, `Definition of Done`, `Done when`, or `AC`) parses into `done_when`. Story and bug label each Figma frame by role (the Images API returns ids and URLs only). The CLI cannot create or update the issue. `goat jira get ISSUE --format json` returns `issue_type` (shared `--format` flag; default json).
+
+### Customizing ticket templates
+
+`/prepare-jira` picks a description file by issue type. Resolution order: `templates/jira/local/<type>.md` (gitignored personal override; add `incident.md` there to draft an Incident), then `templates/jira/<type>.md` (`story`, `bug`, `spike`), then `templates/jira-ticket.md` (task, sub-task, epic, and any type with no file). Put checkboxes only under the acceptance heading so `goat prepare` can lift them into `done_when`. The skill names the file it opened. Do not read `.env` or paste a token into chat.
 
 ## Figma
 

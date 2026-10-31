@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -73,3 +74,70 @@ def test_jira_tickets_dir_is_gitignored_with_keep():
     assert "jira-tickets/*.md" in text
     assert "!jira-tickets/.gitkeep" in text
     assert KEEP.exists()
+
+
+def test_skill_resolves_typed_templates_before_fallback():
+    _, body = _frontmatter_and_body(SKILL)
+    assert "templates/jira/" in body
+    assert "templates/jira/local/" in body
+    lowered = body.lower()
+    for stem in ("story", "bug", "spike"):
+        assert stem in lowered
+    order = (
+        "templates/jira/local/<type>.md",
+        "templates/jira/<type>.md",
+        "templates/jira-ticket.md",
+    )
+    positions = [body.index(token) for token in order]
+    assert positions == sorted(positions)
+    assert positions[0] < positions[1] < positions[2]
+
+
+def test_skill_records_type_and_warns_on_bad_acceptance_shape():
+    _, body = _frontmatter_and_body(SKILL)
+    assert "- Type:" in body
+    assert "- Template:" in body
+    assert "uv run goat jira get <KEY> --format json" in body
+    assert "issue_type" in body
+    lowered = body.lower()
+    assert "warn" in lowered
+    for heading in ("acceptance criteria", "definition of done", "done when"):
+        assert heading in lowered
+    assert "never list issue types from jira" in lowered
+    assert "**one** batched" in lowered
+
+
+def test_local_jira_templates_are_gitignored_except_keep():
+    root = GITIGNORE.parent
+    keep = root / "templates" / "jira" / "local" / ".gitkeep"
+    assert keep.is_file()
+    text = GITIGNORE.read_text(encoding="utf-8")
+    assert "templates/jira/local/*" in text
+    assert "!templates/jira/local/.gitkeep" in text
+
+    def check_ignore(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", "check-ignore", *args],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    # --no-index checks the rule itself. A tracked .gitkeep is otherwise
+    # skipped, so check-ignore would not show the negation after commit.
+    ignored = check_ignore("-v", "--no-index", "templates/jira/local/example.md")
+    assert ignored.returncode == 0, ignored.stderr
+    assert "templates/jira/local/*" in ignored.stdout
+    assert "!templates/jira/local/*" not in ignored.stdout
+    assert "templates/jira/local/example.md" in ignored.stdout
+
+    # -v prints the last matching pattern and exits 0 even when that pattern
+    # is a negation. -q exits 1 when the path is not ignored.
+    kept = check_ignore("-v", "--no-index", "templates/jira/local/.gitkeep")
+    assert "!templates/jira/local/.gitkeep" in kept.stdout
+    quiet = check_ignore("-q", "--no-index", "templates/jira/local/.gitkeep")
+    assert quiet.returncode == 1, quiet.stdout
+
+    team = check_ignore("-q", "--no-index", "templates/jira/story.md")
+    assert team.returncode == 1, team.stdout
