@@ -1,0 +1,2 @@
+# Personal /prepare-jira overrides. Markdown files in this directory are gitignored.
+# Add incident.md to draft an Incident. Team templates stay in templates/jira/.

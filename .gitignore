@@ -20,6 +20,10 @@ plans/*.md
 jira-tickets/*.md
 !jira-tickets/.gitkeep
 
+# Personal Jira description templates (team files are templates/jira/*.md)
+templates/jira/local/*
+!templates/jira/local/.gitkeep
+
 # Personal workplace glossary (team file is catalog/glossary.yml)
 catalog/glossary.local.yml
 
