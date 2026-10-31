@@ -103,11 +103,31 @@ def test_verifier_is_implementer_verify_worker():
         "suggested_verify",
         "result: pass",
         "result: fail",
+        "expected: fail",
+        "expected result",
+        "named test",
+        "raw exit code",
         "do not spawn other agents",
         "do not invent extra",
         "/goat-implement",
     ):
         assert token in lowered
+
+
+def test_verifier_expected_fail_cannot_mask_other_failures():
+    meta, body = _frontmatter_and_body(VERIFIER)
+    description = meta["description"].lower()
+    assert "exit code" in description
+    assert "expected result" in description
+    assert "default: pass" in description
+    lowered = body.lower()
+    assert "if they did not pass one, the expectation is pass" in lowered
+    assert "raw exit code" in lowered
+    assert "no named test" in lowered
+    assert "unmatched" in lowered
+    assert "exactly the named test" in lowered
+    assert "any other failing test" in lowered
+    assert "collection failure" in lowered
 
 
 def test_orchestrator_is_hidden_and_not_user_invocable():
@@ -131,8 +151,37 @@ def test_orchestrator_is_hidden_and_not_user_invocable():
         "stateless",
         "auto (copilot)",
         "do not override the model",
+        "only the hidden orchestrator may delegate",
+        "never delegate",
     ):
         assert token in lowered
+
+
+def test_delegation_stops_at_orchestrator_workers():
+    """Orchestrator is the only subagent that delegates. Workers never do."""
+    phrase = "only the hidden orchestrator may delegate"
+    banned = (
+        "subagents do not spawn subagents",
+        "subagents must not spawn other subagents",
+    )
+    paths = (
+        ROOT / "AGENTS.md",
+        ROOT / ".github" / "copilot-instructions.md",
+        ROOT / ".github" / "instructions" / "engineering-principles.instructions.md",
+        ROOT / "README.md",
+        ROOT / ".github" / "skills" / "implementing" / "SKILL.md",
+        ROOT / ".github" / "skills" / "planning" / "SKILL.md",
+        ROOT / "templates" / "plan.md",
+        IMPLEMENTER,
+        ORCHESTRATOR,
+        PLANNER,
+    )
+    for path in paths:
+        text = path.read_text(encoding="utf-8").lower().replace("*", "")
+        assert phrase in text, path
+        assert "never delegate" in text, path
+        for bad in banned:
+            assert bad not in text, path
 
 
 def test_jira_planner_auto_delegates_reads_not_writes():
@@ -180,7 +229,8 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "safety-critical",
         "do not nest agents",
         "write product files yourself",
-        "subagents must not spawn",
+        "only the hidden orchestrator may delegate",
+        "never delegate",
         "wrote the plan in this chat",
         "/goat-implement",
         "your write worker",
@@ -188,6 +238,8 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "auto (copilot)",
         "do not override the model",
         "read/problems",
+        "expected: fail",
+        "named test",
     ):
         assert token in lowered
 
@@ -244,5 +296,7 @@ def test_goat_implement_skill_requires_code_writer_and_verifier():
         "compaction",
         "goat branch",
         "done_when",
+        "expected: fail",
+        "named test",
     ):
         assert token in lowered

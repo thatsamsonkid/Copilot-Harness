@@ -132,6 +132,20 @@ These follow the open feature workspace (`GOAT_WORKSPACE`). Pass `--workspace <i
 | `goat start run` | Start one repo with launch.json env loaded in-process (`--repo` required) |
 | `goat start env` | List or apply one repo's launch env (`--shell` execs a terminal) |
 
+### `goat context`
+
+Shared flags apply: `--format`, `--catalog`, `--repos`, `--templates`, `--root`. `--format` choices are `json` (default), `markdown`, and `text`.
+
+| Flag | What it does |
+| --- | --- |
+| `--repo` | Comma-separated repository names |
+| `--workspace` | Feature workspace id (overrides `GOAT_WORKSPACE`) |
+| `--all` | Include every enabled `repositories.yml` repo (ignore the open workspace) |
+
+### `goat status`
+
+Same flags as `goat context`: `--format`, `--catalog`, `--repos`, `--templates`, `--root`, `--repo`, `--workspace`, `--all`. `--repo` is comma-separated repository names. `--workspace` is a feature workspace id (overrides `GOAT_WORKSPACE`). `--all` includes every enabled `repositories.yml` repo and ignores the open workspace. `--format` choices are `json` (default), `markdown`, and `text`.
+
 <!-- GRAPHIFY_REMOVED_OK -->
 ### Removed: Graphify
 

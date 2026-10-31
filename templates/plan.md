@@ -15,7 +15,7 @@ What must be true when this plan is complete, in two or three sentences. Restate
 Never spawn Implementer. Which path you are on:
 
 - **`/goat-implement`** (preferred after compaction): you become Implementer. Invoke Code Writer for product files and Verifier for verify checks. Do not spawn Implementer.
-- **New chat** (this file is your only brief; no `/goat-implement`): you are the executor. Write the listed files yourself. Do not invoke Implementer, Code Writer, or Verifier. Subagents must not spawn other subagents.
+- **New chat** (this file is your only brief; no `/goat-implement`): you are the executor. Write the listed files yourself. Do not invoke Implementer, Code Writer, or Verifier. Only the hidden Orchestrator may delegate while it is a subagent. Its workers (Bulk Reader, Code Writer, and Verifier) never delegate.
 - **Same chat that wrote this plan** (no slash command): same as `/goat-implement`. After compact, run `/goat-implement` so the protocol is reloaded.
 
 Everything a model with zero prior context needs before step 1: what the feature/bug is, how the involved repos relate, which instruction files to read first (exact paths), and any terms of art defined in one line each.

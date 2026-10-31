@@ -18,7 +18,13 @@
     "handoff": "Pause or resume this chat from a session note.",
     "review": "Review sibling diffs against done_when and repo linters.",
     "ai-readiness": "Audit workspace product repos for agent-ready instructions, language servers, and verify commands.",
-    "skills-install": "Lift sibling or remote agent skills into this goat for VS Code Agents."
+    "skills-install": "Lift sibling or remote agent skills into this goat for VS Code Agents.",
+    "unslop": "Cut AI tells from writing.",
+    "bro": "Restate the last message in plain language.",
+    "technical-writing": "Write or review docs, RFCs, readmes, and PR text.",
+    "tdd": "Lock a bug with a failing test before the fix.",
+    "blast-radius": "Find what a change could break somewhere else.",
+    "benchmark-checklist": "Vet a perf number before you report it."
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "terminal.integrated.env.linux": {

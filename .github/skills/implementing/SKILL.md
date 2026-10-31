@@ -34,7 +34,7 @@ A bare "implement it" after compact often writes product files in the parent cha
 | **New chat handed only the `plans/` file** (no `/goat-implement`) | You are the executor. Write the listed files yourself. Do not invoke Implementer, Code Writer, or Verifier. |
 | **You were started as a subagent** | Write files yourself. Run verify yourself. Do not nest Code Writer, Verifier, Bulk Reader, or Implementer. |
 
-Subagents must not spawn other subagents. If `#tool:agent` cannot nest, fall back to `#tool:edit` and parent-run verify — say that you fell back.
+Only the hidden Orchestrator may delegate while it is a subagent. Its workers (Bulk Reader, Code Writer, and Verifier) never delegate. If you were started as a subagent, or if `#tool:agent` cannot nest, fall back to `#tool:edit` and parent-run verify — say that you fell back.
 
 ## Find the plan
 
@@ -55,7 +55,7 @@ Read the plan's **File map**, **Steps**, **Verification**, and **Done when**. Th
    - When you are the primary chat, invoke **Bulk Reader** only for a **survey** of named reference files. Do not send debugging, architectural decisions, or safety-critical analysis to Bulk Reader.
    - Invoke **Code Writer** with `#tool:agent`. Agent name is case-sensitive: `Code Writer`. Its profile pins Copilot Auto (`Auto (copilot)`) — do not override the model. Each call is stateless — put the spec, target paths, and reference paths in that one prompt. Ask it to match existing patterns and to output only the code. Write only the files in that step's file-map rows.
    - Use `#tool:edit` yourself for goat catalog, feature notes, and ADRs. Never send those to Code Writer.
-   - Invoke **Verifier** with `#tool:agent`. Agent name is case-sensitive: `Verifier`. Pass the step's **Verify** command, cwd, and expected result. If Verifier reports fail, stop and report — do not improvise the next step.
+   - Invoke **Verifier** with `#tool:agent`. Agent name is case-sensitive: `Verifier`. Pass the step's **Verify** command, cwd, and expected result. If Verifier reports `result: fail`, stop and report — do not improvise the next step. A per-command `fail` that matched an `expected: fail` on a named test is the expected red (`result: pass`), not this stop; any other failure is unmatched and stops.
 5. After all steps, invoke **Verifier** again with the plan **Verification** section and each touched repo's `tooling.suggested_verify`. Do not mark the plan done until Verifier reports pass and `done_when` holds.
 6. If the change adds user-visible or non-obvious behavior, add or update `docs/features/<slug>.md` in that sibling using `templates/feature-note.md`. Write an ADR in the sibling for a real design choice. Do not store product knowledge in the goat.
 7. Say which sibling repo each commit belongs to. One pull request per sibling. Do not squash unrelated repos together.

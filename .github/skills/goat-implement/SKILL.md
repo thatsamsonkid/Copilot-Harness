@@ -13,7 +13,7 @@ Never spawn Implementer. You become Implementer in this chat.
 2. Run `uv run goat status --format json`. If a Jira key is present, run `uv run goat prepare <KEY> --format json` and treat `done_when` as the stop condition. Stay inside the plan repos and `workspace.repos` from `uv run goat context --format json`.
 3. Before the first product edit, run `uv run goat branch <KEY>`. Refuse to create the branch on a dirty tree.
 4. For every product-file write, invoke **Code Writer** (`#tool:agent`) with the spec, target paths, and reference paths. Do not edit product files yourself. Do not spawn Implementer. You still write goat catalog, feature notes, and ADRs yourself.
-5. After each step's writes, invoke **Verifier** (`#tool:agent`) with that step's Verify command, cwd, and expected result. After all steps, invoke Verifier with the plan **Verification** section and each repo's `tooling.suggested_verify`. If Verifier reports fail, stop and report — do not improvise.
+5. After each step's writes, invoke **Verifier** (`#tool:agent`) with that step's Verify command, cwd, and expected result. After all steps, invoke Verifier with the plan **Verification** section and each repo's `tooling.suggested_verify`. If Verifier reports `result: fail`, stop and report — do not improvise. A per-command `fail` that matched an `expected: fail` on a named test is the expected red (`result: pass`), not this stop; any other failure is unmatched and stops.
 6. Stop when `done_when` holds. Add sibling feature notes / ADRs when the change is user-visible or a real design choice.
 
 A new chat that was handed only the plan file and did **not** run `/goat-implement` is the executor and writes the files itself (no Code Writer or Verifier). That is not this command.
