@@ -313,6 +313,12 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `.github/skills/glossary/SKILL.md` | `/glossary` — workplace terms and acronyms |
 | `.github/skills/review/SKILL.md` | `/review` — Reviewer workflow |
 | `.github/skills/ai-readiness/SKILL.md` | `/ai-readiness` — Readiness Auditor workflow |
+| `.github/skills/unslop/SKILL.md` | `/unslop` — cut AI tells from writing |
+| `.github/skills/bro/SKILL.md` | `/bro` — restate the last message in plain language |
+| `.github/skills/technical-writing/SKILL.md` | `/technical-writing` — docs, RFCs, readmes, PR text |
+| `.github/skills/tdd/SKILL.md` | `/tdd` — failing test before the fix |
+| `.github/skills/blast-radius/SKILL.md` | `/blast-radius` — what a change could break elsewhere |
+| `.github/skills/benchmark-checklist/SKILL.md` | `/benchmark-checklist` — vet a perf measurement |
 | `.github/skills/skills-install/SKILL.md` | `/skills-install` — lift sibling or remote skills for VS Code Agents |
 | `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |

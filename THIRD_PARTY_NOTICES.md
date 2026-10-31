@@ -8,6 +8,15 @@ URL: https://github.com/cursor/plugins/tree/main/pstack
 
 Engineering principles in `.github/instructions/engineering-principles.instructions.md` are adapted from pstack.
 
+These slash skills are adapted from pstack:
+
+- `/benchmark-checklist` (`.github/skills/benchmark-checklist/SKILL.md`)
+- `/blast-radius` (`.github/skills/blast-radius/SKILL.md`)
+- `/bro` (`.github/skills/bro/SKILL.md`)
+- `/tdd` (`.github/skills/tdd/SKILL.md`)
+- `/technical-writing` (`.github/skills/technical-writing/SKILL.md`)
+- `/unslop` (`.github/skills/unslop/SKILL.md`)
+
 The license below is the pstack `LICENSE` text, verbatim.
 
 MIT License

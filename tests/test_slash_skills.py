@@ -17,7 +17,10 @@ SKILLS = ROOT / ".github" / "skills"
 # name -> argument-hint from the old prompt, or None when the prompt had none.
 SLASH_SKILLS = {
     "ai-readiness": "workspace id or repo name",
+    "benchmark-checklist": "perf claim or measurement",
+    "blast-radius": "change, symbol, or diff",
     "bootstrap-project": "template-name new-folder",
+    "bro": None,
     "bruno": "collection, request, or workflow",
     "bulk-reader": "survey question and file paths",
     "figma-frame": "https://www.figma.com/design/…",
@@ -33,6 +36,9 @@ SLASH_SKILLS = {
     "review": "PROJ-123",
     "skills-install": "list | lift | pull <git-url>",
     "start-workspace": "optional workspace id or repo names",
+    "tdd": "bug or behavior to lock",
+    "technical-writing": "doc, RFC, readme, PR, or commit text",
+    "unslop": "paste or point at the text",
 }
 
 AGENT_LOADABLE = (
