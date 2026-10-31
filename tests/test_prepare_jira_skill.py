@@ -115,16 +115,18 @@ def test_local_jira_templates_are_gitignored_except_keep():
     assert "templates/jira/local/*" in text
     assert "!templates/jira/local/.gitkeep" in text
 
-    def check_ignore(relative: str) -> subprocess.CompletedProcess[str]:
+    def check_ignore(*args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["git", "check-ignore", "-v", relative],
+            ["git", "check-ignore", *args],
             cwd=root,
             capture_output=True,
             text=True,
             check=False,
         )
 
-    ignored = check_ignore("templates/jira/local/example.md")
+    # --no-index checks the rule itself. A tracked .gitkeep is otherwise
+    # skipped, so check-ignore would not show the negation after commit.
+    ignored = check_ignore("-v", "--no-index", "templates/jira/local/example.md")
     assert ignored.returncode == 0, ignored.stderr
     assert "templates/jira/local/*" in ignored.stdout
     assert "!templates/jira/local/*" not in ignored.stdout
@@ -132,16 +134,10 @@ def test_local_jira_templates_are_gitignored_except_keep():
 
     # -v prints the last matching pattern and exits 0 even when that pattern
     # is a negation. -q exits 1 when the path is not ignored.
-    kept = check_ignore("templates/jira/local/.gitkeep")
+    kept = check_ignore("-v", "--no-index", "templates/jira/local/.gitkeep")
     assert "!templates/jira/local/.gitkeep" in kept.stdout
-    quiet = subprocess.run(
-        ["git", "check-ignore", "-q", "templates/jira/local/.gitkeep"],
-        cwd=root,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    quiet = check_ignore("-q", "--no-index", "templates/jira/local/.gitkeep")
     assert quiet.returncode == 1, quiet.stdout
 
-    team = check_ignore("templates/jira/story.md")
+    team = check_ignore("-q", "--no-index", "templates/jira/story.md")
     assert team.returncode == 1, team.stdout
