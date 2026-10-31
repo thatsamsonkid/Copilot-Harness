@@ -13,9 +13,12 @@ These slash skills are adapted from pstack:
 - `/benchmark-checklist` (`.github/skills/benchmark-checklist/SKILL.md`)
 - `/blast-radius` (`.github/skills/blast-radius/SKILL.md`)
 - `/bro` (`.github/skills/bro/SKILL.md`)
+- `/how` (`.github/skills/how/SKILL.md`)
 - `/tdd` (`.github/skills/tdd/SKILL.md`)
+- `/teach` (`.github/skills/teach/SKILL.md`)
 - `/technical-writing` (`.github/skills/technical-writing/SKILL.md`)
 - `/unslop` (`.github/skills/unslop/SKILL.md`)
+- `/why` (`.github/skills/why/SKILL.md`)
 
 The license below is the pstack `LICENSE` text, verbatim.
 
