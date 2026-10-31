@@ -103,6 +103,8 @@ def test_verifier_is_implementer_verify_worker():
         "suggested_verify",
         "result: pass",
         "result: fail",
+        "expected: fail",
+        "expected result",
         "do not spawn other agents",
         "do not invent extra",
         "/goat-implement",
@@ -218,6 +220,7 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "auto (copilot)",
         "do not override the model",
         "read/problems",
+        "expected: fail",
     ):
         assert token in lowered
 
@@ -274,5 +277,6 @@ def test_goat_implement_skill_requires_code_writer_and_verifier():
         "compaction",
         "goat branch",
         "done_when",
+        "expected: fail",
     ):
         assert token in lowered

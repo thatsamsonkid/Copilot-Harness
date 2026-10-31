@@ -45,6 +45,7 @@ def test_skill_reloads_code_writer_and_verifier_after_compaction():
         "plans/",
         "suggested_verify",
         "do not nest",
+        "expected: fail",
         "/goat-plan",
         "feature-note.md",
     ):

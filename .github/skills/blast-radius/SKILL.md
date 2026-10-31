@@ -1,6 +1,6 @@
 ---
 name: blast-radius
-description: "Find what a change could break somewhere else before it ships, beyond the diff, and prove the one fact it's safe because of by running real code instead of writing it up. Use for 'blast radius of X', 'what could this break', or reviewing a small diff you don't trust."
+description: Find what a change could break somewhere else, and prove the safety fact by running the code.
 argument-hint: change, symbol, or diff
 disable-model-invocation: true
 ---
@@ -14,6 +14,12 @@ Listing the callers is not the job. `search/usages` lists those. The job is the 
 A full `done_when` review is `/review` and `.github/agents/reviewer.agent.md`. This skill is the breakage check.
 
 Do this as one pass in this chat. Do not ask a second model the same question and merge the answers. Safety analysis stays here: do not send it to Bulk Reader (`.github/skills/bulk-reader/SKILL.md`). Do not read `.env`, print a token, or ask anyone to paste a token. Do not clone a repo into this goat folder. The command catalog is `docs/cli.md`. Do not invent a command or flag.
+
+## Who writes
+
+When this chat is the primary Implementer (`/goat-implement`, `.github/skills/implementing/SKILL.md`, or the user picked Implementer), a product-file edit (a regression test in the product repo) goes through **Code Writer** (`.github/agents/code-writer.agent.md`) with `#tool:agent`. Do not edit that file yourself. The name is case-sensitive. Its profile pins Copilot Auto (`Auto (copilot)`) — do not override the model. Each call is stateless: pass the spec, target paths, and reference paths.
+
+A plain chat that is not on that path writes the file directly. If you were started as a subagent, write it yourself and do not invoke Code Writer. Only the hidden Orchestrator may delegate while it is a subagent. Code Writer and Verifier never delegate.
 
 ## Don't trust your own writeup
 
@@ -37,7 +43,7 @@ Step 4 is usually one small script or test that imports the same library the app
 2. Find the one fact it's safe because of. Most changes that look risky are safe because of a single fact, like "this call only drops already-dead cache entries and does nothing else". Find that fact. If it holds, most risky cases are cleared at once. Spend your time here, not on a long list of maybes.
 3. Look where search stops. Read the source of the library you call, and check its pinned version and any local patch. Work out when things run: microtasks, unmount and teardown, and which UI runtime. Follow what a symbol search misses: the JSON an API returns, a DB column, a wire format, another language reading the same bytes, a feature flag, code three hops downstream. Use `search/usages` on the named symbol, then a targeted read.
 4. Be honest about each risk. Give it a real chance of happening and a real cost if it does. Keep the risks you confirmed. List the ones you checked and cleared separately. Cite a real `file:line`. A search that finds nothing is still an answer. Never make up a caller or an API.
-5. Prove the one fact. Run code that calls the real function. Take the command from `tooling.suggested_verify` in `uv run goat context --repo <name> --format json`, or a focused test that repo already knows how to run. When this chat is the primary Implementer, invoke **Verifier** (`.github/agents/verifier.agent.md`) with `#tool:agent` and that command. Otherwise run it here. If you were started as a subagent, run it yourself. Only the hidden Orchestrator may delegate while it is a subagent. Verifier never delegates. `read/problems` is early feedback, not the proof. Paste what happened. Put a regression test in the product repo when that repo already tests this path. Do not leave a scratch script in this goat repo.
+5. Prove the one fact. Run code that calls the real function. Take the command from `tooling.suggested_verify` in `uv run goat context --repo <name> --format json`, or a focused test that repo already knows how to run. When this chat is the primary Implementer, invoke **Verifier** (`.github/agents/verifier.agent.md`) with `#tool:agent`, that command, the cwd, and the expected result (`expected: pass` unless you are proving a red test). A per-command `fail` stops only when it does not match the expected result you passed. Otherwise run the command here. If you were started as a subagent, run it yourself. Verifier never delegates. `read/problems` is early feedback, not the proof. Paste what happened. Put a regression test in the product repo when that repo already tests this path, through Code Writer when you are the primary Implementer. Do not leave a scratch script in this goat repo.
 
 ## What to hand back
 

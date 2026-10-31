@@ -1,6 +1,6 @@
 ---
 name: technical-writing
-description: "Layered technical-writing standard: Diátaxis structure, Google developer style sentences, STE instruction rules, Global English syntax. Use for /technical-writing or when writing or reviewing docs, RFCs, readmes, PR descriptions, or commit messages."
+description: Rewrite a doc, RFC, readme, PR description, or commit message so a tired engineer understands it on the first read.
 argument-hint: doc, RFC, readme, PR, or commit text
 disable-model-invocation: true
 ---
@@ -96,7 +96,7 @@ Don't mix modes: no reference tables inside a tutorial, no tutorial hand-holding
 - Apply `.github/skills/unslop/SKILL.md` to every doc this skill touches. That skill owns the slop-pattern catalog: AI vocabulary, filler, hedging, formatting tells.
 - PR descriptions and commit messages are writing too. Every layer except Diátaxis applies to them. A PR body is a briefing that a reviewer can read in under a minute. Do not paste agent logs, SHA lists, or metric tables. Link them.
 - Product UI strings are not documentation. Use your product's copy guidelines for those.
-- Indent code snippets with tabs. Write real paths. Make every count or tree claim true at the commit that lands it, and include the command that regenerates it.
+- Match the repo's existing indentation. Write real paths. Make every count or tree claim true at the commit that lands it, and include the command that regenerates it.
 - Do not invent a `goat` command or flag. The catalog is `docs/cli.md`.
 
 ## Worked example

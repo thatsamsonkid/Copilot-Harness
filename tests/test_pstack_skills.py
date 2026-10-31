@@ -80,6 +80,9 @@ def test_each_pstack_skill_is_user_triggered_and_attributed():
         assert "tools" not in meta
         assert "agent" not in meta
         assert ATTRIBUTION in body
+        description = str(meta.get("description") or "").lower()
+        for phrase in ("use only when", "use when", "use for ", "or when"):
+            assert phrase not in description, f"{name} description routes the model: {phrase}"
 
 
 def test_pstack_skills_have_no_cursor_only_terms():
@@ -97,6 +100,43 @@ def test_repo_paths_named_by_pstack_skills_exist():
         for token in discovered:
             path = ROOT / token.rstrip("/")
             assert path.exists(), f"{name} references missing {token}"
+
+
+_GOAT_FLAGS = re.compile(
+    r"\bgoat\s+([a-z][a-z0-9-]*)((?:\s+--[a-z0-9-]+(?:\s+<[^>\s]+>)?)*)"
+)
+
+
+def _mentioned_goat_flags(text: str) -> set[tuple[str, str]]:
+    found: set[tuple[str, str]] = set()
+    for match in _GOAT_FLAGS.finditer(text):
+        command = match.group(1)
+        for flag in re.findall(r"--[a-z0-9-]+", match.group(2)):
+            found.add((command, flag))
+    return found
+
+
+def _command_flag_section(docs: str, command: str) -> str:
+    marker = f"### `goat {command}`"
+    start = docs.find(marker)
+    assert start != -1, f"docs/cli.md has no flags section for goat {command}"
+    rest = docs[start:]
+    nxt = re.search(r"\n### |\n## ", rest[len(marker) :])
+    end = len(marker) + nxt.start() if nxt else len(rest)
+    return rest[:end]
+
+
+def test_pstack_skill_goat_flags_are_in_cli_docs():
+    """Scoped to the six pstack skills. Repo-wide flag mentions are a larger catalog."""
+    docs = (ROOT / "docs" / "cli.md").read_text(encoding="utf-8")
+    seen: set[tuple[str, str]] = set()
+    for name in PSTACK_SKILLS:
+        text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+        seen |= _mentioned_goat_flags(text)
+    assert seen, "expected the pstack skills to name goat flags"
+    for command, flag in sorted(seen):
+        section = _command_flag_section(docs, command)
+        assert flag in section, f"goat {command} {flag} is not in docs/cli.md"
 
 
 def test_third_party_notices_list_the_six_skills():
