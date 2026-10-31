@@ -131,8 +131,37 @@ def test_orchestrator_is_hidden_and_not_user_invocable():
         "stateless",
         "auto (copilot)",
         "do not override the model",
+        "only the hidden orchestrator may delegate",
+        "never delegate",
     ):
         assert token in lowered
+
+
+def test_delegation_stops_at_orchestrator_workers():
+    """Orchestrator is the only subagent that delegates. Workers never do."""
+    phrase = "only the hidden orchestrator may delegate"
+    banned = (
+        "subagents do not spawn subagents",
+        "subagents must not spawn other subagents",
+    )
+    paths = (
+        ROOT / "AGENTS.md",
+        ROOT / ".github" / "copilot-instructions.md",
+        ROOT / ".github" / "instructions" / "engineering-principles.instructions.md",
+        ROOT / "README.md",
+        ROOT / ".github" / "skills" / "implementing" / "SKILL.md",
+        ROOT / ".github" / "skills" / "planning" / "SKILL.md",
+        ROOT / "templates" / "plan.md",
+        IMPLEMENTER,
+        ORCHESTRATOR,
+        PLANNER,
+    )
+    for path in paths:
+        text = path.read_text(encoding="utf-8").lower().replace("*", "")
+        assert phrase in text, path
+        assert "never delegate" in text, path
+        for bad in banned:
+            assert bad not in text, path
 
 
 def test_jira_planner_auto_delegates_reads_not_writes():
@@ -180,7 +209,8 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
         "safety-critical",
         "do not nest agents",
         "write product files yourself",
-        "subagents must not spawn",
+        "only the hidden orchestrator may delegate",
+        "never delegate",
         "wrote the plan in this chat",
         "/goat-implement",
         "your write worker",

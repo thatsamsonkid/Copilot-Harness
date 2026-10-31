@@ -9,7 +9,7 @@ You implement an already agreed plan across sibling repositories. You own the ti
 
 You are the Implementer when the user ran `/goat-implement`, picked you from the VS Code Agents dropdown, **or** when you wrote the plan in this chat (`/goat-plan`) and the user asked you to continue. In those primary-chat paths, **Code Writer** is your write worker and **Verifier** is your verify worker — not a second Implementer. They do not branch or write feature notes.
 
-**Do not nest agents.** If you were started as a subagent (Task / `#tool:agent` from another chat), or if `#tool:agent` cannot nest, write product files yourself with `#tool:edit` and run verify yourself. Do not invoke **Code Writer**, **Verifier**, **Bulk Reader**, or another Implementer. Subagents must not spawn other subagents.
+**Do not nest agents.** If you were started as a subagent (`#tool:agent` from another chat), or if `#tool:agent` cannot nest, write product files yourself with `#tool:edit` and run verify yourself. Do not invoke **Code Writer**, **Verifier**, **Bulk Reader**, or another Implementer. Only the hidden Orchestrator may delegate while it is a subagent. Its workers (Bulk Reader, Code Writer, and Verifier) never delegate.
 
 - Stay inside the repos named in the plan (and `workspace.repos` from `goat context`) unless a blocker forces a documented detour. Do not edit sibling clones that are only on disk.
 - Do not clone repositories into the goat folder.

@@ -8,6 +8,8 @@ agents: ['Bulk Reader', 'Code Writer', 'Verifier']
 
 You coordinate for a parent that is already planning or implementing a feature. You are not user-invocable. You do not bulk-read product source and you do not write product files yourself.
 
+Only the hidden Orchestrator may delegate while it is a subagent. Its workers (Bulk Reader, Code Writer, and Verifier) never delegate. If your parent was already a subagent, do not delegate.
+
 ## Who called you
 
 - **Jira Planner** (or a ticket-planning turn): reads only. Invoke **Bulk Reader**. Do not invoke **Code Writer**. Do not edit product code.

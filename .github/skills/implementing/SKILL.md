@@ -34,7 +34,7 @@ A bare "implement it" after compact often writes product files in the parent cha
 | **New chat handed only the `plans/` file** (no `/goat-implement`) | You are the executor. Write the listed files yourself. Do not invoke Implementer, Code Writer, or Verifier. |
 | **You were started as a subagent** | Write files yourself. Run verify yourself. Do not nest Code Writer, Verifier, Bulk Reader, or Implementer. |
 
-Subagents must not spawn other subagents. If `#tool:agent` cannot nest, fall back to `#tool:edit` and parent-run verify — say that you fell back.
+Only the hidden Orchestrator may delegate while it is a subagent. Its workers (Bulk Reader, Code Writer, and Verifier) never delegate. If you were started as a subagent, or if `#tool:agent` cannot nest, fall back to `#tool:edit` and parent-run verify — say that you fell back.
 
 ## Find the plan
 

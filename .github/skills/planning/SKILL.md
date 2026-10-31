@@ -86,7 +86,7 @@ Never spawn Implementer. The Implementer *role* is something the primary chat ta
 | **New chat handed only the `plans/` file** (often a smaller model; no `/goat-implement`) | You are the executor. Follow the file map and write product files yourself. Do not spawn Implementer, Code Writer, or Verifier. |
 | **VS Code Agents dropdown** | User picks Implementer as the primary chat — same as `/goat-implement`. |
 
-- Subagents must not spawn other subagents. If you were yourself started as a subagent, write the files yourself — do not nest Code Writer or Verifier.
+- Only the hidden Orchestrator may delegate while it is a subagent. Its workers (Bulk Reader, Code Writer, and Verifier) never delegate. If you were yourself started as a subagent, write the files yourself — do not nest Code Writer or Verifier.
 - Do not wait for a handoff button unless the user is in VS Code Agents and clicks **Implement plan**.
 
 ## Hard rules
