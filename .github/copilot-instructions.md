@@ -4,7 +4,10 @@ This repository is tooling only. Application code lives in **git clones next to 
 
 Copilot Chat slash commands are skills at `.github/skills/<name>/SKILL.md` with `disable-model-invocation: true` (the user types the slash). Agent-loadable contracts stay in `jira-cli`, `figma-cli`, `bruno-cli`, `workspace-context`, `implementing`, `planning`, `workspace-create`, and `workspace-start`.
 
-Engineering principles for every file: `.github/instructions/engineering-principles.instructions.md`.
+Engineering principles: `.github/instructions/engineering-principles.instructions.md`. Load it when planning, drafting, editing, or deciding a change is done.
+Decide reversible in-scope details without asking, but keep this harness's approval points.
+A small task the user already asked for needs no `plans/` file.
+Prove it works before claiming done.
 
 ## First-run and vague prompts
 

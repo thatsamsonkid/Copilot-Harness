@@ -318,7 +318,7 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
 | `.github/hooks/bulk-read-routing.json` | Keep debug / architecture / safety in the parent agent |
 | `.github/copilot-instructions.md` | Always-on workspace rules |
-| `.github/instructions/engineering-principles.instructions.md` | Always-on engineering principles |
+| `.github/instructions/engineering-principles.instructions.md` | Engineering principles, loaded on edit or on demand |
 | `AGENTS.md` | Same rules for other agents |
 | `docs/cli.md` | Human cheat sheet of every `goat` command (`goat commands`) |
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |

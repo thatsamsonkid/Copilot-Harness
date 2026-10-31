@@ -1,6 +1,6 @@
 ---
 name: Engineering principles
-description: Always-on principles for edits in this Copilot harness and the sibling repos it coordinates.
+description: Use when planning work, drafting a Jira ticket, editing code, answering a how-to question, or deciding whether a change is done.
 applyTo: "**"
 ---
 
@@ -32,7 +32,7 @@ Harness approval points still wait. Jira stays read-only: do not create or updat
 
 ## Guard the context window
 
-Keep raw file text out of the main thread. Send a survey of named files to **Bulk Reader** (`/bulk-reader`). Debugging, architecture, safety, and edits stay in this chat: targeted `Read` with `limit`/`offset`. Hooks in `.github/hooks` deny a whole-file `Read` and `cat` / `head` / `tail` / `less` / `more` on large files. Do not edit from Bulk Reader line numbers. Subagents do not spawn subagents.
+Keep raw file text out of the main thread. For a survey of named files, load `.github/skills/bulk-reader/SKILL.md` (or the user runs `/bulk-reader`). Debugging, architecture, safety, and edits stay in this chat: targeted `Read` with `limit`/`offset`. Hooks in `.github/hooks` deny a whole-file `Read` and `cat` / `head` / `tail` / `less` / `more` on large files. Do not edit from Bulk Reader line numbers. Subagents do not spawn subagents.
 
 ## Sequence verifiable units
 

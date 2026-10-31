@@ -41,7 +41,9 @@ Resolution order. Open the first file that exists:
 | Bug, Defect | `bug` |
 | Spike, Research | `spike` |
 | Task, Sub-task, Subtask, Epic | fallback file above (do not look up `task.md`) |
-| Any other name | that name lowercased; spaces become hyphens (`Service Request` → `service-request`) |
+| Any other name | lowercase `[a-z0-9-]` only. Spaces become hyphens. Drop everything else. Empty result falls back (`Service Request` → `service-request`) |
+
+When turning an arbitrary type name into a file name, normalise to lowercase `[a-z0-9-]` only. Spaces become hyphens. Drop everything else. Reject an empty result and fall back to `templates/jira-ticket.md`, so a name with `/` or `..` cannot resolve outside `templates/jira/local/`.
 
 State the path you opened in chat and on the draft header (`- Template:`).
 
