@@ -324,6 +324,7 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `.github/skills/teach/SKILL.md` | `/teach` — plain explanation of how and why |
 | `.github/skills/interrogate/SKILL.md` | `/interrogate` — try to break a change; a finding must be proven by a run |
 | `.github/skills/no-comments/SKILL.md` | `/no-comments` — delete comments outside the keep-list |
+| `.github/skills/swarm/SKILL.md` | `/swarm` — read-only coverage across disjoint slices |
 | `.github/skills/skills-install/SKILL.md` | `/skills-install` — lift sibling or remote skills for VS Code Agents |
 | `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
