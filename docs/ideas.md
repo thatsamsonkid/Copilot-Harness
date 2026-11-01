@@ -110,6 +110,7 @@ These are separate from the themes above but fit the same goat:
 
 - **Jira write path** — `goat jira comment` / transition, still CLI-only, still no token in chat. Wait until read-only onboarding stays boringly reliable.
 - **Worktrees** — `goat worktree PROJ-123` so Implementer does not dirty a shared checkout that someone else has open.
+- **`/arena` deferred** — VS Code local subagents share one workspace (no per-subagent worktree isolation). The harness pins `Auto (copilot)`, so there is no cross-family judge. Creating worktrees in sibling repos risks leftover branches and `goat status` confusion. Do not add an `/arena` skill.
 - **Personal overlay** — optional gitignored `repositories.local.yml` for extra remotes you do not want to commit.
 - **Sparse / partial clone hints** — for a huge monorepo, `clone` can suggest `git clone --filter=blob:none` / sparse-checkout of the package `nx show project` or the language server named. Do not invent the sparse paths here.
 - **Pinned SHAs** — a `lock` file of sibling commit SHAs so a Cloud Agent / eval run is reproducible. Optional, not for daily work.

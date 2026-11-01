@@ -16,6 +16,7 @@ These slash skills are adapted from pstack:
 - `/how` (`.github/skills/how/SKILL.md`)
 - `/interrogate` (`.github/skills/interrogate/SKILL.md`)
 - `/no-comments` (`.github/skills/no-comments/SKILL.md`)
+- `/swarm` (`.github/skills/swarm/SKILL.md`)
 - `/tdd` (`.github/skills/tdd/SKILL.md`)
 - `/teach` (`.github/skills/teach/SKILL.md`)
 - `/technical-writing` (`.github/skills/technical-writing/SKILL.md`)

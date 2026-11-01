@@ -18,6 +18,7 @@ PSTACK_SKILLS = (
     "how",
     "interrogate",
     "no-comments",
+    "swarm",
     "tdd",
     "teach",
     "technical-writing",
@@ -252,6 +253,21 @@ def test_no_comments_reruns_once_then_fails_and_skips_this_harness():
         "Fail `/no-comments` and hand back the report."
     ) in text
     assert "Never edit this harness." in text
+
+
+def test_swarm_fans_out_read_only_bulk_reader_slices():
+    text = (SKILLS / "swarm" / "SKILL.md").read_text(encoding="utf-8")
+    assert "Bulk Reader" in text
+    assert "in the same turn" in text
+    assert "disjoint" in text
+    assert "A gap does not count as a pass" in text
+    assert _SUBAGENT_RULE in text
+    assert "Workers are Bulk Reader only." in text
+    forbid = "Never invoke Code Writer, Verifier, or any writer."
+    assert forbid in text
+    without_forbid = text.replace(forbid, "")
+    assert "Code Writer" not in without_forbid
+    assert "Verifier" not in without_forbid
 
 
 def test_interrogate_repros_stay_outside_every_repo():

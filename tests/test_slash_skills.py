@@ -39,6 +39,7 @@ SLASH_SKILLS = {
     "review": "PROJ-123",
     "skills-install": "list | lift | pull <git-url>",
     "start-workspace": "optional workspace id or repo names",
+    "swarm": "coverage question or slices",
     "tdd": "bug or behavior to lock",
     "teach": "subsystem or change",
     "technical-writing": "doc, RFC, readme, PR, or commit text",
