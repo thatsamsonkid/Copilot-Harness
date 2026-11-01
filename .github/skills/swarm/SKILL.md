@@ -29,13 +29,15 @@ Every git command is `git -C <repo-path>`. Bulk Reader has no shell. Run git in 
 
 State a done predicate, and the report this run returns, before any call.
 
-Choose one shape. Split the work into disjoint (non-overlapping) slices, or run a read-only race on one shared brief. A race declares its ranking rule before any call. Use first `PASS`, or rank every arm. One brief per slice. A race copies that same brief to every arm and includes the ranking rule. If slices overlap, re-split before fanning out.
+Choose one shape. Split the work into disjoint (non-overlapping) slices, or run a read-only race on one shared brief. A race declares its ranking rule before any call. Use first `PASS`, or rank every arm. When rank-every-arm ties, ties go to the arm with more distinct `path:line` evidence; if still tied, report both. One brief per slice. A race copies that same brief to every arm and includes the ranking rule. If slices overlap, re-split before fanning out.
+
+At most 4 slices, matching `/how` (`.github/skills/how/SKILL.md`), which uses up to 4 parallel Bulk Reader calls. Each slice is a handful of files. If the question is larger, merge slices until 4 remain and name what did not fit.
 
 Each brief stands alone. Include the done predicate, the exact slice or race arm, the paths or symbols, and that the reply needs `path:line` evidence.
 
 ## Fan out
 
-Invoke **Bulk Reader** (`.github/agents/bulk-reader.agent.md`) once per slice, with `#tool:agent`, and make every call in the same turn. The name is case-sensitive. Its profile pins Copilot Auto (`Auto (copilot)`). Do not override the model. Each call is stateless. Pass that one brief only.
+Invoke **Bulk Reader** (`.github/agents/bulk-reader.agent.md`) once per slice, at most 4 calls, with `#tool:agent`, and make every call in the same turn. The name is case-sensitive. Its profile pins Copilot Auto (`Auto (copilot)`). Do not override the model. Each call is stateless. Pass that one brief only.
 
 Do not promise speed. VS Code docs only say subagents can run in parallel when the harness supports concurrent subagents. Promise coverage, not speed.
 

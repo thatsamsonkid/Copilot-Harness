@@ -15,9 +15,11 @@ PSTACK_SKILLS = (
     "benchmark-checklist",
     "blast-radius",
     "bro",
+    "correct",
     "how",
     "interrogate",
     "no-comments",
+    "reflect",
     "swarm",
     "tdd",
     "teach",
@@ -41,6 +43,8 @@ CURSOR_ONLY = (
     "readonly: true",
     "mcps/",
     # Cursor workflow names. Global on every pstack skill: none of them use these substrings.
+    "agent-transcripts",
+    "create-skill",
     "arena",
     "in-your-own-words",
     "/architect",
@@ -268,6 +272,56 @@ def test_swarm_fans_out_read_only_bulk_reader_slices():
     without_forbid = text.replace(forbid, "")
     assert "Code Writer" not in without_forbid
     assert "Verifier" not in without_forbid
+    assert "Promise coverage, not speed" in text
+    assert "re-invoked once" in text
+    assert "`PASS`" in text
+    assert "`ISSUES`" in text
+    assert "`BLOCKED`" in text
+    assert "re-split" in text
+    assert (
+        "Do not read `.env`, print a token, or ask anyone to paste a token. "
+        "Do not clone a repo into this goat folder."
+    ) in text
+    assert "At most 4 slices" in text
+    assert (
+        "ties go to the arm with more distinct `path:line` evidence; "
+        "if still tied, report both."
+    ) in text
+
+
+def test_reflect_is_report_only_and_routes_enforceable_items_to_correct():
+    text = (SKILLS / "reflect" / "SKILL.md").read_text(encoding="utf-8")
+    assert "It edits nothing." in text
+    assert "The user makes the edits." in text
+    assert "Do not spawn a subagent for a lens." in text
+    assert "Do not send these lenses to Bulk Reader." in text
+    prohibition = "Never open a PR, never push, never commit, never file to a tracker."
+    assert prohibition in text
+    assert text.count("open a PR") == 1
+    assert text.count("push") == 1
+    assert "routed to `/correct`" in text
+    assert "instead of becoming prose" in text
+
+
+def test_correct_targets_sibling_and_never_edits_this_harness():
+    text = (SKILLS / "correct" / "SKILL.md").read_text(encoding="utf-8")
+    assert "git -C <repo-path>" in text
+    assert "Never edit this harness." in text
+    ladder = (
+        "1. **Architecture.**",
+        "2. **Types.**",
+        "a lint whose error message names the fix",
+        "3. **Test.**",
+        "4. **Docs last.**",
+    )
+    positions = [text.index(step) for step in ladder]
+    assert positions == sorted(positions)
+    assert "failing on a real past mistake" in text
+    assert "at least two pieces of evidence" in text
+    assert "rule -> enforcer table" in text
+    assert "the sibling's `AGENTS.md` or its `.github/copilot-instructions.md`" in text
+    assert "Never put that table in this harness." in text
+    assert "waits for approval before writing" in text
 
 
 def test_interrogate_repros_stay_outside_every_repo():

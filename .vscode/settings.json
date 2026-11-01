@@ -30,7 +30,9 @@
     "teach": "Explain how it works and why, in plain language.",
     "interrogate": "Stress-test a change. Only a finding proven by a run survives.",
     "no-comments": "Delete comments that are not on the keep-list.",
-    "swarm": "Fan out read-only coverage across disjoint slices."
+    "swarm": "Fan out read-only coverage across disjoint slices.",
+    "reflect": "Reflect on this chat and propose skill edits. Report only.",
+    "correct": "Make a repeated mistake impossible in a sibling repo."
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "terminal.integrated.env.linux": {
