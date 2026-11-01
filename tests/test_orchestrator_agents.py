@@ -231,6 +231,10 @@ def test_comment_reviewer_stays_on_the_caller_allowlists():
         ROOT / ".github" / "copilot-instructions.md",
         ROOT / "README.md",
         ROOT / ".github" / "skills" / "implementing" / "SKILL.md",
+        ROOT / ".github" / "skills" / "planning" / "SKILL.md",
+        ROOT / "templates" / "plan.md",
+        ROOT / ".github" / "instructions" / "engineering-principles.instructions.md",
+        PLANNER,
         IMPLEMENTER,
         ORCHESTRATOR,
     ):
