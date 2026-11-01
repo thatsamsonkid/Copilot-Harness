@@ -29,6 +29,7 @@ SLASH_SKILLS = {
     "goat-implement": "PROJ-123",
     "goat-plan": "PROJ-123",
     "handoff": "PROJ-123",
+    "how": "subsystem, flow, or placement",
     "jira-ticket": "PROJ-123",
     "new-workspace": "optional-id",
     "orient": "what area or ticket is this about?",
@@ -37,8 +38,10 @@ SLASH_SKILLS = {
     "skills-install": "list | lift | pull <git-url>",
     "start-workspace": "optional workspace id or repo names",
     "tdd": "bug or behavior to lock",
+    "teach": "subsystem or change",
     "technical-writing": "doc, RFC, readme, PR, or commit text",
     "unslop": "paste or point at the text",
+    "why": "decision or regression",
 }
 
 AGENT_LOADABLE = (

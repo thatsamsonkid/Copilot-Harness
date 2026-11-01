@@ -319,6 +319,9 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `.github/skills/tdd/SKILL.md` | `/tdd` — failing test before the fix |
 | `.github/skills/blast-radius/SKILL.md` | `/blast-radius` — what a change could break elsewhere |
 | `.github/skills/benchmark-checklist/SKILL.md` | `/benchmark-checklist` — vet a perf measurement |
+| `.github/skills/how/SKILL.md` | `/how` — explain how a subsystem works |
+| `.github/skills/why/SKILL.md` | `/why` — explain why the code is shaped this way |
+| `.github/skills/teach/SKILL.md` | `/teach` — plain explanation of how and why |
 | `.github/skills/skills-install/SKILL.md` | `/skills-install` — lift sibling or remote skills for VS Code Agents |
 | `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
@@ -341,7 +344,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/get-started` is the human onboarding path. It runs `goat init` and points at the token doc. Copilot must never ask anyone to paste the API token into chat.
 
-`/orient` is for vague prompts against large repos. It runs `goat context`, loads that repo's own instructions, then uses `search/codebase` and `search/usages` instead of inventing standards here.
+`/orient` is for vague prompts against large repos. It runs `goat context`, loads that repo's own instructions, then uses `search/codebase` and `search/usages` instead of inventing standards here. Mechanism questions ('how does it work') go to `/how`. `/orient` stays where to look.
 
 **Jira Planner** (and `/jira-ticket`) orchestrates automatically: it invokes the hidden **Bulk Reader** subagent for product files so the plan chat stays a map. After `/goat-plan`, never spawn Implementer. Start implementation with **`/goat-implement`** — that command survives chat compaction: the chat becomes Implementer, invokes **Code Writer** for product files and **Verifier** for verify checks (it still runs `goat branch` and feature notes). A new chat with only the `plans/` file and no `/goat-implement` (often a smaller model) is the executor and writes the files itself. VS Code Agents dropdown (pick **Implementer** as primary) is the same as `/goat-implement`. Only the hidden Orchestrator may delegate while it is a subagent. Its workers (Bulk Reader, Code Writer, and Verifier) never delegate. Do not pick Orchestrator — it is not in the agents dropdown.
 

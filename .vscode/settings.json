@@ -24,7 +24,10 @@
     "technical-writing": "Write or review docs, RFCs, readmes, and PR text.",
     "tdd": "Lock a bug with a failing test before the fix.",
     "blast-radius": "Find what a change could break somewhere else.",
-    "benchmark-checklist": "Vet a perf number before you report it."
+    "benchmark-checklist": "Vet a perf number before you report it.",
+    "how": "Explain how a subsystem works.",
+    "why": "Explain why the code is shaped this way.",
+    "teach": "Explain how it works and why, in plain language."
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "terminal.integrated.env.linux": {
