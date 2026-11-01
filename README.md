@@ -322,6 +322,8 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `.github/skills/how/SKILL.md` | `/how` — explain how a subsystem works |
 | `.github/skills/why/SKILL.md` | `/why` — explain why the code is shaped this way |
 | `.github/skills/teach/SKILL.md` | `/teach` — plain explanation of how and why |
+| `.github/skills/interrogate/SKILL.md` | `/interrogate` — try to break a change; a finding must be proven by a run |
+| `.github/skills/no-comments/SKILL.md` | `/no-comments` — delete comments outside the keep-list |
 | `.github/skills/skills-install/SKILL.md` | `/skills-install` — lift sibling or remote skills for VS Code Agents |
 | `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
@@ -332,13 +334,14 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `docs/cli.md` | Human cheat sheet of every `goat` command (`goat commands`) |
 | `.github/agents/jira-planner.agent.md` | Plan from a ticket |
 | `.github/agents/workspace-creator.agent.md` | Create a workspace from chat |
-| `.github/agents/implementer.agent.md` | Implement an agreed plan |
+| `.github/agents/implementer.agent.md` | Implement an agreed plan; allowlist includes Comment Reviewer |
 | `.github/agents/reviewer.agent.md` | Review diffs against `done_when` |
 | `.github/agents/readiness-auditor.agent.md` | Read-only AI-readiness audit of workspace product repos |
-| `.github/agents/orchestrator.agent.md` | Hidden coordinator (not in the dropdown) |
+| `.github/agents/orchestrator.agent.md` | Hidden coordinator (not in the dropdown); allowlist includes Comment Reviewer |
 | `.github/agents/bulk-reader.agent.md` | Hidden subagent (Copilot Auto): structured bullets from named files |
 | `.github/agents/code-writer.agent.md` | Hidden subagent (Copilot Auto): Implementer's product-file writer |
 | `.github/agents/verifier.agent.md` | Hidden subagent: Implementer's verify-command runner |
+| `.github/agents/comment-reviewer.agent.md` | Hidden subagent (Copilot Auto): comment deletions as `path:line` bullets |
 
 The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
 
@@ -346,7 +349,7 @@ The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, a
 
 `/orient` is for vague prompts against large repos. It runs `goat context`, loads that repo's own instructions, then uses `search/codebase` and `search/usages` instead of inventing standards here. Mechanism questions ('how does it work') go to `/how`. `/orient` stays where to look.
 
-**Jira Planner** (and `/jira-ticket`) orchestrates automatically: it invokes the hidden **Bulk Reader** subagent for product files so the plan chat stays a map. After `/goat-plan`, never spawn Implementer. Start implementation with **`/goat-implement`** — that command survives chat compaction: the chat becomes Implementer, invokes **Code Writer** for product files and **Verifier** for verify checks (it still runs `goat branch` and feature notes). A new chat with only the `plans/` file and no `/goat-implement` (often a smaller model) is the executor and writes the files itself. VS Code Agents dropdown (pick **Implementer** as primary) is the same as `/goat-implement`. Only the hidden Orchestrator may delegate while it is a subagent. Its workers (Bulk Reader, Code Writer, and Verifier) never delegate. Do not pick Orchestrator — it is not in the agents dropdown.
+**Jira Planner** (and `/jira-ticket`) orchestrates automatically: it invokes the hidden **Bulk Reader** subagent for product files so the plan chat stays a map. After `/goat-plan`, never spawn Implementer. Start implementation with **`/goat-implement`** — that command survives chat compaction: the chat becomes Implementer, invokes **Code Writer** for product files and **Verifier** for verify checks (it still runs `goat branch` and feature notes). A new chat with only the `plans/` file and no `/goat-implement` (often a smaller model) is the executor and writes the files itself. VS Code Agents dropdown (pick **Implementer** as primary) is the same as `/goat-implement`. Only the hidden Orchestrator may delegate while it is a subagent. Its workers (Bulk Reader, Code Writer, Verifier, and Comment Reviewer) never delegate. Do not pick Orchestrator — it is not in the agents dropdown.
 
 Two Copilot hooks in `.github/hooks` stop whole-file dumps. `check-file-size` fires on every `Read`/`view` and denies files over the line threshold (default 800; `GOAT_BULK_READ_MAX_LINES` or `.github/hooks/read-guard.json`). `Read` with `limit` passes through — use that for edits, debugging, architecture, and safety-critical code. `check-bash-read` denies `cat`/`head`/`tail`/`less`/`more` on those large files; a pipe (`cat file | grep`) or `head -n`/`tail -n` is treated as targeted and passes. `bulk-read-routing` injects the same split on every prompt: Bulk Reader is survey-only; do not delegate debugging, architectural decisions, or safety-critical analysis; do not edit from worker line numbers.
 
