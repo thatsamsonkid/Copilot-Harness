@@ -49,7 +49,13 @@ Show each new check failing on a real past mistake before it lands. Reconstruct 
 
 Take the command from `tooling.suggested_verify` in that `goat context` JSON. Do not invent npm or make targets. `read/problems` is early feedback, not the proof.
 
-One commit per check, in the sibling at `<repo-path>`, is fine. The commit includes the check and its table row, and it is green. Never push.
+Before the first write in the sibling, run `uv run goat status --format json` from the goat folder. If a Jira key is in play, follow the next sentence. If no Jira key is in play, stop and ask the user.
+
+Before the first product edit, run `uv run goat branch <KEY>` so each touched sibling is on the Jira-key branch. Refuse to create the branch when the tree is dirty. Then run `uv run goat status --format json` again.
+
+`git -C <repo-path> status --porcelain` must be empty. From that status JSON, `repos[].git.branch` must not equal `repos[].git.default_branch`. If either is wrong, do not write and do not commit.
+
+One commit per check, in the sibling at `<repo-path>`, is fine only after those checks pass. The commit includes the check and its table row, and it is green. Never push.
 
 ## Rule table
 
@@ -65,7 +71,7 @@ When the user corrects you and the rule is already in the table with nothing enf
 
 This skill waits for approval before writing. Show the class, the two pieces of evidence, the level, and the check. Do not write a file, and do not commit, until the user approves. If the user does not approve, add nothing.
 
-After approval, writes stay inside `<repo-path>`. Never edit this harness.
+After approval, writes stay inside `<repo-path>`. Do not write until the branch checks in Prove it have passed. Never edit this harness.
 
 When this chat is the primary Implementer (`/goat-implement`, `.github/skills/implementing/SKILL.md`, or the user picked Implementer), those product-file edits go through **Code Writer** (`.github/agents/code-writer.agent.md`) with `#tool:agent`. Do not edit those files yourself. The name is case-sensitive. Its profile pins Copilot Auto (`Auto (copilot)`). Do not override the model. Each call is stateless: pass the spec, the target paths, and the reference paths. Invoke **Verifier** (`.github/agents/verifier.agent.md`) with `#tool:agent` for the failing run and the rerun. Pass `expected: fail` for the proof against the past mistake, then `expected: pass` once the check is green.
 

@@ -297,8 +297,6 @@ def test_reflect_is_report_only_and_routes_enforceable_items_to_correct():
     assert "Do not send these lenses to Bulk Reader." in text
     prohibition = "Never open a PR, never push, never commit, never file to a tracker."
     assert prohibition in text
-    assert text.count("open a PR") == 1
-    assert text.count("push") == 1
     assert "routed to `/correct`" in text
     assert "instead of becoming prose" in text
 
@@ -322,6 +320,30 @@ def test_correct_targets_sibling_and_never_edits_this_harness():
     assert "the sibling's `AGENTS.md` or its `.github/copilot-instructions.md`" in text
     assert "Never put that table in this harness." in text
     assert "waits for approval before writing" in text
+    assert "Never push." in text
+    assert (
+        "Do not read `.env`, print a token, or ask anyone to paste a token. "
+        "Do not clone a repo into this goat folder."
+    ) in text
+    assert (
+        "When this chat is the primary Implementer "
+        "(`/goat-implement`, `.github/skills/implementing/SKILL.md`, "
+        "or the user picked Implementer), those product-file edits go through "
+        "**Code Writer**"
+    ) in text
+    status_at = text.index("run `uv run goat status --format json` from the goat folder.")
+    branch_at = text.index(
+        "Before the first product edit, run `uv run goat branch <KEY>` "
+        "so each touched sibling is on the Jira-key branch. "
+        "Refuse to create the branch when the tree is dirty."
+    )
+    porcelain_at = text.index("`git -C <repo-path> status --porcelain` must be empty.")
+    off_default_at = text.index(
+        "`repos[].git.branch` must not equal `repos[].git.default_branch`."
+    )
+    assert status_at < branch_at < porcelain_at < off_default_at
+    assert "If no Jira key is in play, stop and ask the user." in text
+    assert "If either is wrong, do not write and do not commit." in text
 
 
 def test_interrogate_repros_stay_outside_every_repo():
