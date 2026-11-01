@@ -16,6 +16,8 @@ PSTACK_SKILLS = (
     "blast-radius",
     "bro",
     "how",
+    "interrogate",
+    "no-comments",
     "tdd",
     "teach",
     "technical-writing",
@@ -37,6 +39,11 @@ CURSOR_ONLY = (
     "generalpurpose",
     "readonly: true",
     "mcps/",
+    # Cursor workflow names. Global on every pstack skill: none of them use these substrings.
+    "arena",
+    "in-your-own-words",
+    "/architect",
+    "worktree",
 )
 
 _REPO_ROOTS = (
@@ -216,3 +223,22 @@ def test_teach_follows_how_then_why_in_this_chat():
     assert "Do not hand either skill to a subagent." in text
     assert "Bulk Reader survey calls remain allowed" in text
     assert "/unslop" in text
+
+
+def test_interrogate_keeps_only_findings_proven_by_a_run():
+    text = (SKILLS / "interrogate" / "SKILL.md").read_text(encoding="utf-8")
+    assert "proven by a run" in text
+    assert "Do not apply fixes" in text
+    assert "### Intent" in text
+    assert "### Findings" in text
+    assert "### Dropped" in text
+    assert "multi-model" not in text.lower()
+    assert _SUBAGENT_RULE in text
+
+
+def test_no_comments_audits_comment_reviewer_and_waits():
+    text = (SKILLS / "no-comments" / "SKILL.md").read_text(encoding="utf-8")
+    assert "Comment Reviewer" in text
+    assert "waits for approval" in text
+    assert _SUBAGENT_RULE in text
+    assert "/architect" not in text

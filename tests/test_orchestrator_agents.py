@@ -6,6 +6,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 READER = ROOT / ".github" / "agents" / "bulk-reader.agent.md"
+COMMENTER = ROOT / ".github" / "agents" / "comment-reviewer.agent.md"
 WRITER = ROOT / ".github" / "agents" / "code-writer.agent.md"
 ORCHESTRATOR = ROOT / ".github" / "agents" / "orchestrator.agent.md"
 PLANNER = ROOT / ".github" / "agents" / "jira-planner.agent.md"
@@ -53,6 +54,25 @@ def test_bulk_reader_is_a_hidden_read_only_subagent():
         ".env",
     ):
         assert token in lowered
+
+
+def test_comment_reviewer_is_hidden_read_only_worker():
+    meta, body = _frontmatter_and_body(COMMENTER)
+    assert meta["name"] == "Comment Reviewer"
+    assert meta.get("user-invocable") is False
+    assert meta.get("agents") == []
+    assert meta.get("model") == AUTO_MODEL
+    tools = set(meta["tools"])
+    assert tools == {"read", "search", "search/codebase", "search/usages"}
+    assert "edit" not in tools
+    assert "runCommands" not in tools
+    assert "agent" not in tools
+    lowered = body.lower()
+    assert "do not spawn other agents" in lowered
+    assert "do not edit" in lowered
+    assert "must kill" in lowered
+    assert "deranged" not in lowered
+    assert "ha ha ha" not in lowered
 
 
 def test_code_writer_is_implementer_write_worker():

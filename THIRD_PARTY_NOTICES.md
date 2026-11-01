@@ -14,11 +14,15 @@ These slash skills are adapted from pstack:
 - `/blast-radius` (`.github/skills/blast-radius/SKILL.md`)
 - `/bro` (`.github/skills/bro/SKILL.md`)
 - `/how` (`.github/skills/how/SKILL.md`)
+- `/interrogate` (`.github/skills/interrogate/SKILL.md`)
+- `/no-comments` (`.github/skills/no-comments/SKILL.md`)
 - `/tdd` (`.github/skills/tdd/SKILL.md`)
 - `/teach` (`.github/skills/teach/SKILL.md`)
 - `/technical-writing` (`.github/skills/technical-writing/SKILL.md`)
 - `/unslop` (`.github/skills/unslop/SKILL.md`)
 - `/why` (`.github/skills/why/SKILL.md`)
+
+Comment Reviewer (`.github/agents/comment-reviewer.agent.md`) is adapted from the pstack comment-sicko agent.
 
 The license below is the pstack `LICENSE` text, verbatim.
 

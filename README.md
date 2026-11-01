@@ -322,6 +322,8 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `.github/skills/how/SKILL.md` | `/how` — explain how a subsystem works |
 | `.github/skills/why/SKILL.md` | `/why` — explain why the code is shaped this way |
 | `.github/skills/teach/SKILL.md` | `/teach` — plain explanation of how and why |
+| `.github/skills/interrogate/SKILL.md` | `/interrogate` — try to break a change; a finding must be proven by a run |
+| `.github/skills/no-comments/SKILL.md` | `/no-comments` — delete comments outside the keep-list |
 | `.github/skills/skills-install/SKILL.md` | `/skills-install` — lift sibling or remote skills for VS Code Agents |
 | `.github/hooks/check-file-size.json` | Block whole-file `Read` above the line threshold |
 | `.github/hooks/check-bash-read.json` | Block `cat`/`head`/`tail`/`less`/`more` on large files |
@@ -339,6 +341,7 @@ Slash commands below are user-triggered skills (`disable-model-invocation: true`
 | `.github/agents/bulk-reader.agent.md` | Hidden subagent (Copilot Auto): structured bullets from named files |
 | `.github/agents/code-writer.agent.md` | Hidden subagent (Copilot Auto): Implementer's product-file writer |
 | `.github/agents/verifier.agent.md` | Hidden subagent: Implementer's verify-command runner |
+| `.github/agents/comment-reviewer.agent.md` | Hidden subagent (Copilot Auto): comment deletions as `path:line` bullets |
 
 The **jira-cli** skill is the CLI contract: which command to run, JSON shapes, and the no-MCP / no-token rules. Copilot can load it automatically or you can invoke `/jira-cli`. Jira Planner and `/jira-ticket` stay the planning workflow; they now point at the skill instead of restating the command catalog.
 
