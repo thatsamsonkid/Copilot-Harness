@@ -73,6 +73,8 @@ def test_comment_reviewer_is_hidden_read_only_worker():
     assert "must kill" in lowered
     assert "deranged" not in lowered
     assert "ha ha ha" not in lowered
+    assert meta.get("agents") == []
+    assert "never delegates" in lowered
 
 
 def test_code_writer_is_implementer_write_worker():
@@ -157,7 +159,13 @@ def test_orchestrator_is_hidden_and_not_user_invocable():
     assert "agent" in meta["tools"]
     assert "read" not in meta["tools"]
     assert "edit" not in meta["tools"]
-    assert meta["agents"] == ["Bulk Reader", "Code Writer", "Verifier"]
+    assert meta["agents"] == [
+        "Bulk Reader",
+        "Code Writer",
+        "Verifier",
+        "Comment Reviewer",
+    ]
+    assert "Comment Reviewer" in meta["agents"]
     assert "handoffs" not in meta
     lowered = body.lower()
     for token in (
@@ -204,6 +212,31 @@ def test_delegation_stops_at_orchestrator_workers():
             assert bad not in text, path
 
 
+def test_comment_reviewer_stays_on_the_caller_allowlists():
+    """Removing Comment Reviewer from either allowlist or the worker sentence fails."""
+    sentence = (
+        "Its workers (Bulk Reader, Code Writer, Verifier, and Comment Reviewer) "
+        "never delegate"
+    )
+    allowlist = ["Bulk Reader", "Code Writer", "Verifier", "Comment Reviewer"]
+    for path in (IMPLEMENTER, ORCHESTRATOR):
+        meta, _body = _frontmatter_and_body(path)
+        assert meta["agents"] == allowlist, path
+        assert path.read_text(encoding="utf-8").count("Comment Reviewer") >= 1
+    commenter_meta, commenter_body = _frontmatter_and_body(COMMENTER)
+    assert commenter_meta["agents"] == []
+    assert "never delegates" in commenter_body.lower()
+    for path in (
+        ROOT / "AGENTS.md",
+        ROOT / ".github" / "copilot-instructions.md",
+        ROOT / "README.md",
+        ROOT / ".github" / "skills" / "implementing" / "SKILL.md",
+        IMPLEMENTER,
+        ORCHESTRATOR,
+    ):
+        assert sentence in path.read_text(encoding="utf-8"), path
+
+
 def test_jira_planner_auto_delegates_reads_not_writes():
     meta, body = _frontmatter_and_body(PLANNER)
     assert meta["name"] == "Jira Planner"
@@ -234,7 +267,13 @@ def test_implementer_owns_workflow_and_does_not_nest_when_already_a_subagent():
     assert "agent" in meta["tools"]
     assert "edit" in meta["tools"]
     assert "read/problems" in meta["tools"]
-    assert meta["agents"] == ["Bulk Reader", "Code Writer", "Verifier"]
+    assert meta["agents"] == [
+        "Bulk Reader",
+        "Code Writer",
+        "Verifier",
+        "Comment Reviewer",
+    ]
+    assert "Comment Reviewer" in meta["agents"]
     lowered = body.lower()
     for token in (
         "write worker",

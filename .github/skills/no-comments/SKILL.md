@@ -23,7 +23,7 @@ The scope is what the user names. Otherwise it is the branch diff from the merge
 
 Do not `cd` into a sibling first. Stay in the Goat folder. Run `uv run goat context --format json` and take `<repo-path>` from that repo's `repos[].path`. That field is the absolute clone path. Stay inside `workspace.repos`. Do not use `relpath`. If the user names a repo, run `uv run goat context --repo <name> --format json`.
 
-Run `uv run goat status --format json` and read `repos[].cloned`, `repos[].git.present`, and `repos[].git.default_branch`. Skip a repo whose `cloned` is false or whose `repos[].git.present` is false. Say that sibling is not on disk. Do not clone it. If the user did not name a repo, use each remaining workspace repo whose `repos[].git.branch` is not `repos[].git.default_branch`, or whose `repos[].git.dirty` is true. If none qualify, say there is no branch diff and stop. Every git command is `git -C <repo-path>`.
+Run `uv run goat status --format json` and read `repos[].cloned`, `repos[].git.present`, `repos[].git.branch`, `repos[].git.default_branch`, and `repos[].git.dirty`. Skip a repo whose `cloned` is false or whose `repos[].git.present` is false. Say that sibling is not on disk. Do not clone it. If the user did not name a repo, use each remaining workspace repo whose `repos[].git.branch` is not `repos[].git.default_branch`, or whose `repos[].git.dirty` is true. If none qualify, say there is no branch diff and stop. Every git command is `git -C <repo-path>`.
 
 ```bash
 git -C <repo-path> merge-base HEAD <default-branch>
@@ -38,7 +38,7 @@ Read the report before deleting anything.
 
 - Reject a bullet whose path is outside the scoped diff, or inside this Goat repo.
 - Reject any change that is not a comment deletion. Application code stays. A `MUST KILL` line is a report, not an edit.
-- A skip survives only with proof. The proof is the keep-list clause and the line that shows it: a license header, behavior forced by an external dependency, a formatter or linter directive such as `prettier-ignore`, a public API doc comment, or an issue or RFC link. Restore a deletion only with that proof. If the proof is missing, leave the comment deleted.
+- The proof is the keep-list clause and the line that shows it: a license header, behavior forced by an external dependency, a formatter or linter directive such as `prettier-ignore`, a public API doc comment, or an issue or RFC link. Accept a skip (keep) only with that proof. If the proof is missing, the comment stays a deletion.
 - For each `NEEDS /why <symbol>` bullet, run `/how` or `/why` yourself in this chat. Load `.github/skills/how/SKILL.md` or `.github/skills/why/SKILL.md` and follow it for that symbol. Do not hand that question to Comment Reviewer.
 
 If the audit rejects the report, invoke Comment Reviewer once more and name the failure. If that second report is also rejected, do not invoke it again. Fail `/no-comments` and hand back the report. When you are already reviewing in this chat, do not spawn Comment Reviewer to retry. Fail with the report.
@@ -60,7 +60,7 @@ When `/why` shows a constraint comment is real (`do not remove`, `do not change`
 ## Report
 
 - Deletion count, and each `path:line`.
-- Comments restored, with the proof.
+- Skips accepted, with the proof.
 - Whether Comment Reviewer was rerun once, and whether `/no-comments` failed on the second report.
 - `MUST KILL` symbols left unbuilt.
 - Encodings offered, encodings added, and constraints still open.

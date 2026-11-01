@@ -57,7 +57,7 @@ Run these in this chat, in order. Finish one before the next starts.
 
 A finding survives only when a command was actually run and its output proves the failure. Record the command, the actual output, and the expected output. Leave out style, naming, and anything you did not run. No findings is a valid result.
 
-Take product test commands from `tooling.suggested_verify` in that `goat context` JSON. Do not invent npm or make targets. A repro script goes in a temp directory created with `mktemp -d`. That directory must sit outside this repo and outside every `repos[].path`. Never commit it. Never copy it into a repo.
+Take product test commands from `tooling.suggested_verify` in that `goat context` JSON. Do not invent npm or make targets. A repro script goes in a temp directory created with `mktemp -d`, outside every repo (outside this repo and outside every `repos[].path`), and is never committed. Never copy it into a repo.
 
 ## Verify
 

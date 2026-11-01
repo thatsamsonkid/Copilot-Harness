@@ -242,3 +242,22 @@ def test_no_comments_audits_comment_reviewer_and_waits():
     assert "waits for approval" in text
     assert _SUBAGENT_RULE in text
     assert "/architect" not in text
+
+
+def test_no_comments_reruns_once_then_fails_and_skips_this_harness():
+    text = (SKILLS / "no-comments" / "SKILL.md").read_text(encoding="utf-8")
+    assert "invoke Comment Reviewer once more" in text
+    assert (
+        "If that second report is also rejected, do not invoke it again. "
+        "Fail `/no-comments` and hand back the report."
+    ) in text
+    assert "Never edit this harness." in text
+
+
+def test_interrogate_repros_stay_outside_every_repo():
+    text = (SKILLS / "interrogate" / "SKILL.md").read_text(encoding="utf-8")
+    assert (
+        "`mktemp -d`, outside every repo "
+        "(outside this repo and outside every `repos[].path`), "
+        "and is never committed."
+    ) in text
